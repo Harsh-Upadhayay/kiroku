@@ -348,22 +348,21 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
     e.preventDefault();
     if (isReviewTransitioning) return;
 
+    const answer = userTypedAnswer.trim().toLowerCase();
     if (isDefaultDeck) {
       if (!currentCard || hasSubmittedTyping) return;
-      const answer = userTypedAnswer.trim().toLowerCase();
-      const isCorrect = answer === currentCard.romaji.toLowerCase();
-      
+      const cardRomaji = String(currentCard.romaji || "").toLowerCase();
+      const isCorrect = answer === cardRomaji;
+
       setHasSubmittedTyping(true);
       setIsTypingCorrect(isCorrect);
       processCardReview(isCorrect);
     } else {
       if (!currentAnkiCard || hasSubmittedTyping) return;
-      const answer = userTypedAnswer.trim().toLowerCase();
-      const lowerBack = currentAnkiCard.back.toLowerCase();
-      
-      const isCorrect = 
-        answer === lowerBack || 
-        lowerBack.startsWith(answer) || 
+      const lowerBack = String(currentAnkiCard.back || "").toLowerCase();
+      const isCorrect =
+        answer === lowerBack ||
+        lowerBack.startsWith(answer) ||
         (answer.length >= 2 && lowerBack.includes(answer));
 
       setHasSubmittedTyping(true);

@@ -159,17 +159,29 @@ export function sanitizeHTML(html: string | undefined): string {
     .trim();
 }
 
+function isNumericText(value: string): boolean {
+  return /^\s*\d+\s*$/.test(value);
+}
+
 function fieldValue(card: AnkiCard, matcher: RegExp): string {
   const entries = Object.entries(card.fields || {});
-  const direct = entries.find(([name, value]) => matcher.test(name) && stripHTML(value));
-  if (direct) return direct[1];
+  const directMatches = entries.filter(([name, value]) => matcher.test(name) && stripHTML(value));
+  const nonNumericDirect = directMatches.find(([, value]) => !isNumericText(stripHTML(value)));
+  if (nonNumericDirect) return nonNumericDirect[1];
+  if (directMatches.length) return directMatches[0][1];
 
-  const contentMatch = entries.find(([, value]) => matcher.test(stripHTML(value)));
-  return contentMatch?.[1] || "";
+  const contentMatches = entries.filter(([, value]) => matcher.test(stripHTML(value)));
+  const nonNumericContent = contentMatches.find(([, value]) => !isNumericText(stripHTML(value)));
+  if (nonNumericContent) return nonNumericContent[1];
+  return contentMatches[0]?.[1] || "";
 }
 
 export function getCardMnemonic(card: AnkiCard): string {
-  return card.mnemonic || fieldValue(card, /(mnemonic|story|koohii|heisig|rtk|remember|hint|primitive)/i);
+  return (
+    card.mnemonic ||
+    fieldValue(card, /(mnemonic|story|koohii|remember|hint|primitive)/i) ||
+    fieldValue(card, /(heisig|rtk)/i)
+  );
 }
 
 export function getCardStrokeInfo(card: AnkiCard): string {
