@@ -11,6 +11,9 @@ if (!fs.existsSync(publicDir)) {
 
 fs.writeFileSync(path.join(publicDir, 'icon-192.png'), Buffer.from(iconBase64, 'base64'));
 fs.writeFileSync(path.join(publicDir, 'icon-512.png'), Buffer.from(iconBase64, 'base64'));
+// Provide a dedicated 180x180 icon for iOS home screen (apple-touch-icon)
+fs.writeFileSync(path.join(publicDir, 'icon-180.png'), Buffer.from(iconBase64, 'base64'));
+fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), Buffer.from(iconBase64, 'base64'));
 console.log('[PWA Build] Fallback PNG launcher icons created successfully.');
 
 // Also produce a simple favicon.ico that embeds the PNG as an ICO entry (PNG-in-ICO supported by modern browsers)
