@@ -240,12 +240,12 @@ export const AnkiDeckManager: React.FC<AnkiDeckManagerProps> = ({ onDecksChange 
       }
 
       const data = await response.json();
-      if (!data.success || !data.cards) {
+      if (!data.success || !data.data || !data.data.cards) {
         throw new Error("Invalid response structural format from server.");
       }
 
       // We have the cards list! Let's import!
-      const cardsToImport: any[] = data.cards;
+      const cardsToImport: any[] = data.data.cards;
       if (cardsToImport.length === 0) {
         triggerNotify("error", "No valid cards found in this APKG file.");
         setIsApkgUploading(false);

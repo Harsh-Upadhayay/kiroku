@@ -169,7 +169,10 @@ export async function triggerPushSync(email: string): Promise<boolean> {
 
     if (resp.ok) {
       const data = await resp.json();
-      console.log("Backend synchronization push complete.", data);
+      if (!data.success) {
+        throw new Error(data.error || "Push failed");
+      }
+      console.log("Backend synchronization push complete.", data.data);
       clearSyncDirty();
       localStorage.setItem(SYNC_LAST_PUSH_KEY, String(Date.now()));
       return true;
@@ -202,7 +205,11 @@ export async function triggerPullSync(email: string): Promise<boolean> {
       return false;
     }
 
-    const { state } = (await resp.json()) as { state: SyncState | null };
+    const data = await resp.json();
+    if (!data.success) {
+      throw new Error(data.error || "Pull failed");
+    }
+    const state = data.data as SyncState | null;
     if (!state) {
       console.log("No backend state stored for user yet. Push will initialize it later.");
       return false;
