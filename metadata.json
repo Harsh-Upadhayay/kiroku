@@ -1,0 +1,6 @@
+{
+  "name": "Kiroku",
+  "description": "An offline-first Japanese study journal for kana practice, Anki deck review, and spaced repetition progress.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

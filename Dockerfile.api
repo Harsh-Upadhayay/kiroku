@@ -1,0 +1,24 @@
+FROM golang:1.22-alpine AS build
+
+WORKDIR /src
+
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend ./
+RUN CGO_ENABLED=0 go build -o /out/kiroku-api ./cmd/kiroku-api
+
+FROM alpine:3.20 AS runtime
+
+WORKDIR /app
+ENV PORT=8080
+ENV DATA_DIR=/app/data
+
+COPY --from=build /out/kiroku-api /app/kiroku-api
+
+RUN mkdir -p /app/data && addgroup -g 1000 appgroup && adduser -D -H -u 1000 -G appgroup appuser && chown -R appuser:appgroup /app
+
+USER appuser
+EXPOSE 8080
+
+CMD ["/app/kiroku-api"]
