@@ -129,8 +129,10 @@ export function formatIntervalLabel(days: number): string {
 }
 
 export function stripHTML(html: string | undefined): string {
-  if (!html) return "";
-  return html
+  if (html == null) return "";
+  const s = String(html);
+  if (!s) return "";
+  return s
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<\/div>/gi, "\n")
@@ -146,8 +148,10 @@ export function stripHTML(html: string | undefined): string {
 }
 
 export function sanitizeHTML(html: string | undefined): string {
-  if (!html) return "";
-  return html
+  if (html == null) return "";
+  const s = String(html);
+  if (!s) return "";
+  return s
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/\son\w+=(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")

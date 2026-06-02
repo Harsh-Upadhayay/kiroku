@@ -272,22 +272,36 @@ export const AnkiDeckManager: React.FC<AnkiDeckManagerProps> = ({ onDecksChange 
         }
       });
 
-      const mappedCards: AnkiCard[] = cardsToImport.map((c, index) => {
-        const deckId = createdDecksMap[c.deckName] || selectedDeckId;
+      const mappedCards: AnkiCard[] = cardsToImport.map((c: any, index) => {
+        const deckId = createdDecksMap[c.deckName] || selectedDeckId || `deck-import-${Date.now()}`;
+
+        // Ensure front/back and fields are strings to avoid runtime errors
+        const front = c.front == null ? "" : String(c.front);
+        const back = c.back == null ? "" : String(c.back);
+
+        const rawFields = Array.isArray(c.rawFields) ? c.rawFields.map((f: any) => (f == null ? "" : String(f))) : [];
+
+        const fieldsObj: Record<string, string> = {};
+        if (c.fields && typeof c.fields === "object") {
+          Object.entries(c.fields).forEach(([k, v]) => {
+            fieldsObj[k] = v == null ? "" : String(v);
+          });
+        }
+
         return {
           id: `anki-card-apkg-${deckId}-${index}-${Math.floor(Math.random() * 100000)}`,
           deckId,
-          front: c.front,
-          back: c.back,
+          front,
+          back,
           noteId: c.noteId,
           modelName: c.modelName,
-          fieldOrder: c.fieldOrder,
-          fields: c.fields,
-          rawFields: c.rawFields,
-          mnemonic: c.mnemonic,
-          strokeInfo: c.strokeInfo,
-          strokeCount: c.strokeCount,
-          tags: c.tags || [],
+          fieldOrder: Array.isArray(c.fieldOrder) ? c.fieldOrder.map(String) : undefined,
+          fields: Object.keys(fieldsObj).length ? fieldsObj : undefined,
+          rawFields: rawFields.length ? rawFields : undefined,
+          mnemonic: c.mnemonic == null ? undefined : String(c.mnemonic),
+          strokeInfo: c.strokeInfo == null ? undefined : String(c.strokeInfo),
+          strokeCount: typeof c.strokeCount === "number" ? c.strokeCount : undefined,
+          tags: Array.isArray(c.tags) ? c.tags.map(String) : [],
           added: c.added || Date.now(),
           updatedAt: Date.now(),
           flag: 0,
@@ -297,7 +311,7 @@ export const AnkiDeckManager: React.FC<AnkiDeckManagerProps> = ({ onDecksChange 
           reps: 0,
           lapses: 0,
           nextReview: Date.now(),
-          status: "new"
+          status: "new",
         };
       });
 
