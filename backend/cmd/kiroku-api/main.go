@@ -25,6 +25,14 @@ func main() {
 	}
 	defer database.Close()
 
+	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
+		if err := database.Ping(); err != nil {
+			slog.Error("Healthcheck failed", "error", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	h := &handlers.Handler{
 		DB:     database,
 		Config: cfg,
