@@ -1,6 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect x="12" y="12" width="488" height="488" rx="120" fill="#4f46e5" stroke="#18181b" stroke-width="24"/>
-  <circle cx="256" cy="256" r="140" fill="#ffffff" stroke="#18181b" stroke-width="16"/>
-  <text x="261" y="338" font-family="'Inter', system-ui, Helvetica, sans-serif" font-size="190" font-weight="900" text-anchor="middle" fill="#18181b">記</text>
-  <text x="256" y="333" font-family="'Inter', system-ui, Helvetica, sans-serif" font-size="190" font-weight="900" text-anchor="middle" fill="#ffffff">記</text>
+<svg width="120" height="118" viewBox="0 0 120 118" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5A4BFF"/>
+      <stop offset="100%" stop-color="#3526D9"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="14" y="13" width="92" height="92" rx="24"
+        fill="url(#bg)"
+        stroke="#111111"
+        stroke-width="4"/>
+
+  <text x="60" y="72"
+        text-anchor="middle"
+        font-size="54"
+        font-family="Arial, Helvetica, sans-serif"
+        font-weight="700"
+        fill="#FFFFFF">力</text>
 </svg>
