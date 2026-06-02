@@ -9,9 +9,8 @@ import {
   STARTER_ANKI_DECKS, 
   loadStarterDeck, 
   parseAnkiTextExport,
-  formatIntervalLabel
-} from "../utils/anki-sm2";
-import {
+  formatIntervalLabel,
+  normalizeAnkiCard,
   formatDueLabel,
   getAnkiCardState,
   getCardAllText,
@@ -288,7 +287,7 @@ export const AnkiDeckManager: React.FC<AnkiDeckManagerProps> = ({ onDecksChange 
           });
         }
 
-        return {
+        return normalizeAnkiCard({
           id: `anki-card-apkg-${deckId}-${index}-${Math.floor(Math.random() * 100000)}`,
           deckId,
           front,
@@ -312,7 +311,7 @@ export const AnkiDeckManager: React.FC<AnkiDeckManagerProps> = ({ onDecksChange 
           lapses: 0,
           nextReview: Date.now(),
           status: "new",
-        };
+        });
       });
 
       const nextCards = [...cards, ...mappedCards];

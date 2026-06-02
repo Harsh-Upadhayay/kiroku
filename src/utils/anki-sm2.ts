@@ -42,6 +42,49 @@ export interface SM2Result {
   nextReviewTime: number;
 }
 
+export function safeNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+}
+
+export function normalizeAnkiCard(card: Partial<AnkiCard>): AnkiCard {
+  return {
+    id: String(card.id ?? `anki-card-${Date.now()}-${Math.floor(Math.random() * 100000)}`),
+    deckId: String(card.deckId ?? "default"),
+    front: String(card.front ?? ""),
+    back: String(card.back ?? ""),
+    noteId: card.noteId ? String(card.noteId) : undefined,
+    modelName: card.modelName ? String(card.modelName) : undefined,
+    fieldOrder: Array.isArray(card.fieldOrder) ? card.fieldOrder.map(String) : undefined,
+    fields: card.fields ? Object.fromEntries(Object.entries(card.fields).map(([k, v]) => [String(k), String(v ?? "")])) : undefined,
+    rawFields: Array.isArray(card.rawFields) ? card.rawFields.map((f) => String(f ?? "")) : undefined,
+    mnemonic: card.mnemonic ? String(card.mnemonic) : undefined,
+    strokeInfo: card.strokeInfo ? String(card.strokeInfo) : undefined,
+    strokeCount: typeof card.strokeCount === "number" ? card.strokeCount : undefined,
+    tags: Array.isArray(card.tags) ? card.tags.map(String) : undefined,
+    flag: typeof card.flag === "number" ? (card.flag as 0 | 1 | 2 | 3 | 4) : 0,
+    suspended: Boolean(card.suspended),
+    buriedUntil: typeof card.buriedUntil === "number" && Number.isFinite(card.buriedUntil) ? card.buriedUntil : undefined,
+    added: typeof card.added === "number" && Number.isFinite(card.added) ? card.added : Date.now(),
+    updatedAt: typeof card.updatedAt === "number" && Number.isFinite(card.updatedAt) ? card.updatedAt : Date.now(),
+    firstReviewed: typeof card.firstReviewed === "number" && Number.isFinite(card.firstReviewed) ? card.firstReviewed : undefined,
+    lastReviewed: typeof card.lastReviewed === "number" && Number.isFinite(card.lastReviewed) ? card.lastReviewed : 0,
+    totalAnswerSeconds: typeof card.totalAnswerSeconds === "number" && Number.isFinite(card.totalAnswerSeconds) ? card.totalAnswerSeconds : 0,
+    ease: safeNumber(card.ease, 2.5),
+    interval: safeNumber(card.interval, 0),
+    reps: Math.max(0, Math.round(safeNumber(card.reps, 0))),
+    lapses: Math.max(0, Math.round(safeNumber(card.lapses, 0))),
+    nextReview: typeof card.nextReview === "number" && Number.isFinite(card.nextReview) ? card.nextReview : Date.now(),
+    status: card.status === "learning" || card.status === "review" || card.status === "new" ? card.status : "new",
+  };
+}
+
 /**
  * Calculates next review variables according to the standard Anki/SM-2 spaced repetition algorithm
  * Quality grades:
@@ -124,7 +167,7 @@ export function calculateSM2(
  * Format dynamic button tags with human-friendly pending intervals
  */
 export function formatIntervalLabel(days: number): string {
-  if (days === 0) return "< 1m";
+  if (!Number.isFinite(days) || days <= 0) return "< 1m";
   if (days < 1) return "< 1d";
   if (days === 1) return "1d";
   if (days < 30) return `${days}d`;
@@ -398,7 +441,8 @@ export async function saveAnkiDecks(decks: AnkiDeck[]): Promise<void> {
 export async function getAnkiCards(): Promise<AnkiCard[]> {
   try {
     const { getSettingFromDB } = await import("./db");
-    return await getSettingFromDB<AnkiCard[]>("anki_cards", []);
+    const stored = await getSettingFromDB<Partial<AnkiCard>[]>("anki_cards", []);
+    return stored.map(normalizeAnkiCard);
   } catch (e) {
     console.error("Failed to load anki cards from DB", e);
     return [];
@@ -411,7 +455,8 @@ export async function getAnkiCards(): Promise<AnkiCard[]> {
 export async function saveAnkiCards(cards: AnkiCard[]): Promise<void> {
   try {
     const { saveSettingToDB } = await import("./db");
-    await saveSettingToDB("anki_cards", cards);
+    const normalized = cards.map(normalizeAnkiCard);
+    await saveSettingToDB("anki_cards", normalized);
   } catch (e) {
     console.error("Failed to save anki cards to DB", e);
   }

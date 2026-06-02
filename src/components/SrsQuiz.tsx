@@ -19,7 +19,8 @@ import {
   getCardMnemonic,
   getCardStrokeInfo,
   isAnkiCardDue,
-  sanitizeHTML
+  sanitizeHTML,
+  safeNumber,
 } from "../utils/anki-sm2";
 import { 
   BookOpen, 
@@ -133,6 +134,10 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
   const currentCard = isDefaultDeck ? activeCards[currentItemIndex] : (currentAnkiCard as any);
   const currentAnkiMnemonic = !isDefaultDeck && currentAnkiCard ? getCardMnemonic(currentAnkiCard) : "";
   const currentAnkiStroke = !isDefaultDeck && currentAnkiCard ? getCardStrokeInfo(currentAnkiCard) : "";
+  const currentAnkiEaseLabel = !isDefaultDeck && currentAnkiCard ? `${safeNumber(currentAnkiCard.ease, 2.5).toFixed(2)}x` : "";
+  const currentAnkiInterval = !isDefaultDeck && currentAnkiCard ? safeNumber(currentAnkiCard.interval, 0) : 0;
+  const currentAnkiEase = !isDefaultDeck && currentAnkiCard ? safeNumber(currentAnkiCard.ease, 2.5) : 2.5;
+  const currentAnkiReps = !isDefaultDeck && currentAnkiCard ? Math.max(0, Math.round(safeNumber(currentAnkiCard.reps, 0))) : 0;
 
   let displayDueCount = 0;
   let displayMasteredCount = 0;
@@ -290,9 +295,9 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
     // Run SM-2 algorithm calculations
     const calculus = calculateSM2(
       grade,
-      currentAnkiCard.interval,
-      currentAnkiCard.ease,
-      currentAnkiCard.reps
+      safeNumber(currentAnkiCard.interval, 0),
+      safeNumber(currentAnkiCard.ease, 2.5),
+      Math.max(0, Math.round(safeNumber(currentAnkiCard.reps, 0)))
     );
 
     const answerSeconds = Math.min(60, Math.max(1, Math.round((Date.now() - cardShownAt) / 1000)));
@@ -769,7 +774,7 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
                   >
                     <span className="font-black uppercase tracking-wider text-[11px]">Again</span>
                     <span className="text-[9px] font-mono tracking-wide font-black mt-0.5 text-red-950/70 border border-red-500/20 px-1.5 rounded-md bg-red-500/10">
-                      {formatIntervalLabel(calculateSM2(1, currentCard.interval, currentCard.ease, currentCard.reps).nextIntervalDays)}
+                      {formatIntervalLabel(calculateSM2(1, currentAnkiInterval, currentAnkiEase, currentAnkiReps).nextIntervalDays)}
                     </span>
                   </button>
 
@@ -780,7 +785,7 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
                   >
                     <span className="font-black uppercase tracking-wider text-[11px]">Hard</span>
                     <span className="text-[9px] font-mono tracking-wide font-black mt-0.5 text-amber-950/75 border border-amber-500/20 px-1.5 rounded-md bg-amber-500/15">
-                      {formatIntervalLabel(calculateSM2(2, currentCard.interval, currentCard.ease, currentCard.reps).nextIntervalDays)}
+                      {formatIntervalLabel(calculateSM2(2, currentAnkiInterval, currentAnkiEase, currentAnkiReps).nextIntervalDays)}
                     </span>
                   </button>
 
@@ -791,7 +796,7 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
                   >
                     <span className="font-black uppercase tracking-wider text-[11px]">Good</span>
                     <span className="text-[9px] font-mono tracking-wide font-black mt-0.5 text-indigo-950/70 border border-indigo-500/20 px-1.5 rounded-md bg-indigo-500/15">
-                      {formatIntervalLabel(calculateSM2(3, currentCard.interval, currentCard.ease, currentCard.reps).nextIntervalDays)}
+                      {formatIntervalLabel(calculateSM2(3, currentAnkiInterval, currentAnkiEase, currentAnkiReps).nextIntervalDays)}
                     </span>
                   </button>
 
@@ -802,7 +807,7 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({
                   >
                     <span className="font-black uppercase tracking-wider text-[11px]">Easy</span>
                     <span className="text-[9px] font-mono tracking-wide font-black mt-0.5 text-emerald-950/70 border border-emerald-500/20 px-1.5 rounded-md bg-emerald-500/15">
-                      {formatIntervalLabel(calculateSM2(4, currentCard.interval, currentCard.ease, currentCard.reps).nextIntervalDays)}
+                      {formatIntervalLabel(calculateSM2(4, currentAnkiInterval, currentAnkiEase, currentAnkiReps).nextIntervalDays)}
                     </span>
                   </button>
                 </div>
