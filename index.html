@@ -8,7 +8,11 @@
     <title>Kiroku | Japanese Study Journal</title>
     <!-- Web Manifest Link for PWA Installation -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <!-- Favicon (SVG for modern browsers, PNG fallback) -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="shortcut icon" href="/icon-192.png" />
+    <!-- Legacy ICO fallback -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   </head>
   <body>
     <div id="root"></div>
