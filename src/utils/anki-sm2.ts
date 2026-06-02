@@ -56,22 +56,26 @@ export function calculateSM2(
   currentEase: number,
   reps: number
 ): SM2Result {
+  // Defensive coercion: ensure numeric inputs to avoid runtime errors
+  const interval = typeof currentIntervalDays === "number" && isFinite(currentIntervalDays) ? currentIntervalDays : 0;
+  const easeStart = typeof currentEase === "number" && isFinite(currentEase) ? currentEase : 2.5;
+
   let nextIntervalDays = 1;
-  let newEase = currentEase;
+  let newEase = easeStart;
 
   if (grade === 1) {
     // Again (Forgotten)
     nextIntervalDays = 0; // Means study again in <1 minute during current session
-    newEase = Math.max(1.3, currentEase - 0.2);
+    newEase = Math.max(1.3, easeStart - 0.2);
   } else if (grade === 2) {
     // Hard
-    newEase = Math.max(1.3, currentEase - 0.15);
+    newEase = Math.max(1.3, easeStart - 0.15);
     if (reps === 0) {
       nextIntervalDays = 1; // 1 day
     } else if (reps === 1) {
       nextIntervalDays = 3; // 3 days
     } else {
-      nextIntervalDays = Math.ceil(currentIntervalDays * 1.2);
+      nextIntervalDays = Math.ceil(interval * 1.2);
     }
   } else if (grade === 3) {
     // Good (Normal)
@@ -81,17 +85,17 @@ export function calculateSM2(
     } else if (reps === 1) {
       nextIntervalDays = 4;
     } else {
-      nextIntervalDays = Math.ceil(currentIntervalDays * currentEase);
+      nextIntervalDays = Math.ceil(interval * easeStart);
     }
   } else {
     // Easy
-    newEase = currentEase + 0.15;
+    newEase = easeStart + 0.15;
     if (reps === 0) {
       nextIntervalDays = 4;
     } else if (reps === 1) {
       nextIntervalDays = 8;
     } else {
-      nextIntervalDays = Math.ceil(currentIntervalDays * currentEase * 1.3); // Easy bonus 1.3
+      nextIntervalDays = Math.ceil(interval * easeStart * 1.3); // Easy bonus 1.3
     }
   }
 
