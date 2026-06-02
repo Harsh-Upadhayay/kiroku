@@ -1,4 +1,4 @@
-const CACHE_NAME = "hiragana-flow-v1";
+const CACHE_NAME = "kiroku-pwa-v1.0.0";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -35,6 +35,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   // Avoid caching non-GET requests or browser extension/external URLs unless necessary
   if (event.request.method !== "GET" || !event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Skip caching for API requests to avoid stale responses on data sync
+  if (event.request.url.includes("/api/")) {
     return;
   }
 

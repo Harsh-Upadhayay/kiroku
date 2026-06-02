@@ -21,6 +21,19 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [reviewLogs, setReviewLogs] = useState<any[]>([]);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  // Online/Offline status listeners
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Fetch log audits dynamically from IndexedDB
   useEffect(() => {
@@ -106,6 +119,12 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border-2 font-black text-[10px] uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
+              isOnline ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-amber-50 text-amber-700 border-amber-300"
+            }`}>
+              <div className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+              {isOnline ? "Online / Sync Active" : "Offline / Local Only"}
+            </div>
             <button
               onClick={() => {
                 sound.playTick();

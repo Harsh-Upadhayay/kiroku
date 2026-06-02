@@ -18,6 +18,7 @@ export function AuthCenter({ onSessionChange }: AuthCenterProps) {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Sync state with disk
   useEffect(() => {
@@ -43,6 +44,7 @@ export function AuthCenter({ onSessionChange }: AuthCenterProps) {
       return;
     }
 
+    setIsLoading(true);
     try {
       const profiles = await getRegisteredProfiles();
       let loggedUser: User | null = null;
@@ -65,7 +67,7 @@ export function AuthCenter({ onSessionChange }: AuthCenterProps) {
           if (resp.ok) {
             const data = await resp.json();
             if (data.success) {
-              loggedUser = data.user;
+              loggedUser = data.data;
             }
           } else {
             const errJson = await resp.json().catch(() => ({}));
@@ -129,7 +131,7 @@ export function AuthCenter({ onSessionChange }: AuthCenterProps) {
           if (resp.ok) {
             const data = await resp.json();
             if (data.success) {
-              loggedUser = data.user;
+              loggedUser = data.data;
             }
           } else if (resp.status === 401 || resp.status === 400) {
             const errJson = await resp.json().catch(() => ({}));
@@ -180,6 +182,8 @@ export function AuthCenter({ onSessionChange }: AuthCenterProps) {
       sound.playIncorrect();
       setErrorMsg("Failed to authenticate. Please try again.");
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -342,11 +346,14 @@ export function AuthCenter({ onSessionChange }: AuthCenterProps) {
               {/* Submit Buttons */}
               <button
                 type="submit"
+                disabled={isLoading}
                 className={`w-full py-2.5 px-4 font-black text-xs uppercase tracking-wider rounded-xl border-2 border-zinc-900 transition-all cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center justify-center gap-2 ${
                   isRegister ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-zinc-900 hover:bg-zinc-800 text-white'
-                }`}
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isRegister ? (
+                {isLoading ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : isRegister ? (
                   <>
                     <UserPlus className="h-4 w-4" /> Create Student Account
                   </>

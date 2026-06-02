@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4f46e5" />
-    <title>Kiroku</title>
+    <meta name="description" content="An offline-first Japanese study journal for kana practice, Anki deck review, and spaced repetition progress." />
+    <title>Kiroku | Japanese Study Journal</title>
     <!-- Web Manifest Link for PWA Installation -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/icon-192.png" />
@@ -21,6 +22,24 @@
             .register("/sw.js")
             .then((registration) => {
               console.log("[PWA Service Worker] Registered successfully with scope:", registration.scope);
+
+              // Handle updates
+              registration.onupdatefound = () => {
+                const installingWorker = registration.installing;
+                if (installingWorker == null) return;
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('New content is available; please refresh.');
+                      if (window.confirm('New version of Kiroku is available. Refresh to update?')) {
+                        window.location.reload();
+                      }
+                    } else {
+                      console.log('Content is cached for offline use.');
+                    }
+                  }
+                };
+              };
             })
             .catch((error) => {
               console.error("[PWA Service Worker] Registration failed:", error);
