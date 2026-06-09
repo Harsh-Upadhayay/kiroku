@@ -18,14 +18,13 @@ type APIResponse struct {
 }
 
 type SyncState struct {
-	Meta           Meta             `json:"_meta"`
-	ActiveRows     []string         `json:"active_rows"`
-	ActiveRowsInfo map[string]any   `json:"active_rows_info"`
-	StreakInfo     StreakInfo       `json:"streak_info"`
-	SRSCards       []SRSCard        `json:"srs_cards_list"`
-	DeletedDeckIDs []string         `json:"deleted_deck_ids"`
-	AnkiDecks      []AnkiDeck       `json:"anki_decks"`
-	AnkiCards      []AnkiCard       `json:"anki_cards"`
+	Meta             Meta           `json:"_meta"`
+	ActiveRows       []string       `json:"active_rows"`
+	ActiveRowsInfo   map[string]any `json:"active_rows_info"`
+	StreakInfo       StreakInfo     `json:"streak_info"`
+	SRSCards         []SRSCard      `json:"srs_cards_list"`
+	DeletedDeckIDs   []string       `json:"deleted_deck_ids"`
+	AnkiV3Collection map[string]any `json:"anki_v3_collection,omitempty"`
 }
 
 type Meta struct {
@@ -48,31 +47,4 @@ type SRSCard struct {
 	UpdatedAt  float64 `json:"updatedAt"`
 	// Allow other fields for flexibility
 	Other map[string]any `json:"-"`
-}
-
-type AnkiDeck struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	UpdatedAt float64 `json:"updatedAt,omitempty"`
-}
-
-type AnkiCard struct {
-	ID                 string   `json:"id"`
-	DeckID             string   `json:"deckId"`
-	Front              string   `json:"front"`
-	Back               string   `json:"back"`
-	Reps               float64  `json:"reps"`
-	Lapses             float64  `json:"lapses"`
-	LastReviewed       float64  `json:"lastReviewed"`
-	TotalAnswerSeconds float64  `json:"totalAnswerSeconds"`
-	UpdatedAt          float64  `json:"updatedAt"`
-	Tags               []string `json:"tags,omitempty"`
-	// Other fields from import
-	NoteID      string         `json:"noteId,omitempty"`
-	ModelName   string         `json:"modelName,omitempty"`
-	FieldOrder  []string       `json:"fieldOrder,omitempty"`
-	Fields      map[string]string `json:"fields,omitempty"`
-	Mnemonic    *string        `json:"mnemonic,omitempty"`
-	StrokeInfo  *string        `json:"strokeInfo,omitempty"`
-	StrokeCount any            `json:"strokeCount,omitempty"`
 }

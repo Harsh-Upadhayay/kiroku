@@ -45,7 +45,9 @@ func main() {
 	mux.HandleFunc("POST /api/auth/login", h.Login)
 	mux.HandleFunc("POST /api/sync/push", h.SyncPush)
 	mux.HandleFunc("POST /api/sync/pull", h.SyncPull)
-	mux.HandleFunc("POST /api/import-apkg", h.ImportAPKG)
+	mux.HandleFunc("POST /api/import-anki-package", h.ImportAnkiPackage)
+	mux.HandleFunc("GET /api/import-anki-package/{importID}/media/{hash}", h.ImportedPackageMedia)
+	mux.HandleFunc("/api/media/{hash}", h.MediaBlob)
 	mux.HandleFunc("POST /api/auth/change-password", h.ChangePassword)
 	mux.HandleFunc("POST /api/auth/delete-account", h.DeleteAccount)
 

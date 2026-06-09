@@ -12,17 +12,18 @@ func TestMergeState(t *testing.T) {
 			{Char: "A", Box: 1, UpdatedAt: 100},
 			{Char: "B", Box: 2, UpdatedAt: 100},
 		},
-		AnkiDecks: []models.AnkiDeck{
-			{ID: "d1", Name: "Deck 1", UpdatedAt: 100},
+		AnkiV3Collection: map[string]any{
+			"id": "existing",
 		},
 	}
 	incoming := models.SyncState{
+		Meta: models.Meta{GeneratedAt: 200},
 		SRSCards: []models.SRSCard{
 			{Char: "A", Box: 5, UpdatedAt: 200}, // Newer
 			{Char: "B", Box: 1, UpdatedAt: 50},  // Older
 		},
-		AnkiDecks: []models.AnkiDeck{
-			{ID: "d2", Name: "Deck 2", UpdatedAt: 200},
+		AnkiV3Collection: map[string]any{
+			"id": "incoming",
 		},
 	}
 
@@ -58,15 +59,14 @@ func TestMergeState(t *testing.T) {
 		t.Error("Missing cards A or B in merged result")
 	}
 
-	// Check Anki Decks
-	if len(merged.AnkiDecks) != 2 {
-		t.Errorf("Expected 2 decks, got %d", len(merged.AnkiDecks))
+	if merged.AnkiV3Collection["id"] != "incoming" {
+		t.Errorf("Expected newer v3 collection to win, got %v", merged.AnkiV3Collection["id"])
 	}
 }
 
 func TestIsDestructive(t *testing.T) {
 	existing := models.SyncState{
-		AnkiDecks: []models.AnkiDeck{{ID: "d1"}},
+		AnkiV3Collection: map[string]any{"id": "collection"},
 	}
 	existingRaw, _ := json.Marshal(existing)
 
@@ -77,7 +77,7 @@ func TestIsDestructive(t *testing.T) {
 	}
 
 	substantialIncoming := models.SyncState{
-		AnkiDecks: []models.AnkiDeck{{ID: "d2"}},
+		AnkiV3Collection: map[string]any{"id": "collection-2"},
 	}
 	if IsDestructive(existingRaw, substantialIncoming) {
 		t.Error("Expected substantial sync to NOT be destructive")

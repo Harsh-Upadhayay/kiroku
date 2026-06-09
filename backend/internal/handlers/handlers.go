@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"io"
 	"kiroku-api/internal/anki"
 	"kiroku-api/internal/auth"
 	"kiroku-api/internal/config"
@@ -11,6 +12,9 @@ import (
 	"kiroku-api/internal/sync"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
 )
 
 type Handler struct {
@@ -59,7 +63,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	joined := auth.NowMillis()
-	defaultState := `{"srs_cards_list":[],"active_rows":["hiragana:vowels"],"streak_info":{"current":0,"highest":0,"updatedAt":0},"anki_decks":[],"anki_cards":[],"_meta":{"schemaVersion":1,"generatedAt":0}}`
+	defaultState := `{"srs_cards_list":[],"active_rows":["hiragana:vowels"],"streak_info":{"current":0,"highest":0,"updatedAt":0},"anki_v3_collection":null,"_meta":{"schemaVersion":3,"generatedAt":0}}`
 
 	err = db.CreateUser(h.DB, email, hash, joined, defaultState)
 	if err != nil {
@@ -184,17 +188,88 @@ func (h *Handler) SyncPull(w http.ResponseWriter, r *http.Request) {
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: state})
 }
 
-func (h *Handler) ImportAPKG(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ImportAnkiPackage(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxBodyBytes)
 	defer r.Body.Close()
 
 	result, err := anki.ImportAPKG(r.Body, h.Config.MaxBodyBytes)
 	if err != nil {
-		h.WriteError(w, http.StatusBadRequest, "Failed to import APKG", err)
+		h.WriteError(w, http.StatusBadRequest, "Failed to import Anki package", err)
 		return
 	}
 
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: result})
+}
+
+func (h *Handler) ImportedPackageMedia(w http.ResponseWriter, r *http.Request) {
+	importID := r.PathValue("importID")
+	hash := r.PathValue("hash")
+	fileName, contentType, bytes, ok := anki.ImportedMedia(importID, hash)
+	if !ok {
+		h.WriteError(w, http.StatusNotFound, "Imported media not found", nil)
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", `inline; filename="`+fileName+`"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(bytes)
+}
+
+func (h *Handler) MediaBlob(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	if !validMediaHash(hash) {
+		h.WriteError(w, http.StatusBadRequest, "Invalid media hash", nil)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.GetMediaBlob(w, r, hash)
+	case http.MethodPut:
+		h.PutMediaBlob(w, r, hash)
+	default:
+		w.Header().Set("Allow", "GET, PUT")
+		h.WriteError(w, http.StatusMethodNotAllowed, "Unsupported media method", nil)
+	}
+}
+
+func (h *Handler) GetMediaBlob(w http.ResponseWriter, r *http.Request, hash string) {
+	path := filepath.Join(h.Config.DataDir, "media", hash)
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		h.WriteError(w, http.StatusNotFound, "Media not found", err)
+		return
+	}
+	contentType := http.DetectContentType(bytes)
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(bytes)
+}
+
+func (h *Handler) PutMediaBlob(w http.ResponseWriter, r *http.Request, hash string) {
+	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxBodyBytes)
+	defer r.Body.Close()
+
+	bytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		h.WriteError(w, http.StatusBadRequest, "Failed to read media", err)
+		return
+	}
+	dir := filepath.Join(h.Config.DataDir, "media")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		h.WriteError(w, http.StatusInternalServerError, "Failed to create media directory", err)
+		return
+	}
+	if err := os.WriteFile(filepath.Join(dir, hash), bytes, 0o644); err != nil {
+		h.WriteError(w, http.StatusInternalServerError, "Failed to store media", err)
+		return
+	}
+	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true})
+}
+
+func validMediaHash(hash string) bool {
+	return regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(hash)
 }
 
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {

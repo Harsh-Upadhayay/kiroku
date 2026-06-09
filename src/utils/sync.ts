@@ -1,5 +1,4 @@
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB, setSyncRequestSuppressed } from "./db";
-import { getAnkiDecks, saveAnkiDecks, getAnkiCards, saveAnkiCards } from "./anki-sm2";
 import { DEFAULT_ACTIVE_GROUP_IDS } from "../types";
 import { normalizeActiveRows, normalizeSRSCards } from "./srs";
 
@@ -14,8 +13,7 @@ export interface SyncState {
   active_rows: string[];
   active_rows_info?: { updatedAt?: number; clientId?: string };
   streak_info: { current: number; highest: number };
-  anki_decks: any[];
-  anki_cards: any[];
+  anki_v3_collection?: any;
   deleted_deck_ids?: string[];
 }
 
@@ -104,8 +102,7 @@ async function collectSyncState(): Promise<SyncState> {
   const active_rows = normalizeActiveRows(await getSettingFromDB<string[]>("active_rows", DEFAULT_ACTIVE_GROUP_IDS));
   const active_rows_info = await getSettingFromDB<{ updatedAt?: number; clientId?: string }>("active_rows_info", {});
   const streak_info = await getSettingFromDB<{ current: number; highest: number; updatedAt?: number }>("streak_info", { current: 0, highest: 0 });
-  const anki_decks = stampCollection(await getAnkiDecks() as any[], now);
-  const anki_cards = stampCollection(await getAnkiCards() as any[], now);
+  const anki_v3_collection = await getSettingFromDB<any>("anki_v3_collection", null);
   const deleted_deck_ids = await getSettingFromDB<string[]>("deleted_deck_ids", []);
 
   return {
@@ -122,8 +119,7 @@ async function collectSyncState(): Promise<SyncState> {
       ...streak_info,
       updatedAt: typeof streak_info.updatedAt === "number" ? streak_info.updatedAt : now,
     } as any,
-    anki_decks,
-    anki_cards,
+    anki_v3_collection,
     deleted_deck_ids,
   };
 }
@@ -230,11 +226,8 @@ export async function triggerPullSync(email: string): Promise<boolean> {
       if (state.streak_info) {
         await saveSettingToDB("streak_info", state.streak_info);
       }
-      if (Array.isArray(state.anki_decks)) {
-        await saveAnkiDecks(state.anki_decks);
-      }
-      if (Array.isArray(state.anki_cards)) {
-        await saveAnkiCards(state.anki_cards);
+      if (state.anki_v3_collection) {
+        await saveSettingToDB("anki_v3_collection", state.anki_v3_collection);
       }
       if (Array.isArray(state.deleted_deck_ids)) {
         await saveSettingToDB("deleted_deck_ids", state.deleted_deck_ids);

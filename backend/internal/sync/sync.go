@@ -31,16 +31,11 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 
 	// Merge Deleted Decks
 	result.DeletedDeckIDs = unionStrings(existing.DeletedDeckIDs, incoming.DeletedDeckIDs)
-	deletedDeckSet := makeSet(result.DeletedDeckIDs)
 
 	// Merge SRS Cards
 	result.SRSCards = mergeSRSCards(existing.SRSCards, incoming.SRSCards)
 
-	// Merge Anki Decks
-	result.AnkiDecks = mergeAnkiDecks(existing.AnkiDecks, incoming.AnkiDecks, deletedDeckSet)
-
-	// Merge Anki Cards
-	result.AnkiCards = mergeAnkiCards(existing.AnkiCards, incoming.AnkiCards, deletedDeckSet)
+	result.AnkiV3Collection = mergeAnkiV3Collection(existing, incoming)
 
 	return json.Marshal(result)
 }
@@ -91,54 +86,17 @@ func mergeSRSCards(existing, incoming []models.SRSCard) []models.SRSCard {
 	return out
 }
 
-func mergeAnkiDecks(existing, incoming []models.AnkiDeck, deletedSet map[string]bool) []models.AnkiDeck {
-	merged := make(map[string]models.AnkiDeck)
-	for _, d := range existing {
-		if !deletedSet[d.ID] {
-			merged[d.ID] = d
-		}
+func mergeAnkiV3Collection(existing, incoming models.SyncState) map[string]any {
+	if len(incoming.AnkiV3Collection) == 0 {
+		return existing.AnkiV3Collection
 	}
-	for _, d := range incoming {
-		if !deletedSet[d.ID] {
-			if ex, ok := merged[d.ID]; ok {
-				if d.UpdatedAt >= ex.UpdatedAt {
-					merged[d.ID] = d
-				}
-			} else {
-				merged[d.ID] = d
-			}
-		}
+	if len(existing.AnkiV3Collection) == 0 {
+		return incoming.AnkiV3Collection
 	}
-	out := make([]models.AnkiDeck, 0, len(merged))
-	for _, d := range merged {
-		out = append(out, d)
+	if incoming.Meta.GeneratedAt >= existing.Meta.GeneratedAt {
+		return incoming.AnkiV3Collection
 	}
-	return out
-}
-
-func mergeAnkiCards(existing, incoming []models.AnkiCard, deletedSet map[string]bool) []models.AnkiCard {
-	merged := make(map[string]models.AnkiCard)
-	for _, c := range existing {
-		if !deletedSet[c.ID] && !deletedSet[c.DeckID] {
-			merged[c.ID] = c
-		}
-	}
-	for _, c := range incoming {
-		if !deletedSet[c.ID] && !deletedSet[c.DeckID] {
-			if ex, ok := merged[c.ID]; ok {
-				if c.UpdatedAt >= ex.UpdatedAt {
-					merged[c.ID] = c
-				}
-			} else {
-				merged[c.ID] = c
-			}
-		}
-	}
-	out := make([]models.AnkiCard, 0, len(merged))
-	for _, c := range merged {
-		out = append(out, c)
-	}
-	return out
+	return existing.AnkiV3Collection
 }
 
 func getUpdatedAt(info map[string]any) float64 {
@@ -164,22 +122,14 @@ func unionStrings(a, b []string) []string {
 	return out
 }
 
-func makeSet(items []string) map[string]bool {
-	out := map[string]bool{}
-	for _, item := range items {
-		out[item] = true
-	}
-	return out
-}
-
 func IsDestructive(existingRaw []byte, incoming models.SyncState) bool {
 	var existing models.SyncState
 	if err := json.Unmarshal(existingRaw, &existing); err != nil {
 		return false
 	}
 
-	existingSubstantial := len(existing.AnkiDecks) > 0 || len(existing.AnkiCards) > 0 || len(existing.SRSCards) > 0
-	incomingEmpty := len(incoming.AnkiDecks) == 0 && len(incoming.AnkiCards) == 0 && len(incoming.SRSCards) == 0
+	existingSubstantial := len(existing.SRSCards) > 0 || len(existing.AnkiV3Collection) > 0
+	incomingEmpty := len(incoming.SRSCards) == 0 && len(incoming.AnkiV3Collection) == 0
 
 	return existingSubstantial && incomingEmpty
 }

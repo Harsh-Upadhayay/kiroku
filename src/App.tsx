@@ -21,8 +21,9 @@ import { SRSCard } from "./types";
 import { SpeedSheet } from "./components/SpeedSheet";
 import { SrsQuiz } from "./components/SrsQuiz";
 import { CharDictionary } from "./components/CharDictionary";
+import { AnkiPage } from "./components/AnkiPage";
 import { sound } from "./utils/audio";
-import { Zap, BookOpen, Settings, GraduationCap, Grid, Trophy, CheckCircle } from "lucide-react";
+import { Zap, BookOpen, Settings, Layers } from "lucide-react";
 import { motion } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB } from "./utils/db";
 import { getCurrentUser, User } from "./utils/auth";
@@ -33,7 +34,7 @@ export default function App() {
   // Primary state trackers
   const [cards, setCards] = useState<SRSCard[]>([]);
   const [activeRows, setActiveRows] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"speed" | "srs" | "dictionary">("speed");
+  const [activeTab, setActiveTab] = useState<"speed" | "srs" | "anki" | "dictionary">("speed");
 
   // User auth state tracking
   const [currentUser, setAppStateCurrentUser] = useState<User | null>(null);
@@ -235,7 +236,8 @@ export default function App() {
           <div className="flex bg-white rounded-3xl border-2 border-zinc-900 p-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.95)] max-w-2xl w-full overflow-x-auto">
             {[
               { id: "speed", label: "Speed Sheets", icon: Zap },
-              { id: "srs", label: "Spaced Repetitions", icon: BookOpen },
+              { id: "srs", label: "Kana SRS", icon: BookOpen },
+              { id: "anki", label: "Anki Decks", icon: Layers },
               { id: "dictionary", label: "Glossary & Setups", icon: Settings },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -307,6 +309,16 @@ export default function App() {
               />
             </motion.div>
           )}
+
+          {activeTab === "anki" && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <AnkiPage />
+            </motion.div>
+          )}
         </div>
       </main>
 
@@ -314,7 +326,8 @@ export default function App() {
       <footer className="mt-12 max-w-7xl w-full mx-auto flex flex-col sm:flex-row justify-between items-center text-xs font-black text-zinc-400 uppercase tracking-widest pt-6 border-t-2 border-zinc-200">
         <div className="flex gap-4">
           <button onClick={() => { sound.playTick(); setActiveTab("speed"); }} className={`transition-colors ${activeTab === "speed" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Speed Quiz</button>
-          <button onClick={() => { sound.playTick(); setActiveTab("srs"); }} className={`transition-colors ${activeTab === "srs" ? "text-zinc-950" : "hover:text-zinc-900"}`}>SRS Cards</button>
+          <button onClick={() => { sound.playTick(); setActiveTab("srs"); }} className={`transition-colors ${activeTab === "srs" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Kana SRS</button>
+          <button onClick={() => { sound.playTick(); setActiveTab("anki"); }} className={`transition-colors ${activeTab === "anki" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Anki Decks</button>
           <button onClick={() => { sound.playTick(); setActiveTab("dictionary"); }} className={`transition-colors ${activeTab === "dictionary" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Stats & Config</button>
         </div>
         <div className="mt-2 sm:mt-0 text-center sm:text-right">

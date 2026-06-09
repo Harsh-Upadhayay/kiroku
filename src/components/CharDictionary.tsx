@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import { KANA_DATA, KANA_GROUPS, KANA_SCRIPTS, KanaScript, SRSCard, getScriptLabel } from "../types";
 import { normalizeActiveRows, saveActiveRows, resetAllData } from "../utils/srs";
 import { sound } from "../utils/audio";
-import { Check, ToggleLeft, Activity, Grid, Compass, RefreshCcw, HelpCircle, AlertTriangle } from "lucide-react";
-import { motion } from "motion/react";
-import { AnkiDeckManager } from "./AnkiDeckManager";
+import { Check, Activity, Grid, Compass, AlertTriangle } from "lucide-react";
 
 interface CharDictionaryProps {
   cards: SRSCard[];
@@ -361,9 +359,6 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
           </div>
         )}
       </div>
-
-      {/* 3.5. ANKI DIRECT DECK CENTER */}
-      <AnkiDeckManager />
 
       {/* 4. DANGER ZONE RESET CONTROLS */}
       <div className="bg-red-50 border-2 border-zinc-900 rounded-[24px] p-5 mt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">

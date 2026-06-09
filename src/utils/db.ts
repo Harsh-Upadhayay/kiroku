@@ -1,7 +1,7 @@
 import { SRSCard, SpeedTestSession } from "../types";
 
 const DB_NAME = "hiragana_flow_pwa_db";
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 export interface DBReviewAction {
   id?: number;
@@ -93,6 +93,14 @@ export function initDB(): Promise<IDBDatabase> {
       // Settings and persistent indicators (streak, activeRows, etc.)
       if (!db.objectStoreNames.contains("settings")) {
         db.createObjectStore("settings", { keyPath: "key" });
+      }
+
+      if (!db.objectStoreNames.contains("anki_media")) {
+        db.createObjectStore("anki_media", { keyPath: "hash" });
+      }
+
+      if (!db.objectStoreNames.contains("anki_review_logs")) {
+        db.createObjectStore("anki_review_logs", { keyPath: "id" });
       }
     };
 
