@@ -107,7 +107,7 @@ async function collectSyncState(): Promise<SyncState> {
 
   return {
     _meta: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       clientId,
       generatedAt: now,
       dirtySince: dirtySince(),

@@ -34,7 +34,7 @@ export default function App() {
   // Primary state trackers
   const [cards, setCards] = useState<SRSCard[]>([]);
   const [activeRows, setActiveRows] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"speed" | "srs" | "anki" | "dictionary">("speed");
+  const [activeTab, setActiveTab] = useState<"speed" | "srs" | "anki" | "dictionary">("anki");
 
   // User auth state tracking
   const [currentUser, setAppStateCurrentUser] = useState<User | null>(null);

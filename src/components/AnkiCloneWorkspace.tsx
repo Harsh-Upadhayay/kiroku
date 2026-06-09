@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Archive,
   BarChart3,
+  Brain,
   Boxes,
   Cog,
   Download,
+  Eye,
   FileAudio,
   FileImage,
   Filter,
@@ -34,10 +36,23 @@ import {
   saveAnkiCollection,
   sanitizeTemplateHTML,
   stripHTML,
+  type JLPTLevel,
+  type KnownComponentStatus,
 } from "../utils/anki-v3";
 import { sound } from "../utils/audio";
+import {
+  buildVocabBuilderIndex,
+  displayComponentGlyph,
+  JLPT_LEVELS,
+  withBuilderGoal,
+  withBuilderGrade,
+  withComponentStatus,
+  type BuilderComponentRef,
+  type VocabBuilderIndex,
+  type VocabBuilderItem,
+} from "../utils/vocab-builder";
 
-type WorkspaceTab = "decks" | "review" | "browser" | "editor" | "media" | "options" | "custom" | "stats";
+type WorkspaceTab = "builder" | "decks" | "review" | "browser" | "editor" | "media" | "options" | "custom" | "stats";
 type BrowserFilter = "all" | "due" | "new" | "learning" | "review" | "suspended" | "buried" | "flagged";
 
 interface AnkiCloneWorkspaceProps {
@@ -51,11 +66,17 @@ const gradeLabels: Record<AnkiGrade, string> = {
   4: "Easy",
 };
 
+const bundledDecks = [
+  { fileName: "JLPT_N5_Kanji_Writing_with_Example_Words__Stroke_Order.apkg", label: "N5 Kanji" },
+  { fileName: "JLPT_N5_to_N1_Japanese_Vocabulary.apkg", label: "JLPT N5-N1 Vocab" },
+  { fileName: "Ultimate_JLPT_N5_Vocabulary_Deck_v13.apkg", label: "Ultimate N5 Audio" },
+];
+
 export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange }) => {
   const [collection, setCollection] = useState<AnkiCollection>(emptyCollection());
   const [selectedDeckId, setSelectedDeckId] = useState<string>("");
   const [selectedCardId, setSelectedCardId] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("review");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("builder");
   const [browserQuery, setBrowserQuery] = useState("");
   const [browserFilter, setBrowserFilter] = useState<BrowserFilter>("all");
   const [reviewStartedAt, setReviewStartedAt] = useState(Date.now());
@@ -131,6 +152,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const renderedReview = currentReviewCard ? renderAnkiCard(collection, currentReviewCard, mediaUrls) : null;
   const renderedSelected = selectedCard ? renderAnkiCard(collection, selectedCard, mediaUrls) : null;
   const preset = collection.schedulerPresets[0] || defaultSchedulerPreset();
+  const builderIndex = useMemo(() => buildVocabBuilderIndex(collection), [collection]);
 
   const deckRows = collection.decks.map((deck) => {
     const cards = collection.cards.filter((card) => card.deckId === deck.id);
@@ -151,7 +173,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       const next = await importAnkiPackage(file);
       setCollection(next);
       setSelectedDeckId(next.decks[0]?.id || "");
-      setActiveTab("review");
+      setActiveTab("builder");
       notify("success", `Imported ${file.name}: ${next.cards.length.toLocaleString()} total cards now in collection.`);
     } catch (error: any) {
       sound.playIncorrect();
@@ -159,6 +181,32 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     } finally {
       setIsImporting(false);
       event.target.value = "";
+    }
+  };
+
+  const importBundledDecks = async () => {
+    sound.playTick();
+    setIsImporting(true);
+    try {
+      let next: AnkiCollection | null = null;
+      for (const deck of bundledDecks) {
+        const response = await fetch(`/sample-decks/${encodeURIComponent(deck.fileName)}`);
+        if (!response.ok) throw new Error(`Bundled deck unavailable: ${deck.label}`);
+        const blob = await response.blob();
+        const file = new File([blob], deck.fileName, { type: "application/octet-stream" });
+        next = await importAnkiPackage(file);
+      }
+      if (next) {
+        setCollection(next);
+        setSelectedDeckId(next.decks[0]?.id || "");
+      }
+      setActiveTab("builder");
+      notify("success", `Loaded bundled decks: ${next?.cards.length.toLocaleString() || 0} cards now in collection.`);
+    } catch (error: any) {
+      sound.playIncorrect();
+      notify("error", error?.message || "Bundled deck import failed.");
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -176,6 +224,29 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     setReviewStartedAt(Date.now());
     if (grade === 1) sound.playIncorrect();
     else sound.playCorrect();
+  };
+
+  const gradeBuilderCard = async (item: VocabBuilderItem, grade: AnkiGrade) => {
+    if (!item.card) return;
+    const answerSeconds = Math.max(1, Math.round((Date.now() - reviewStartedAt) / 1000));
+    const { card: updatedCard, log } = gradeAnkiCard(item.card, grade, preset, new Date(), answerSeconds);
+    await persist(withBuilderGrade(collection, item.card, updatedCard, log));
+    setIsBackShown(false);
+    setReviewStartedAt(Date.now());
+    if (grade === 1) sound.playIncorrect();
+    else sound.playCorrect();
+  };
+
+  const setBuilderGoal = async (goal: JLPTLevel) => {
+    sound.playTick();
+    await persist(withBuilderGoal(collection, goal));
+    setIsBackShown(false);
+    setReviewStartedAt(Date.now());
+  };
+
+  const markBuilderComponent = async (glyph: string, status: KnownComponentStatus) => {
+    sound.playTick();
+    await persist(withComponentStatus(collection, glyph, status));
   };
 
   const updateCard = async (cardId: string, updater: (card: AnkiCard) => AnkiCard) => {
@@ -271,10 +342,13 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
             Anki Decks
           </h3>
           <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 mt-1">
-            Import, review, browse, edit, and manage full Anki packages with local media and FSRS scheduling.
+          Import, review, browse, edit, and manage full Anki packages with local media and FSRS scheduling.
           </p>
         </div>
         <div className="flex flex-col min-[520px]:flex-row gap-2">
+          <button onClick={importBundledDecks} disabled={isImporting} className="px-3 py-2 rounded-xl border-2 border-zinc-900 bg-emerald-300 text-zinc-900 text-xs font-black uppercase flex items-center justify-center gap-1.5 disabled:opacity-60">
+            <Archive className="h-4 w-4" /> Load Bundled Decks
+          </button>
           <label className={`px-3 py-2 rounded-xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
             <Upload className="h-4 w-4" />
             {isImporting ? "Importing..." : "Import .apkg/.colpkg"}
@@ -292,8 +366,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         </div>
       )}
 
-      <div className="grid grid-cols-2 min-[560px]:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 min-[560px]:grid-cols-4 lg:grid-cols-9 gap-2">
         {[
+          ["builder", Brain, "Vocab Builder"],
           ["decks", Layers, "Decks"],
           ["review", Play, "Review"],
           ["browser", Search, "Browser"],
@@ -317,6 +392,20 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
           </button>
         ))}
       </div>
+
+      {activeTab === "builder" && (
+        <VocabBuilderPanel
+          collection={collection}
+          index={builderIndex}
+          mediaUrls={mediaUrls}
+          isBackShown={isBackShown}
+          setIsBackShown={setIsBackShown}
+          setGoal={setBuilderGoal}
+          markComponent={markBuilderComponent}
+          gradeItem={gradeBuilderCard}
+          preset={preset}
+        />
+      )}
 
       {activeTab === "decks" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -506,6 +595,268 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     </div>
   );
 };
+
+const VocabBuilderPanel: React.FC<{
+  collection: AnkiCollection;
+  index: VocabBuilderIndex;
+  mediaUrls: Record<string, string>;
+  isBackShown: boolean;
+  setIsBackShown: (shown: boolean) => void;
+  setGoal: (goal: JLPTLevel) => Promise<void>;
+  markComponent: (glyph: string, status: KnownComponentStatus) => Promise<void>;
+  gradeItem: (item: VocabBuilderItem, grade: AnkiGrade) => Promise<void>;
+  preset: ReturnType<typeof defaultSchedulerPreset>;
+}> = ({ collection, index, mediaUrls, isBackShown, setIsBackShown, setGoal, markComponent, gradeItem, preset }) => {
+  const item = index.currentItem;
+  const rendered = item?.card ? renderAnkiCard(collection, item.card, mediaUrls) : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {JLPT_LEVELS.map((level) => (
+          <button
+            key={level}
+            onClick={() => setGoal(level)}
+            className={`px-3 py-2 rounded-xl border-2 text-xs font-black uppercase ${index.selectedGoal === level ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 border-zinc-200"}`}
+          >
+            {level}
+          </button>
+        ))}
+      </div>
+
+      <VocabBuilderTutorial />
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-3 space-y-3">
+          <BuilderPanel title="Components">
+            <div className="grid grid-cols-3 gap-2">
+              <MiniMetric label="Known" value={index.stats.knownComponents} />
+              <MiniMetric label="Hard" value={index.stats.hardComponents} />
+              <MiniMetric label="New" value={index.stats.unknownComponents} />
+            </div>
+            <ComponentStrip components={index.upcomingComponents.slice(0, 10)} />
+          </BuilderPanel>
+
+          <BuilderPanel title="Kanji Anchors">
+            <MiniMetric label="Available" value={index.stats.kanjiAnchors} />
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {index.kanjiAnchors.slice(0, 18).map((anchor) => (
+                <span key={anchor.id} className="px-2 py-1 rounded-lg border border-zinc-200 bg-white text-sm font-black">
+                  {anchor.title}
+                </span>
+              ))}
+            </div>
+          </BuilderPanel>
+
+          <BuilderPanel title="Vocab Queue">
+            <MiniMetric label="Cards" value={index.stats.vocabCards} />
+            <MiniMetric label="Due" value={index.stats.dueReviews} />
+            <div className="mt-3 grid grid-cols-5 gap-1">
+              {JLPT_LEVELS.map((level) => (
+                <div key={level} className={`rounded-lg border px-1.5 py-1 text-center ${index.includedLevels.includes(level) ? "border-zinc-900 bg-indigo-50" : "border-zinc-200 bg-white"}`}>
+                  <span className="block text-[9px] font-black">{level}</span>
+                  <span className="block text-[10px] font-bold text-zinc-500">{index.stats.levels[level]}</span>
+                </div>
+              ))}
+            </div>
+          </BuilderPanel>
+        </div>
+
+        <div className="lg:col-span-6">
+          {!item ? (
+            <EmptyState text="Import the bundled Japanese Anki decks to build a vocab queue." />
+          ) : (
+            <div className="bg-white border-2 border-zinc-900 rounded-[24px] p-4 sm:p-5 space-y-4 min-h-[520px]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="block text-[10px] font-black uppercase text-zinc-400">{item.level} · {item.kind}</span>
+                  <h4 className="mt-1 text-3xl sm:text-4xl font-black text-zinc-950 break-words">{item.title}</h4>
+                  <p className="mt-1 text-sm font-bold text-zinc-600 break-words">{item.subtitle}</p>
+                </div>
+                {item.due && !item.isNew ? <span className="px-2 py-1 rounded-lg bg-red-100 text-red-800 text-[10px] font-black uppercase">Due</span> : null}
+              </div>
+
+              {item.components.length > 0 && (
+                <div className="rounded-2xl border-2 border-zinc-100 bg-zinc-50 p-3">
+                  <span className="block text-[10px] font-black uppercase text-zinc-400 mb-2">Components To Notice</span>
+                  <ComponentStrip components={item.components} />
+                </div>
+              )}
+
+              {item.kind === "component" ? (
+                <ComponentPrimer item={item} markComponent={markComponent} />
+              ) : (
+                <StudyItemDetails item={item} mediaUrls={mediaUrls} />
+              )}
+
+              {item.card && rendered ? (
+                <div className="space-y-3 pt-3 border-t-2 border-zinc-100">
+                  <div className="grid grid-cols-1 gap-3">
+                    <RenderPanel title={isBackShown ? "Anki Answer" : "Anki Prompt"} html={isBackShown ? rendered.backHTML : rendered.frontHTML} css={rendered.css} />
+                  </div>
+                  {!isBackShown ? (
+                    <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase flex items-center justify-center gap-2">
+                      <Eye className="h-4 w-4" /> Show Anki Answer
+                    </button>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {([1, 2, 3, 4] as AnkiGrade[]).map((grade) => {
+                        const preview = previewFSRS(item.card!, preset)[grade];
+                        return (
+                          <button key={grade} onClick={() => gradeItem(item, grade)} className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}>
+                            <span className="block">{gradeLabels[grade]}</span>
+                            <span className="block text-[9px] opacity-70">{formatDue(preview.card.due.getTime())}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-3 space-y-2 max-h-[620px] overflow-y-auto pr-1">
+          {index.queue.slice(0, 24).map((queued) => (
+            <div key={queued.id} className={`p-3 rounded-2xl border-2 ${queued.id === item?.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-black text-zinc-900 truncate">{queued.title}</span>
+                <span className="text-[9px] font-black uppercase text-zinc-400">{queued.kind}</span>
+              </div>
+              <span className="block mt-1 text-[10px] font-bold text-zinc-500 truncate">{queued.subtitle}</span>
+              {queued.lockedReason ? <span className="block mt-1 text-[9px] font-black uppercase text-amber-700">{queued.lockedReason}</span> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-[9px] font-bold uppercase tracking-wide text-zinc-400">{index.sourceNotice}</p>
+    </div>
+  );
+};
+
+const VocabBuilderTutorial: React.FC = () => (
+  <div className="rounded-[20px] border-2 border-indigo-200 bg-indigo-50 p-3 sm:p-4">
+    <div className="flex flex-col xl:flex-row xl:items-center gap-3">
+      <div className="xl:w-64 shrink-0">
+        <span className="block text-[10px] font-black uppercase tracking-wide text-indigo-700">Vocab Builder Flow</span>
+        <p className="mt-1 text-sm font-bold text-zinc-800">
+          Pick a JLPT goal, clear the component primer, study the kanji anchor, then review the vocab card with FSRS.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 flex-1">
+        <TutorialStep number="1" title="Components" text="Small shapes build kanji. The rad chip marks the dictionary radical." />
+        <TutorialStep number="2" title="Kanji" text="Use the component chips, stroke image, readings, meanings, and deck examples." />
+        <TutorialStep number="3" title="Vocab" text="Read the word, audio, sentence, and memory hook before opening the Anki card." />
+        <TutorialStep number="4" title="Rate" text="Flip the original card and grade Again, Hard, Good, or Easy honestly." />
+      </div>
+    </div>
+  </div>
+);
+
+const TutorialStep: React.FC<{ number: string; title: string; text: string }> = ({ number, title, text }) => (
+  <div className="rounded-2xl border border-indigo-200 bg-white p-3 min-w-0">
+    <div className="flex items-center gap-2">
+      <span className="h-6 w-6 rounded-full border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">{number}</span>
+      <span className="text-xs font-black uppercase text-zinc-900">{title}</span>
+    </div>
+    <p className="mt-2 text-[11px] font-bold leading-snug text-zinc-600">{text}</p>
+  </div>
+);
+
+const BuilderPanel: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div className="bg-zinc-50 border-2 border-zinc-900 rounded-[20px] p-3">
+    <span className="block text-[10px] font-black uppercase text-zinc-500 mb-3">{title}</span>
+    {children}
+  </div>
+);
+
+const MiniMetric: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+    <span className="block text-[8px] font-black uppercase tracking-wide text-zinc-400">{label}</span>
+    <span className="block text-sm font-black text-zinc-900">{value}</span>
+  </div>
+);
+
+const ComponentStrip: React.FC<{ components: BuilderComponentRef[] }> = ({ components }) => (
+  <div className="flex flex-wrap gap-1.5">
+    {components.length === 0 ? <span className="text-[10px] font-bold uppercase text-zinc-400">None</span> : components.map((component) => (
+      <span key={`${component.glyph}-${component.position || ""}`} className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 ${component.status === "hard" ? "bg-amber-50 border-amber-300 text-amber-900" : component.status === "familiar" ? "bg-emerald-50 border-emerald-300 text-emerald-900" : component.isRadical ? "bg-indigo-50 border-indigo-300 text-indigo-900" : "bg-white border-zinc-200 text-zinc-800"}`}>
+        <span className="text-sm">{displayComponentGlyph(component.glyph)}</span>
+        <span>{component.keyword}</span>
+        {component.isRadical ? <span className="text-[8px] uppercase text-indigo-600">rad</span> : null}
+      </span>
+    ))}
+  </div>
+);
+
+const ComponentPrimer: React.FC<{ item: VocabBuilderItem; markComponent: (glyph: string, status: KnownComponentStatus) => Promise<void> }> = ({ item, markComponent }) => {
+  const component = item.components[0];
+  if (!component) return null;
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-5 text-center">
+        <span className="block text-6xl font-black text-zinc-950">{displayComponentGlyph(component.glyph)}</span>
+        <span className="block mt-2 text-sm font-black uppercase text-indigo-900">{component.keyword}</span>
+        <span className="block mt-1 text-xs font-bold text-zinc-500">{component.displayName}{component.strokeCount ? ` · ${component.strokeCount} strokes` : ""}</span>
+      </div>
+      <p className="text-sm font-bold text-zinc-700">{item.mnemonic}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <button onClick={() => markComponent(component.glyph, "seen")} className="py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-100 text-xs font-black uppercase">Seen</button>
+        <button onClick={() => markComponent(component.glyph, "familiar")} className="py-3 rounded-2xl border-2 border-zinc-900 bg-emerald-200 text-xs font-black uppercase">Familiar</button>
+        <button onClick={() => markComponent(component.glyph, "hard")} className="py-3 rounded-2xl border-2 border-zinc-900 bg-amber-200 text-xs font-black uppercase">Hard</button>
+        <button onClick={() => markComponent(component.glyph, "ignored")} className="py-3 rounded-2xl border-2 border-zinc-900 bg-white text-xs font-black uppercase">Ignore</button>
+      </div>
+    </div>
+  );
+};
+
+const StudyItemDetails: React.FC<{ item: VocabBuilderItem; mediaUrls: Record<string, string> }> = ({ item, mediaUrls }) => (
+  <div className="space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {item.readings || item.reading ? <InfoBlock label="Reading" value={item.readings || item.reading} /> : null}
+      {item.meanings ? <InfoBlock label="Meaning" value={item.meanings} /> : null}
+      {item.pos ? <InfoBlock label="Part Of Speech" value={item.pos} /> : null}
+      {item.additionalDefinitions ? <InfoBlock label="Also" value={item.additionalDefinitions} /> : null}
+    </div>
+    {item.examples.length > 0 && (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+        <span className="block text-[10px] font-black uppercase text-zinc-400 mb-2">Deck Examples</span>
+        <div className="space-y-1">
+          {item.examples.slice(0, 4).map((example) => <p key={example} className="text-sm font-bold text-zinc-700">{example}</p>)}
+        </div>
+      </div>
+    )}
+    {item.imageFiles.length > 0 && (
+      <div className="flex flex-wrap gap-2">
+        {item.imageFiles.map((file) => mediaUrls[file] ? <img key={file} src={mediaUrls[file]} alt="" className="max-h-36 rounded-xl border border-zinc-200 bg-white" /> : null)}
+      </div>
+    )}
+    {item.audioFiles.length > 0 && (
+      <div className="space-y-2">
+        {item.audioFiles.map((file) => mediaUrls[file] ? <audio key={file} controls src={mediaUrls[file]} className="w-full" /> : null)}
+      </div>
+    )}
+    <div className="rounded-2xl border-2 border-zinc-900 bg-white p-3">
+      <span className="block text-[10px] font-black uppercase text-zinc-400 mb-1">Memory Hook</span>
+      <p className="text-sm font-bold text-zinc-800">{item.mnemonic}</p>
+    </div>
+    {item.practiceSentence ? (
+      <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-3">
+        <span className="block text-[10px] font-black uppercase text-emerald-700 mb-1">Practice Sentence</span>
+        <p className="text-lg font-black text-zinc-900">{item.practiceSentence}</p>
+      </div>
+    ) : null}
+  </div>
+);
+
+const InfoBlock: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
+  <div className="rounded-2xl border border-zinc-200 bg-white p-3 min-w-0">
+    <span className="block text-[10px] font-black uppercase text-zinc-400">{label}</span>
+    <span className="block mt-1 text-sm font-bold text-zinc-800 break-words">{value}</span>
+  </div>
+);
 
 const EmptyState: React.FC<{ text: string }> = ({ text }) => (
   <div className="bg-zinc-50 border-2 border-dashed border-zinc-300 rounded-2xl p-6 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
