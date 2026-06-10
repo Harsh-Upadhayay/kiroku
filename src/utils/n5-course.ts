@@ -306,6 +306,41 @@ export function dueN5Cards(cards: N5SRSCard[], now = Date.now()): N5SRSCard[] {
 }
 
 /**
+ * Older progress (or synced state from another build) can contain learned
+ * vocab/kanji ids that never got an SRS card. Backfill cards so cumulative
+ * review really covers everything learned so far.
+ */
+export function ensureN5CardsForLearned(
+  progress: N5CourseProgress,
+  cards: N5SRSCard[],
+  course: N5CourseData
+): N5SRSCard[] {
+  const existing = new Set(cards.map((card) => card.id));
+  const vocabDay = new Map<string, number>();
+  const kanjiDay = new Map<string, number>();
+  course.days.forEach((day) => {
+    day.vocab.forEach((entry) => { if (!vocabDay.has(entry.id)) vocabDay.set(entry.id, day.day); });
+    day.kanji.forEach((entry) => { if (!kanjiDay.has(entry.kanji)) kanjiDay.set(entry.kanji, day.day); });
+  });
+
+  const additions: N5SRSCard[] = [];
+  progress.learnedVocabIds.forEach((id) => {
+    const cardId = cardIdForVocab({ id });
+    if (!existing.has(cardId) && course.vocab[id]) {
+      additions.push(createInitialN5Card(cardId, "vocab", id, vocabDay.get(id) || 1));
+    }
+  });
+  progress.learnedKanjiIds.forEach((kanjiChar) => {
+    const cardId = cardIdForKanji({ kanji: kanjiChar });
+    if (!existing.has(cardId) && course.kanji[kanjiChar]) {
+      additions.push(createInitialN5Card(cardId, "kanji", kanjiChar, kanjiDay.get(kanjiChar) || 1));
+    }
+  });
+
+  return additions.length ? [...normalizeN5Cards(cards), ...additions] : cards;
+}
+
+/**
  * Queue for a cumulative review session over everything learned so far.
  * Ordering: cards that are due come first (most at risk of being forgotten),
  * then everything else by ascending FSRS retrievability — i.e. the material

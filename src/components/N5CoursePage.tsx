@@ -27,6 +27,7 @@ import {
   advanceKanjiPure,
   advanceVocabPure,
   buildCumulativeReviewQueue,
+  ensureN5CardsForLearned,
   cardIdForKanji,
   cardIdForVocab,
   completeN5Day,
@@ -249,8 +250,16 @@ export const N5CoursePage: React.FC = () => {
     await persistProgress(updateN5ProductionAnswer(progress, activeDayNumber, promptId, text));
   }
 
-  function startCumulativeReview(scopeDay?: number) {
-    const source = scopeDay ? cards.filter((card) => card.day === scopeDay) : cards;
+  async function startCumulativeReview(scopeDay?: number) {
+    if (!progress) return;
+    // Backfill SRS cards for anything learned that never got one
+    let allCards = cards;
+    const ensured = ensureN5CardsForLearned(progress, cards, n5Course);
+    if (ensured !== cards) {
+      allCards = ensured;
+      await persistCards(ensured);
+    }
+    const source = scopeDay ? allCards.filter((card) => card.day === scopeDay) : allCards;
     const queue = buildCumulativeReviewQueue(source);
     if (queue.length === 0) return;
     sound.playTick();
@@ -391,7 +400,7 @@ export const N5CoursePage: React.FC = () => {
       dueCount={dueCards.length}
       kanjiDueCount={dueCards.filter((card) => card.kind === "kanji").length}
       vocabDueCount={dueCards.filter((card) => card.kind === "vocab").length}
-      learnedCardCount={cards.length}
+      learnedCardCount={Math.max(cards.length, progress.learnedVocabIds.length + progress.learnedKanjiIds.length)}
       syncState={syncLabel(isOnline, syncDirty)}
       onStart={() => startLesson(currentDayNumber)}
       onCumulativeReview={() => startCumulativeReview()}
@@ -1230,8 +1239,24 @@ function reviewContent(card: N5SRSCard): { front: React.ReactNode; back: React.R
   if (card.kind === "vocab") {
     const entry = n5Course.vocab[card.contentId];
     if (!entry) return null;
+    // Only show the example when the answer can actually be masked out of it;
+    // otherwise the front would reveal the answer. For conjugated verbs
+    // (行く -> 行きます) mask the kanji stem. Fall back to a meaning prompt.
+    let masked = "";
+    if (entry.example && entry.word) {
+      if (entry.example.includes(entry.word)) {
+        masked = maskWord(entry.example, entry.word);
+      } else {
+        const stem = entry.word.slice(0, -1);
+        if (stem && /\p{Script=Han}/u.test(stem) && entry.example.includes(stem)) {
+          masked = entry.example.replace(stem, "____");
+        }
+      }
+    }
     return {
-      front: <div><div className="text-2xl sm:text-4xl font-black text-zinc-950">{maskWord(entry.example, entry.word) || entry.example || entry.raw}</div><div className="mt-4 text-xs font-black uppercase text-zinc-400">Recall the target word and meaning</div></div>,
+      front: masked
+        ? <div><div className="text-2xl sm:text-4xl font-black text-zinc-950">{masked}</div><div className="mt-4 text-xs font-black uppercase text-zinc-400">Recall the missing word and its meaning</div></div>
+        : <div><div className="text-2xl sm:text-4xl font-black text-zinc-950">{entry.meaning}</div><div className="mt-2 text-sm font-bold uppercase tracking-wide text-zinc-500">{entry.type}</div><div className="mt-4 text-xs font-black uppercase text-zinc-400">Recall the Japanese word and its reading</div></div>,
       back: <div><div className="text-5xl font-black text-zinc-950"><KanjiText text={entry.word} /></div><div className="mt-2 text-lg font-black text-indigo-700">{entry.reading}{entry.romaji ? ` · ${entry.romaji}` : ""}</div><div className="mt-2 text-sm font-bold text-zinc-600">{entry.meaning}</div><div className="mt-4 text-xl font-black text-zinc-900"><KanjiText text={entry.example || entry.raw} /></div><div className="mt-3 flex justify-center"><WordKanjiStrip word={entry.word} /></div></div>,
     };
   }
