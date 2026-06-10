@@ -23,6 +23,7 @@ import { SrsQuiz } from "./components/SrsQuiz";
 import { CharDictionary } from "./components/CharDictionary";
 import { AnkiPage } from "./components/AnkiPage";
 import { N5CoursePage } from "./components/N5CoursePage";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { sound } from "./utils/audio";
 import { Zap, BookOpen, Settings, Layers, GraduationCap } from "lucide-react";
 import { motion } from "motion/react";
@@ -251,14 +252,14 @@ export default function App() {
                     sound.playTick();
                     setActiveTab(tab.id as any);
                   }}
-                  className={`flex-1 min-w-[92px] py-2 sm:py-3 px-1 text-[9px] min-[360px]:text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider rounded-2xl transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-2 ${
+                  className={`flex-1 py-2 sm:py-3 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 border-2 ${
                     active
                       ? "bg-indigo-600 text-white border-zinc-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                       : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="text-center">{tab.label}</span>
+                  <span className="hidden sm:block text-center leading-tight">{tab.label}</span>
                 </button>
               );
             })}
@@ -266,6 +267,7 @@ export default function App() {
         </div>
 
         {/* ACTIVE MODULE CONTAINER */}
+        <ErrorBoundary>
         <div className="w-full">
           {activeTab === "n5" && (
             <motion.div
@@ -289,6 +291,7 @@ export default function App() {
                   // Speed sheet run completed. Let's refresh our cards db stats to render updated results
                   setCards(getStoredSRSCards());
                 }}
+                onGoToGlossary={() => setActiveTab("dictionary")}
               />
             </motion.div>
           )}
@@ -332,6 +335,7 @@ export default function App() {
             </motion.div>
           )}
         </div>
+        </ErrorBoundary>
       </main>
 
       {/* FOOTER */}
