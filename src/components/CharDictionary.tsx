@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { KANA_DATA, KANA_GROUPS, KANA_SCRIPTS, KanaScript, SRSCard, getScriptLabel } from "../types";
 import { normalizeActiveRows, saveActiveRows, resetAllData } from "../utils/srs";
 import { sound } from "../utils/audio";
-import { Check, Activity, Grid, Compass, AlertTriangle } from "lucide-react";
+import { Check, Activity, Grid, AlertTriangle } from "lucide-react";
 
 interface CharDictionaryProps {
   cards: SRSCard[];
@@ -18,8 +18,6 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
   onResetDatabase,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
-  const [confirmClearLogs, setConfirmClearLogs] = useState<boolean>(false);
-  const [reviewLogs, setReviewLogs] = useState<any[]>([]);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   // Online/Offline status listeners
@@ -33,21 +31,6 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
-
-  // Fetch log audits dynamically from IndexedDB
-  useEffect(() => {
-    async function fetchLogs() {
-      try {
-        const { getReviewActionsFromDB } = await import("../utils/db");
-        const storedActions = await getReviewActionsFromDB();
-        // Sort newest first, take last 50 entries
-        setReviewLogs(storedActions.reverse().slice(0, 50));
-      } catch (err) {
-        console.warn("Could not retrieve IndexedDB logs", err);
-      }
-    }
-    fetchLogs();
-  }, [cards]);
 
   // Read all distinct rows available
   const activeGroupIds = normalizeActiveRows(activeRows);
@@ -288,94 +271,6 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
             </div>
           ))}
         </div>
-      </div>
-
-      {/* 3. OFFLINE PERSISTENCE & AUDIT LOG */}
-      <div className="bg-white rounded-[32px] border-2 border-zinc-900 p-5 sm:p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 border-b-2 border-zinc-150 pb-4 gap-3">
-          <div>
-            <h3 className="text-lg font-black text-zinc-900 flex items-center gap-2 uppercase">
-              <Compass className="h-5 w-5 text-[#818cf8]" />
-              IndexedDB Review Logs (Offline-First Audit)
-            </h3>
-            <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
-              Verified review logs stored locally inside IndexedDB. Turn off your Wi-Fi to test offline progress.
-            </p>
-          </div>
-          {reviewLogs.length > 0 && (
-            confirmClearLogs ? (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase text-zinc-600">Clear all logs?</span>
-                <button
-                  onClick={async () => {
-                    sound.playTick();
-                    const { clearReviewActionsFromDB } = await import("../utils/db");
-                    await clearReviewActionsFromDB();
-                    setReviewLogs([]);
-                    setConfirmClearLogs(false);
-                  }}
-                  className="py-1.5 px-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl border-2 border-red-400 text-[10px] font-black uppercase"
-                >
-                  Yes, Clear
-                </button>
-                <button onClick={() => setConfirmClearLogs(false)} className="py-1.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl border-2 border-zinc-300 text-[10px] font-black uppercase">
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => { sound.playTick(); setConfirmClearLogs(true); }}
-                className="py-1.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 rounded-xl border-2 border-zinc-900 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
-              >
-                Clear Logs
-              </button>
-            )
-          )}
-        </div>
-
-        {reviewLogs.length === 0 ? (
-          <div className="text-center py-8 bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-300">
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              No review actions recorded yet. Completing card reviews in the Spaced Repetitions tab will populate logs here.
-            </p>
-          </div>
-        ) : (
-          <div className="max-h-64 overflow-y-auto rounded-2xl border-2 border-zinc-900 divide-y-2 divide-zinc-950 font-mono text-xs">
-            {reviewLogs.map((log, index) => (
-              <div key={log.id || index} className="p-3 bg-zinc-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-zinc-100/50 transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-base font-black px-2 py-0.5 rounded-lg bg-zinc-900 text-white leading-none border border-zinc-900">
-                    {log.char}
-                  </span>
-                  <div className="min-w-0">
-                    <span className="font-extrabold text-zinc-800 block sm:inline">Review action recorded</span>
-                    <span className="mx-2 text-zinc-300">|</span>
-                    <span className="text-zinc-500">Box {log.previousBox} → Box {log.newBox}</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full font-black text-[9px] uppercase tracking-wider border-2 ${
-                    log.isCorrect 
-                      ? "bg-emerald-150 bg-emerald-100 text-emerald-800 border-emerald-400" 
-                      : "bg-red-100 text-red-800 border-red-300"
-                  }`}>
-                    {log.isCorrect ? "Correct" : "Incorrect"}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full font-black text-[9px] uppercase tracking-wider border-2 ${
-                    log.offline 
-                      ? "bg-amber-100 text-amber-800 border-amber-400" 
-                      : "bg-indigo-150 bg-indigo-100 text-indigo-800 border-indigo-400"
-                  }`}>
-                    {log.offline ? "Offline" : "Synced"}
-                  </span>
-                  <span className="text-[10px] text-zinc-400 hidden sm:inline-block">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* 4. DANGER ZONE RESET CONTROLS */}

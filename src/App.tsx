@@ -24,7 +24,7 @@ import {
   Zap, BookOpen, Settings, Layers, GraduationCap,
   LogIn, LogOut, User, Volume2, VolumeX, ChevronDown,
   X, Mail, Key, Eye, EyeOff, UserPlus, Check, Sparkles, ShieldCheck,
-  Sun, Moon, Monitor,
+  Sun, Moon, Monitor, RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB } from "./utils/db";
@@ -141,8 +141,44 @@ function KanaHub({
 
 // ─── Settings tab ───────────────────────────────────────────────────────────
 
+type UpdateStatus = "idle" | "checking" | "current" | "updating" | "error";
+
+/**
+ * Compare the cached app shell against a fresh copy from the server. Vite
+ * fingerprints asset filenames, so a changed index.html reliably signals a
+ * new build. On update: refresh the SW registration, drop all CacheStorage
+ * caches, and reload so every asset is re-pulled. Study data is untouched.
+ */
+async function checkAndPullAppUpdates(setStatus: (status: UpdateStatus) => void): Promise<void> {
+  if (!navigator.onLine) {
+    setStatus("error");
+    return;
+  }
+  setStatus("checking");
+  try {
+    const networkShell = await (await fetch("/index.html", { cache: "no-store" })).text();
+    const cachedResponse = (await caches.match("/index.html")) || (await caches.match("/"));
+    const cachedShell = cachedResponse ? await cachedResponse.text() : null;
+    if (cachedShell !== null && cachedShell === networkShell) {
+      setStatus("current");
+      return;
+    }
+    setStatus("updating");
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration();
+      await registration?.update();
+    } catch { /* SW update is best-effort */ }
+    const cacheKeys = await caches.keys();
+    await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+    window.location.reload();
+  } catch {
+    setStatus("error");
+  }
+}
+
 function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
   const [soundMuted, setSoundMuted] = useState(sound.muted);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
   const [batchSize, setBatchSize] = useState<number>(() => {
     return parseInt(localStorage.getItem("kiroku_kana_batch") || "20", 10);
   });
@@ -251,6 +287,33 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* App updates */}
+      <div className="bg-white rounded-[28px] border-2 border-zinc-900 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <h3 className="text-sm font-black uppercase tracking-wider text-zinc-800 mb-4 flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 text-indigo-500" /> App Updates
+        </h3>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black text-zinc-700 uppercase tracking-wide">Cached Assets</p>
+            <p className="text-[10px] text-zinc-400 font-bold mt-0.5">
+              {updateStatus === "idle" && "Check the server for a newer app version and pull it"}
+              {updateStatus === "checking" && "Checking the server…"}
+              {updateStatus === "current" && "You're on the latest version"}
+              {updateStatus === "updating" && "Update found — pulling fresh assets…"}
+              {updateStatus === "error" && (navigator.onLine ? "Check failed — try again" : "You're offline — connect to check")}
+            </p>
+          </div>
+          <button
+            onClick={() => { sound.playTick(); checkAndPullAppUpdates(setUpdateStatus); }}
+            disabled={updateStatus === "checking" || updateStatus === "updating"}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-zinc-900 text-xs font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer bg-white text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${updateStatus === "checking" || updateStatus === "updating" ? "animate-spin" : ""}`} />
+            {updateStatus === "current" ? "Up to date" : "Check for updates"}
+          </button>
         </div>
       </div>
 

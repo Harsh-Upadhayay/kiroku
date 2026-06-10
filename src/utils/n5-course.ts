@@ -305,6 +305,35 @@ export function dueN5Cards(cards: N5SRSCard[], now = Date.now()): N5SRSCard[] {
     .sort((a, b) => new Date(a.due).getTime() - new Date(b.due).getTime());
 }
 
+/**
+ * Queue for a cumulative review session over everything learned so far.
+ * Ordering: cards that are due come first (most at risk of being forgotten),
+ * then everything else by ascending FSRS retrievability — i.e. the material
+ * you are most likely to have forgotten is shown before fresh, solid cards.
+ * Reviewing a not-yet-due card is a legal FSRS "early review".
+ */
+export function buildCumulativeReviewQueue(cards: N5SRSCard[], now = new Date()): N5SRSCard[] {
+  const scheduler = fsrs(DEFAULT_PARAMETERS);
+  const nowMs = now.getTime();
+  return normalizeN5Cards(cards)
+    .map((card) => {
+      const due = new Date(card.due).getTime() <= nowMs;
+      let retrievability = 1;
+      try {
+        const r = scheduler.get_retrievability(n5CardToFSRS(card), now, false);
+        retrievability = typeof r === "number" && Number.isFinite(r) ? r : 0.25;
+      } catch {
+        retrievability = 0.25; // brand-new card with no review history yet
+      }
+      return { card, due, retrievability };
+    })
+    .sort((a, b) => {
+      if (a.due !== b.due) return a.due ? -1 : 1;
+      return a.retrievability - b.retrievability;
+    })
+    .map((item) => item.card);
+}
+
 export function markN5VocabLearned(
   progress: N5CourseProgress,
   cards: N5SRSCard[],
