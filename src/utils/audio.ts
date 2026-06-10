@@ -1,5 +1,13 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
+  private _muted: boolean = localStorage.getItem("kiroku_sound_muted") === "1";
+
+  get muted() { return this._muted; }
+
+  setMuted(v: boolean) {
+    this._muted = v;
+    localStorage.setItem("kiroku_sound_muted", v ? "1" : "0");
+  }
 
   private init() {
     if (!this.ctx) {
@@ -19,6 +27,7 @@ class SoundEngine {
   }
 
   playCorrect() {
+    if (this._muted) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -51,6 +60,7 @@ class SoundEngine {
   }
 
   playIncorrect() {
+    if (this._muted) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -78,6 +88,7 @@ class SoundEngine {
   }
 
   playTick() {
+    if (this._muted) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -99,6 +110,7 @@ class SoundEngine {
   }
 
   playCharacter(char: string) {
+    if (this._muted) return;
     if (typeof window !== "undefined" && window.speechSynthesis) {
       try {
         // Cancel any ongoing speaking
@@ -124,6 +136,7 @@ class SoundEngine {
   }
 
   playFanfare() {
+    if (this._muted) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
