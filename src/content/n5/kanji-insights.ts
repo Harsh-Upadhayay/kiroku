@@ -8,6 +8,7 @@ export interface KanjiInsight {
   components: string[];
   readings?: string;
   inCourse?: boolean;
+  isRadical?: boolean;
 }
 
 export const RADICAL_MEANINGS: Record<string, string> = {
@@ -95,6 +96,138 @@ export const RADICAL_MEANINGS: Record<string, string> = {
 };
 
 export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
+  "⺅": {
+    "keyword": "person (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺉": {
+    "keyword": "sword (right)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺌": {
+    "keyword": "little (hat of dots)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺖": {
+    "keyword": "heart / feelings (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺘": {
+    "keyword": "hand (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺡": {
+    "keyword": "water (drops)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺣": {
+    "keyword": "fire sparks (bottom)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺨": {
+    "keyword": "wild dog / beast (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺭": {
+    "keyword": "altar / spirit (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺲": {
+    "keyword": "net / eye (top)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺹": {
+    "keyword": "old man (top)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⺾": {
+    "keyword": "grass / flowers (top)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⻂": {
+    "keyword": "clothes (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⻌": {
+    "keyword": "road / movement",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⻏": {
+    "keyword": "city / village (right)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "⻖": {
+    "keyword": "hill / mound (left)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "ノ": {
+    "keyword": "drop (slanting stroke)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "ハ": {
+    "keyword": "fins / eight",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "マ": {
+    "keyword": "claw hook",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "メ": {
+    "keyword": "crossed sticks",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "ユ": {
+    "keyword": "hook (yu shape)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "ヨ": {
+    "keyword": "broom / pig's snout",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
   "一": {
     "keyword": "one",
     "story": "In Chinese characters, the number one is laid on its side, unlike the Roman numeral I which stands upright. As you would expect, it is written from left to right.",
@@ -225,6 +358,19 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "readings": "チュウ / なか・うち・あた.る",
     "inCourse": true
   },
+  "丶": {
+    "keyword": "dot",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "チュ"
+  },
+  "丷": {
+    "keyword": "horns",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
   "丸": {
     "keyword": "round",
     "story": "Nine (九) plus a drop (丶) rounds it off to ten!",
@@ -252,6 +398,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "キュウ・ク / ひさ.しい"
   },
+  "乍": {
+    "keyword": "saw / brief moment",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "サ・サク / -なが.ら・たちま.ち"
+  },
   "乗": {
     "keyword": "ride",
     "story": "The pretty farmer's daughter promised me a ride but I was gutted when I found out she meant on her father's tractor to help cut wheat (禾) for silage (毌). She took me for a ride alright.\nsilage: grass or other green fodder compacted and stored in airtight conditions, typically in a silo, without first being dried, and used as animal feed in the winter.",
@@ -269,12 +422,26 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [],
     "readings": "オツ・イツ / おと-・きのと"
   },
+  "乚": {
+    "keyword": "fishhook (bent stroke)",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "イン・オン / かく.す・かく.れる・かか.す"
+  },
   "九": {
     "keyword": "nine",
     "story": "Kinda of looks like the kanji of 1 一 with the kanji of 8 八 added. So think of it as 一＋八＝九",
     "components": [],
     "readings": "キュウ・ク / ここの・ここの.つ",
     "inCourse": true
+  },
+  "也": {
+    "keyword": "scorpion",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ヤ・エ / なり・か・また"
   },
   "乳": {
     "keyword": "milk",
@@ -284,6 +451,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "爪"
     ],
     "readings": "ニュウ / ちち・ち"
+  },
+  "亅": {
+    "keyword": "barb / hook",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ケツ / かぎ"
   },
   "予": {
     "keyword": "beforehand",
@@ -347,6 +521,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口"
     ],
     "readings": "ア / つ.ぐ"
+  },
+  "亠": {
+    "keyword": "top hat / lid",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "トウ"
   },
   "亡": {
     "keyword": "deceased",
@@ -669,6 +850,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ユウ・ウ / やさ.しい・すぐ.れる・まさ.る"
   },
+  "儿": {
+    "keyword": "human legs",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ジン・ニン / がい"
+  },
   "元": {
     "keyword": "beginning",
     "story": "In the beginning there were just two (二) who walked on human legs (兀).",
@@ -783,6 +971,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ケン / か.ねる・-か.ねる"
   },
+  "冂": {
+    "keyword": "hood / upside-down box",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "キョウ・ケイ"
+  },
   "内": {
     "keyword": "inside",
     "story": "How is a person (人) ever supposed to get inside that girl when she's wearing such a huge chastity belt (冂)? I guess that's kinda the point, eh?",
@@ -813,6 +1008,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ボウ / おか.す"
   },
+  "冖": {
+    "keyword": "crown / cover",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ベキ"
+  },
   "写": {
     "keyword": "copy",
     "story": "I wanted the crown (冖) to bestow (与) me a copy of the photograph of Princess Diana, but they refuse to do so.",
@@ -822,6 +1024,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "勹"
     ],
     "readings": "シャ・ジャ / うつ.す・うつ.る・うつ-"
+  },
+  "冫": {
+    "keyword": "ice",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ヒョウ / こおり"
   },
   "冬": {
     "keyword": "winter",
@@ -840,6 +1049,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "冫"
     ],
     "readings": "レイ / つめ.たい・ひ.える・ひ.や"
+  },
+  "几": {
+    "keyword": "small table / wind",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "キ / きにょう"
+  },
+  "凵": {
+    "keyword": "open container",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "カン"
   },
   "出": {
     "keyword": "exit",
@@ -1002,6 +1225,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ム / つと.める"
   },
+  "勹": {
+    "keyword": "wrap / embrace",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ホウ / つつ.む"
+  },
   "勺": {
     "keyword": "ladle",
     "story": "A ladle binds (勹) drops (丶) together.",
@@ -1060,6 +1290,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "爿"
     ],
     "readings": "ホク / きた"
+  },
+  "匚": {
+    "keyword": "open box (on its side)",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ホウ"
   },
   "医": {
     "keyword": "doctor",
@@ -1134,6 +1371,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "タン / ひとえ"
   },
+  "卜": {
+    "keyword": "divining rod",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ボク / うらな.う・うらない"
+  },
   "占": {
     "keyword": "fortune-telling",
     "story": "Fortune-telling: using a mouth (口) as a magic wand (卜).",
@@ -1142,6 +1386,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "卜"
     ],
     "readings": "セン / し.める・うらな.う"
+  },
+  "卩": {
+    "keyword": "kneeling person / seal",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "セツ / わりふ"
   },
   "危": {
     "keyword": "dangerous",
@@ -1172,6 +1423,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ラン / たまご"
   },
+  "厂": {
+    "keyword": "cliff",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "カン / かりがね"
+  },
   "厄": {
     "keyword": "unlucky",
     "story": "Seeing some fingerprints (㔾) at the edge of a cliff (厂), I wondered who that unlucky person was.",
@@ -1200,6 +1458,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "厂"
     ],
     "readings": "ゲン・ゴン / おごそ.か・きび.しい・いか.めしい"
+  },
+  "厶": {
+    "keyword": "elbow / private",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "シ・ボウ・ム / わたくし・ござ.る"
   },
   "去": {
     "keyword": "gone",
@@ -1556,6 +1821,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ユイ・イ / ただ"
   },
+  "啇": {
+    "keyword": "old stem",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "テキ・チャク・セキ / もと・ねもと・やわ.らぐ"
+  },
   "問": {
     "keyword": "question",
     "story": "The mouth (口) is the gate (門) from which questions are asked.",
@@ -1592,6 +1864,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "大"
     ],
     "readings": "キ / うつわ"
+  },
+  "囗": {
+    "keyword": "enclosure / box",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "イ・コク"
   },
   "四": {
     "keyword": "four",
@@ -1737,6 +2016,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "冖"
     ],
     "readings": "バイ / う.る・う.れる"
+  },
+  "夂": {
+    "keyword": "walking legs",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "チ / しゅう"
   },
   "変": {
     "keyword": "unusual",
@@ -1994,6 +2280,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "readings": "ガク / まな.ぶ",
     "inCourse": true
   },
+  "宀": {
+    "keyword": "house roof",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ベン・メン"
+  },
   "守": {
     "keyword": "guard",
     "story": "Guards sticks like glue (寸) to the house (宀) he is supposed to guard.",
@@ -2194,6 +2487,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "readings": "ショウ / すく.ない・すこ.し",
     "inCourse": true
   },
+  "尸": {
+    "keyword": "reclining body / flag",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "シ / かたしろ"
+  },
   "尺": {
     "keyword": "shaku",
     "story": "A shaku is a unit of distance approximately equal to 30.3 cm or about 12 inches (just like a Ruler), used in ancient Japan. The shakuhachi (尺八) is a flute about 20 inches long, which is supposed to be one shaku and eight suns, suns being about one inch long.",
@@ -2237,6 +2537,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "readings": "サン・セン / やま",
     "inCourse": true
   },
+  "巛": {
+    "keyword": "winding river",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "セン / かわ"
+  },
   "川": {
     "keyword": "stream",
     "story": "Three streams grouped together might cause a flood!",
@@ -2269,6 +2576,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "羊"
     ],
     "readings": "サ / さ.す・さ.し"
+  },
+  "已": {
+    "keyword": "snake / already",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "イ / や.む・すで.に・のみ"
+  },
+  "巴": {
+    "keyword": "comma shape / mosaic",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ハ / ともえ・うずまき"
   },
   "巾": {
     "keyword": "towel",
@@ -2366,6 +2687,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "コウ / さいわ.い・さち・しあわ.せ"
   },
+  "幺": {
+    "keyword": "cocoon / short thread",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ヨウ / ちいさい"
+  },
   "幾": {
     "keyword": "how many",
     "story": "At the Mexican fiesta (戈), there is a coccoon (幺) eating competition. How many coccoons (幺) can one person (人) eat? And how much will that person (人) throw up afterwards?",
@@ -2376,6 +2704,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "丶"
     ],
     "readings": "キ / いく-・いく.つ・いく.ら"
+  },
+  "广": {
+    "keyword": "cave house / canopy",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ゲン"
   },
   "広": {
     "keyword": "wide",
@@ -2425,6 +2760,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "テイ / にわ"
   },
+  "廴": {
+    "keyword": "long stride",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "イン"
+  },
   "建": {
     "keyword": "build",
     "story": "A construction worker's classic morning. Stretch (廴), brush (聿) his teeth, and then start to build.",
@@ -2434,6 +2776,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ケン・コン / た.てる・た.て・-だ.て"
   },
+  "廾": {
+    "keyword": "two hands",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "キョウ・ク / にじゅう"
+  },
   "弁": {
     "keyword": "valve",
     "story": "Opening a stuck valve requires two hands (廾) and a lot of elbow (厶) grease.",
@@ -2442,6 +2791,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "廾"
     ],
     "readings": "ベン・ヘン / かんむり・わきま.える・わ.ける"
+  },
+  "弋": {
+    "keyword": "stake / arrow",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ヨク / いぐるみ"
   },
   "式": {
     "keyword": "style",
@@ -2503,6 +2859,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "トウ / あ.たる・あ.たり・あ.てる"
   },
+  "彡": {
+    "keyword": "hair strokes / shape",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "サン・セン"
+  },
   "形": {
     "keyword": "shape",
     "story": "Everyone in the kindergarten came up with fun and interesting shapes made out of Play-Doh (彡), except for the kid with the amputated arm. Seems like you really need two hands (开).",
@@ -2514,6 +2877,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一"
     ],
     "readings": "ケイ・ギョウ / かた・-がた・かたち"
+  },
+  "彳": {
+    "keyword": "step / going person",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "テキ / たたず.む"
   },
   "彼": {
     "keyword": "he",
@@ -2730,6 +3100,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ユウ / うれ.える・うれ.い・う.い"
   },
+  "戈": {
+    "keyword": "halberd / spear",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "カ / ほこ・ほこづくり"
+  },
   "成": {
     "keyword": "turn into",
     "story": "The one who was 5th in rank (戊) turned into the best once he was able to get a hold of a sword (刀) to fight.",
@@ -2878,6 +3255,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺘"
     ],
     "readings": "サツ / と.る・つま.む・-ど.り"
+  },
+  "攵": {
+    "keyword": "taskmaster / strike",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ホク"
   },
   "政": {
     "keyword": "politics",
@@ -3614,6 +3998,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "レキ・レッキ"
   },
+  "歹": {
+    "keyword": "bones / death",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ガツ・ガチ・タイ"
+  },
   "死": {
     "keyword": "death",
     "story": "Imagine the grim reaper (the bringer of death), carrying a spoon (匕) made of human bones (歹) instead of a scythe.",
@@ -3635,6 +4026,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ザン・サン / のこ.る・のこ.す・そこな.う"
   },
+  "殳": {
+    "keyword": "strike / weapon",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "シュ / また・ほこ"
+  },
   "段": {
     "keyword": "grade",
     "story": "In order to get your 1st grade, or first-dan (だん) black belt, you have to learn hand to hand combat with new weapons - first the grapple involving the staple gun, and then the missile (殳) deployment technique.",
@@ -3645,6 +4043,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一"
     ],
     "readings": "ダン・タン"
+  },
+  "毋": {
+    "keyword": "do not / pierced mother",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ブ・ム / はは・ぼ・ない"
   },
   "母": {
     "keyword": "mother",
@@ -3684,6 +4089,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "Looks a bit like Ft => Family title => Family name.",
     "components": [],
     "readings": "シ / うじ・-うじ"
+  },
+  "气": {
+    "keyword": "breath / steam",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "キ・ケ / いき"
   },
   "気": {
     "keyword": "spirit",
@@ -3971,6 +4383,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "readings": "フ / ちち",
     "inCourse": true
   },
+  "爿": {
+    "keyword": "split wood / bed",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ショウ・ソウ"
+  },
   "片": {
     "keyword": "one-sided",
     "story": "A one-sided romance–he proposes and she says no.\n片翼の天使(かた.よく.の.てん.し)[One-Winged Angel]",
@@ -4171,6 +4590,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "バン / つが.い"
   },
+  "疋": {
+    "keyword": "bolt of cloth",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ヒキ・ショ・ソ / あし"
+  },
+  "疒": {
+    "keyword": "sickness (cave)",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ダク・ニャク・ソウ / や.む"
+  },
   "疲": {
     "keyword": "tired",
     "story": "Your body feels tired when you have a sickness (疒). All you want to do is wrap yourself up in a nice warm pelt (皮) and get better.",
@@ -4198,6 +4631,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "マ"
     ],
     "readings": "ツウ / いた.い・いた.む・いた.ましい"
+  },
+  "癶": {
+    "keyword": "departing feet / dotted tent",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ハツ"
   },
   "発": {
     "keyword": "discharge",
@@ -4408,6 +4848,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺭"
     ],
     "readings": "シュク・シュウ / いわ.う"
+  },
+  "禸": {
+    "keyword": "trampling track",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ジュウ・ニュ / あしあと"
+  },
+  "禾": {
+    "keyword": "grain stalk",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "カ / いね"
   },
   "私": {
     "keyword": "private",
@@ -4792,6 +5246,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "シャ / もの"
   },
+  "而": {
+    "keyword": "rake / beard",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ジ・ニ / しこ.うして・しか.して・しか.も"
+  },
+  "耒": {
+    "keyword": "plow",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ライ・ルイ / き・く・すき"
+  },
   "耳": {
     "keyword": "ear",
     "story": "The pictograph for the ear looks much like that for eye, but note how the stroke order gives it a different look.",
@@ -4807,6 +5275,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ブン・モン / き.く・き.こえる",
     "inCourse": true
+  },
+  "聿": {
+    "keyword": "writing brush",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "イチ・イツ / ふで・ここに"
   },
   "肉": {
     "keyword": "meat",
@@ -4894,6 +5369,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "𠆢"
     ],
     "readings": "シャ・セキ / やど.る"
+  },
+  "舛": {
+    "keyword": "opposing feet / dance legs",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ブ・セン / まい・そむ.く"
+  },
+  "艮": {
+    "keyword": "staring eye / stubborn",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "コン・ゴン / うしとら"
   },
   "良": {
     "keyword": "good",
@@ -5323,6 +5812,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "トウ・ズ / まめ・まめ-"
   },
+  "豕": {
+    "keyword": "pig",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "シ"
+  },
   "貝": {
     "keyword": "shellfish",
     "story": "Remove the eyes (目) and the legs (ハ) and a shellfish tastes great!",
@@ -5711,6 +6207,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "ショウ / ひしお"
   },
+  "釆": {
+    "keyword": "sorting claw",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ハン・ベン・サイ / と.る・いろどり・のごめ"
+  },
   "采": {
     "keyword": "dice/die",
     "story": "Ever wonder what vultures (爫) do up in the trees (木)? They play dice. But of course, being vultures (爫), they are always grabbing the dice away from each other.",
@@ -5910,6 +6413,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     ],
     "readings": "リン / とな.る・となり"
   },
+  "隹": {
+    "keyword": "small bird / turkey",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "サイ・スイ / とり"
+  },
   "集": {
     "keyword": "gather",
     "story": "Gather the turkeys (隹) for Thanksgiving. Gather the trees (木) for Christmas. In that order.",
@@ -6033,6 +6543,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "包"
     ],
     "readings": "ハク・ホウ・ビョウ / かばん"
+  },
+  "韋": {
+    "keyword": "tanned leather / opposite walks",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "イ / そむ.く"
   },
   "音": {
     "keyword": "sound",
@@ -6219,6 +6736,13 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "readings": "コウ / たか.い・たか・-だか",
     "inCourse": true
   },
+  "髟": {
+    "keyword": "long hair",
+    "story": "",
+    "components": [],
+    "isRadical": true,
+    "readings": "ヒュウ・ヒョウ"
+  },
   "髪": {
     "keyword": "hair of the head",
     "story": "My daughter has long (镸) hair which she shapes (彡) in various ways depending on which friend (友) she's going out with, but usually the rest of her friends also have long hair (髟).",
@@ -6290,5 +6814,23 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "廾"
     ],
     "readings": "ビ / はな"
+  },
+  "｜": {
+    "keyword": "stick (vertical stroke)",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "𠂉": {
+    "keyword": "bent person / hairpin",
+    "story": "",
+    "components": [],
+    "isRadical": true
+  },
+  "𠆢": {
+    "keyword": "person (roof)",
+    "story": "",
+    "components": [],
+    "isRadical": true
   }
 };

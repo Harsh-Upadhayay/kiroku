@@ -89,6 +89,8 @@ export const KanjiBreakdownModal: React.FC<{ char: string; onClose: () => void }
               {parts.map((part) => `${part.char} (${part.meaning.split(" / ")[0]})`).join(" + ")} → {current} ({insight.keyword})
             </div>
           </div>
+        ) : insight.isRadical ? (
+          <p className="mt-4 text-center text-xs font-bold text-zinc-500">This is a basic radical — a building block that appears inside other kanji. Learn its shape and meaning.</p>
         ) : (
           <p className="mt-4 text-center text-xs font-bold text-zinc-500">This kanji is its own building block — learn its shape directly.</p>
         )}

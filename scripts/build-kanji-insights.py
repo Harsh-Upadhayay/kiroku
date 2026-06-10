@@ -382,6 +382,22 @@ def main():
     for glyph, meaning in PLACEHOLDER_RADICALS.values():
         radicals[glyph] = meaning
 
+    # Every radical gets its own lightweight entry so component chips are
+    # always tappable (e.g. 家 -> 宀 + 豕, neither of which is an RRTK kanji).
+    for glyph, meaning in radicals.items():
+        if glyph in entries:
+            continue
+        entry = {
+            "keyword": meaning,
+            "story": "",
+            "components": [],
+            "isRadical": True,
+        }
+        if glyph in kanjidic:
+            entry["readings"] = kanjidic[glyph]
+        entries[glyph] = entry
+    entries = dict(sorted(entries.items()))
+
     if unresolved:
         print("WARNING: components without meaning:", "".join(sorted(unresolved)))
 
@@ -395,6 +411,7 @@ def main():
         f.write("  components: string[];\n")
         f.write("  readings?: string;\n")
         f.write("  inCourse?: boolean;\n")
+        f.write("  isRadical?: boolean;\n")
         f.write("}\n\n")
         f.write("export const RADICAL_MEANINGS: Record<string, string> = ")
         f.write(json.dumps(radicals, ensure_ascii=False, indent=2))
