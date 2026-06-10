@@ -13,6 +13,7 @@ import {
   Map,
   Mic2,
   Play,
+  Puzzle,
   Wifi,
   WifiOff,
   X,
@@ -56,6 +57,8 @@ import {
 } from "../utils/n5-course";
 import { hasSyncDirtyState, syncEvents } from "../utils/sync";
 import { sound } from "../utils/audio";
+import { hasKanjiInsight } from "../utils/kanji-insights";
+import { KanjiBreakdownModal, KanjiComponentsInline, KanjiText, WordKanjiStrip } from "./KanjiBreakdown";
 
 type ViewMode = "home" | "lesson" | "map";
 
@@ -771,10 +774,11 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
         <button onClick={() => speakJapanese(item.example || item.word)} aria-label="Speak example" className="ml-auto flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-950">
           <Mic2 className="h-4 w-4" /> Speak
         </button>
-        <div className="text-5xl sm:text-7xl font-black text-zinc-950">{item.word}</div>
+        <div className="text-5xl sm:text-7xl font-black text-zinc-950"><KanjiText text={item.word} /></div>
         <div className="text-lg font-black text-indigo-700">{item.reading}{item.romaji ? ` · ${item.romaji}` : ""}</div>
         <div className="text-sm font-bold uppercase tracking-wide text-zinc-500">{item.type} · {item.meaning}</div>
-        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 text-xl font-black text-zinc-950">{item.example || item.raw}</div>
+        <WordKanjiStrip word={item.word} />
+        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 text-xl font-black text-zinc-950"><KanjiText text={item.example || item.raw} /></div>
         {isDeferred && <span className="text-[10px] font-black uppercase text-amber-600">Revisiting deferred item</span>}
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
@@ -795,6 +799,7 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
 const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkKanjiLearned, onAdvanceKanji, onDeferKanji, onCompleteStage, onUpdateState }) => {
   const queue = effectiveKanjiQueue(day, state);
   const item = queue[state.kanjiIndex];
+  const [breakdownChar, setBreakdownChar] = useState<string | null>(null);
   if (!item) return (
     <StageShell
       eyebrow="Kanji"
@@ -815,9 +820,27 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       {day.unresolvedKanjiChars.length ? <p className="text-xs font-bold text-zinc-500">From the day plan only: {day.unresolvedKanjiChars.join(" ")}</p> : null}
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 grid gap-4 md:grid-cols-[180px_1fr] items-center">
         <div className="text-center">
-          <div className="text-8xl font-black text-zinc-950 leading-none">{item.kanji}</div>
+          {hasKanjiInsight(item.kanji) ? (
+            <button
+              onClick={() => setBreakdownChar(item.kanji)}
+              aria-label={`Break down ${item.kanji}`}
+              className="text-8xl font-black text-zinc-950 leading-none rounded-2xl hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              {item.kanji}
+            </button>
+          ) : (
+            <div className="text-8xl font-black text-zinc-950 leading-none">{item.kanji}</div>
+          )}
           <div className="mt-3 text-sm font-black text-indigo-700">{item.readings}</div>
           <div className="mt-1 text-xs font-bold uppercase text-zinc-500">{item.meaning}</div>
+          {hasKanjiInsight(item.kanji) && (
+            <button
+              onClick={() => setBreakdownChar(item.kanji)}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-zinc-900 bg-violet-100 hover:bg-violet-200 text-[10px] font-black uppercase"
+            >
+              <Puzzle className="h-3.5 w-3.5" /> Break it down
+            </button>
+          )}
           {isDeferred && <span className="mt-2 block text-[10px] font-black uppercase text-amber-600">Revisiting deferred item</span>}
         </div>
         <div className="space-y-3">
@@ -825,10 +848,11 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
             <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-2">Mnemonic</span>
             <p className="text-lg font-black text-zinc-950">{item.mnemonic}</p>
           </div>
-          <InfoBlock label="Components" text={item.components} />
+          <KanjiComponentsInline char={item.kanji} onOpen={setBreakdownChar} fallbackText={item.components !== item.mnemonic ? item.components : undefined} />
           <InfoBlock label="Example word" text={item.example || item.raw} />
         </div>
       </div>
+      {breakdownChar && <KanjiBreakdownModal char={breakdownChar} onClose={() => setBreakdownChar(null)} />}
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: state.kanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
@@ -959,14 +983,14 @@ function reviewContent(card: N5SRSCard): { front: React.ReactNode; back: React.R
     if (!entry) return null;
     return {
       front: <div><div className="text-2xl sm:text-4xl font-black text-zinc-950">{maskWord(entry.example, entry.word) || entry.example || entry.raw}</div><div className="mt-4 text-xs font-black uppercase text-zinc-400">Recall the target word and meaning</div></div>,
-      back: <div><div className="text-5xl font-black text-zinc-950">{entry.word}</div><div className="mt-2 text-lg font-black text-indigo-700">{entry.reading}{entry.romaji ? ` · ${entry.romaji}` : ""}</div><div className="mt-2 text-sm font-bold text-zinc-600">{entry.meaning}</div><div className="mt-4 text-xl font-black text-zinc-900">{entry.example || entry.raw}</div></div>,
+      back: <div><div className="text-5xl font-black text-zinc-950"><KanjiText text={entry.word} /></div><div className="mt-2 text-lg font-black text-indigo-700">{entry.reading}{entry.romaji ? ` · ${entry.romaji}` : ""}</div><div className="mt-2 text-sm font-bold text-zinc-600">{entry.meaning}</div><div className="mt-4 text-xl font-black text-zinc-900"><KanjiText text={entry.example || entry.raw} /></div><div className="mt-3 flex justify-center"><WordKanjiStrip word={entry.word} /></div></div>,
     };
   }
   const entry = n5Course.kanji[card.contentId];
   if (!entry) return null;
   return {
     front: <div><div className="text-7xl font-black text-zinc-950">{entry.kanji}</div><div className="mt-4 text-xs font-black uppercase text-zinc-400">Recall readings and meaning</div></div>,
-    back: <div><div className="text-6xl font-black text-zinc-950">{entry.kanji}</div><div className="mt-2 text-lg font-black text-indigo-700">{entry.readings}</div><div className="mt-2 text-sm font-bold text-zinc-600">{entry.meaning}</div><div className="mt-4 text-base font-black text-zinc-900">{entry.mnemonic}</div></div>,
+    back: <div><div className="text-6xl font-black text-zinc-950"><KanjiText text={entry.kanji} /></div><div className="mt-2 text-lg font-black text-indigo-700">{entry.readings}</div><div className="mt-2 text-sm font-bold text-zinc-600">{entry.meaning}</div><div className="mt-4 text-base font-black text-zinc-900">{entry.mnemonic}</div><div className="mt-3 flex justify-center"><WordKanjiStrip word={entry.kanji} /></div></div>,
   };
 }
 
@@ -1028,7 +1052,7 @@ const InfoBlock: React.FC<{ label: string; text: string; large?: boolean }> = ({
 
 const ExampleRow: React.FC<{ example: N5GrammarPoint["examples"][number] }> = ({ example }) => (
   <div className="bg-white border-2 border-zinc-200 rounded-2xl p-3">
-    <div className="text-lg font-black text-zinc-950">{example.japanese}</div>
+    <div className="text-lg font-black text-zinc-950"><KanjiText text={example.japanese} /></div>
     <div className="text-sm font-bold text-zinc-500 mt-1">{example.translation}</div>
   </div>
 );
