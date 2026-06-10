@@ -116,22 +116,30 @@ func (h *Handler) SyncPush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := auth.NormalizeEmail(req.Email)
-	var existingRaw []byte
-	err := h.DB.QueryRow(`SELECT state_json FROM user_states WHERE email = ?`, email).Scan(&existingRaw)
-	if err != nil && err != sql.ErrNoRows {
-		h.WriteError(w, http.StatusInternalServerError, "Failed to fetch existing state", err)
-		return
-	}
-
-	if err == nil && sync.IsDestructive(existingRaw, req.State) {
-		h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: map[string]bool{"ignored": true}})
-		return
-	}
-
 	newStateRaw, err := json.Marshal(req.State)
 	if err != nil {
 		h.WriteError(w, http.StatusInternalServerError, "Failed to process state", err)
+		return
+	}
+
+	email := auth.NormalizeEmail(req.Email)
+
+	tx, err := h.DB.Begin()
+	if err != nil {
+		h.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction", err)
+		return
+	}
+	defer tx.Rollback()
+
+	var existingRaw []byte
+	rowErr := tx.QueryRow(`SELECT state_json FROM user_states WHERE email = ?`, email).Scan(&existingRaw)
+	if rowErr != nil && rowErr != sql.ErrNoRows {
+		h.WriteError(w, http.StatusInternalServerError, "Failed to fetch existing state", rowErr)
+		return
+	}
+
+	if rowErr == nil && sync.IsDestructive(existingRaw, req.State) {
+		h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: map[string]bool{"ignored": true}})
 		return
 	}
 
@@ -143,13 +151,18 @@ func (h *Handler) SyncPush(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = h.DB.Exec(
+	_, err = tx.Exec(
 		`INSERT INTO user_states(email, state_json, updated_at) VALUES(?, ?, ?)
 		 ON CONFLICT(email) DO UPDATE SET state_json = excluded.state_json, updated_at = excluded.updated_at`,
 		email, string(newStateRaw), auth.NowMillis(),
 	)
 	if err != nil {
 		h.WriteError(w, http.StatusInternalServerError, "Failed to save state", err)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		h.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction", err)
 		return
 	}
 
