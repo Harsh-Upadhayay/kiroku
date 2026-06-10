@@ -179,6 +179,22 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     else sound.playCorrect();
   };
 
+  useEffect(() => {
+    if (activeTab !== "review" || !currentReviewCard) return;
+    function handleKey(event: KeyboardEvent) {
+      const tag = (event.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        if (!isBackShown) setIsBackShown(true);
+      } else if (isBackShown && ["1", "2", "3", "4"].includes(event.key)) {
+        gradeCurrentCard(Number(event.key) as AnkiGrade);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [activeTab, currentReviewCard, isBackShown]);
+
   const updateCard = async (cardId: string, updater: (card: AnkiCard) => AnkiCard) => {
     await persist({
       ...collection,
@@ -360,7 +376,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                   <span>{collection.decks.find((deck) => deck.id === currentReviewCard.deckId)?.name || "Deck"}</span>
                   <span>{dueCards.length} due</span>
                 </div>
-                <div className="anki-card-render text-center my-6" dangerouslySetInnerHTML={{ __html: isBackShown ? renderedReview.backHTML : renderedReview.frontHTML }} />
+                <div className="anki-card-render text-center my-6" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(isBackShown ? renderedReview.backHTML : renderedReview.frontHTML) }} />
                 <style dangerouslySetInnerHTML={{ __html: renderedReview.css.replace(/^<style>|<\/style>$/g, "") }} />
                 {!isBackShown ? (
                   <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">
@@ -527,28 +543,39 @@ const DeckSelect: React.FC<{ collection: AnkiCollection; selectedDeckId: string;
   </select>
 );
 
-const CardActions: React.FC<{ card: AnkiCard; updateCard: (cardId: string, updater: (card: AnkiCard) => AnkiCard) => Promise<void> }> = ({ card, updateCard }) => (
-  <div className="flex flex-wrap gap-2">
-    <button onClick={() => updateCard(card.id, (c) => ({ ...c, suspended: !c.suspended }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
-      <PauseCircle className="h-3.5 w-3.5" /> {card.suspended ? "Unsuspend" : "Suspend"}
-    </button>
-    <button onClick={() => updateCard(card.id, (c) => ({ ...c, buriedUntil: Date.now() + 86400000 }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
-      <Archive className="h-3.5 w-3.5" /> Bury
-    </button>
-    <button onClick={() => updateCard(card.id, (c) => ({ ...c, flags: c.flags ? 0 : 1 }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
-      <Flag className="h-3.5 w-3.5" /> {card.flags ? "Unflag" : "Flag"}
-    </button>
-    <button onClick={() => updateCard(card.id, (c) => ({ ...c, reps: 0, lapses: 0, interval: 0, queue: 0, due: 0, fsrs: undefined, buriedUntil: undefined }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
-      <RotateCcw className="h-3.5 w-3.5" /> Reset
-    </button>
-  </div>
-);
+const CardActions: React.FC<{ card: AnkiCard; updateCard: (cardId: string, updater: (card: AnkiCard) => AnkiCard) => Promise<void> }> = ({ card, updateCard }) => {
+  const [confirmReset, setConfirmReset] = useState(false);
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button onClick={() => updateCard(card.id, (c) => ({ ...c, suspended: !c.suspended }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
+        <PauseCircle className="h-3.5 w-3.5" /> {card.suspended ? "Unsuspend" : "Suspend"}
+      </button>
+      <button onClick={() => updateCard(card.id, (c) => ({ ...c, buriedUntil: Date.now() + 86400000 }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
+        <Archive className="h-3.5 w-3.5" /> Bury
+      </button>
+      <button onClick={() => updateCard(card.id, (c) => ({ ...c, flags: c.flags ? 0 : 1 }))} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
+        <Flag className="h-3.5 w-3.5" /> {card.flags ? "Unflag" : "Flag"}
+      </button>
+      {confirmReset ? (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase text-zinc-600">Reset progress?</span>
+          <button onClick={() => { updateCard(card.id, (c) => ({ ...c, reps: 0, lapses: 0, interval: 0, queue: 0, due: 0, fsrs: undefined, buriedUntil: undefined })); setConfirmReset(false); }} className="px-2 py-1.5 rounded-xl border border-red-400 bg-red-100 text-[10px] font-black uppercase text-red-700">Yes, Reset</button>
+          <button onClick={() => setConfirmReset(false)} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase">Cancel</button>
+        </div>
+      ) : (
+        <button onClick={() => setConfirmReset(true)} className="px-2 py-1.5 rounded-xl border border-zinc-300 bg-white text-[10px] font-black uppercase flex items-center gap-1">
+          <RotateCcw className="h-3.5 w-3.5" /> Reset
+        </button>
+      )}
+    </div>
+  );
+};
 
 const RenderPanel: React.FC<{ title: string; html: string; css: string }> = ({ title, html, css }) => (
   <div className="bg-white border border-zinc-200 rounded-2xl p-3 min-w-0">
     <span className="block text-[10px] font-black uppercase text-zinc-400 mb-2">{title}</span>
     <style dangerouslySetInnerHTML={{ __html: css.replace(/^<style>|<\/style>$/g, "") }} />
-    <div className="anki-card-render break-words" dangerouslySetInnerHTML={{ __html: html }} />
+    <div className="anki-card-render break-words" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(html) }} />
   </div>
 );
 

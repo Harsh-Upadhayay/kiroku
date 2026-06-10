@@ -18,6 +18,7 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
   onResetDatabase,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
+  const [confirmClearLogs, setConfirmClearLogs] = useState<boolean>(false);
   const [reviewLogs, setReviewLogs] = useState<any[]>([]);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
@@ -260,6 +261,7 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
                     return (
                       <button
                         key={item.char}
+                        aria-label={`Play pronunciation for ${item.char} (${item.romaji})`}
                         onClick={() => {
                           sound.playCharacter(item.char);
                         }}
@@ -301,17 +303,33 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
             </p>
           </div>
           {reviewLogs.length > 0 && (
-            <button
-              onClick={async () => {
-                sound.playTick();
-                const { clearReviewActionsFromDB } = await import("../utils/db");
-                await clearReviewActionsFromDB();
-                setReviewLogs([]);
-              }}
-              className="py-1.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 rounded-xl border-2 border-zinc-900 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
-            >
-              Clear Logs
-            </button>
+            confirmClearLogs ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase text-zinc-600">Clear all logs?</span>
+                <button
+                  onClick={async () => {
+                    sound.playTick();
+                    const { clearReviewActionsFromDB } = await import("../utils/db");
+                    await clearReviewActionsFromDB();
+                    setReviewLogs([]);
+                    setConfirmClearLogs(false);
+                  }}
+                  className="py-1.5 px-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl border-2 border-red-400 text-[10px] font-black uppercase"
+                >
+                  Yes, Clear
+                </button>
+                <button onClick={() => setConfirmClearLogs(false)} className="py-1.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl border-2 border-zinc-300 text-[10px] font-black uppercase">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { sound.playTick(); setConfirmClearLogs(true); }}
+                className="py-1.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 rounded-xl border-2 border-zinc-900 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+              >
+                Clear Logs
+              </button>
+            )
           )}
         </div>
 

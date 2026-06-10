@@ -134,6 +134,24 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({ cards, activeRows, onCardsUpda
     setShowReport(true);
   };
 
+  useEffect(() => {
+    if (!sessionActive || !currentCard || practiceMode !== "flashcard") return;
+    function handleKey(event: KeyboardEvent) {
+      const tag = (event.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if ((event.key === " " || event.key === "Enter") && !isFlipped) {
+        event.preventDefault();
+        setIsFlipped(true);
+      } else if (isFlipped && event.key === "1") {
+        processReview(false);
+      } else if (isFlipped && event.key === "2") {
+        processReview(true);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [sessionActive, currentCard, practiceMode, isFlipped]);
+
   const totalAttempts = correct + incorrect;
   const accuracy = totalAttempts > 0 ? Math.round((correct / totalAttempts) * 100) : 0;
 
@@ -206,11 +224,12 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({ cards, activeRows, onCardsUpda
             </button>
           </div>
 
-          <motion.div
+          <motion.button
+            type="button"
             key={`${index}-${isFlipped ? "back" : "front"}`}
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full min-h-[360px] bg-white border-2 border-zinc-900 rounded-[32px] p-5 sm:p-7 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between items-center relative overflow-hidden"
+            className="w-full min-h-[360px] bg-white border-2 border-zinc-900 rounded-[32px] p-5 sm:p-7 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between items-center relative overflow-hidden text-left"
             onClick={() => practiceMode === "flashcard" && setIsFlipped((value) => !value)}
           >
             <div className="w-full flex flex-col min-[420px]:flex-row justify-between gap-2 text-xs text-zinc-400 font-black uppercase tracking-widest">
@@ -241,7 +260,7 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({ cards, activeRows, onCardsUpda
             {feedback && (
               <div className={`absolute inset-0 border-4 pointer-events-none rounded-[30px] ${feedback === "correct" ? "border-emerald-500 bg-emerald-50/5" : "border-red-500 bg-red-50/5"}`} />
             )}
-          </motion.div>
+          </motion.button>
 
           {practiceMode === "typing" ? (
             <form onSubmit={submitTyping} className="flex flex-col min-[480px]:flex-row gap-3">
@@ -265,10 +284,10 @@ export const SrsQuiz: React.FC<SrsQuizProps> = ({ cards, activeRows, onCardsUpda
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <button disabled={isTransitioning} onClick={() => processReview(false)} className="py-4 px-5 rounded-2xl border-2 border-zinc-900 bg-red-400 hover:bg-red-500 text-zinc-950 font-black uppercase tracking-wider text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,0.95)] flex items-center justify-center gap-1.5 disabled:opacity-50">
-                <X className="h-4 w-4" /> Forgotten
+                <X className="h-4 w-4" /> Forgotten <span className="opacity-50 font-normal normal-case">(1)</span>
               </button>
               <button disabled={isTransitioning} onClick={() => processReview(true)} className="py-4 px-5 rounded-2xl border-2 border-zinc-900 bg-emerald-400 hover:bg-emerald-500 text-zinc-950 font-black uppercase tracking-wider text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,0.95)] flex items-center justify-center gap-1.5 disabled:opacity-50">
-                <Check className="h-4 w-4" /> Correct
+                <Check className="h-4 w-4" /> Correct <span className="opacity-50 font-normal normal-case">(2)</span>
               </button>
             </div>
           )}
