@@ -6,6 +6,7 @@ export interface KanjiInsight {
   keyword: string;
   story: string;
   components: string[];
+  readings?: string;
   inCourse?: boolean;
 }
 
@@ -98,6 +99,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "one",
     "story": "In Chinese characters, the number one is laid on its side, unlike the Roman numeral I which stands upright. As you would expect, it is written from left to right.",
     "components": [],
+    "readings": "イチ・イツ / ひと-・ひと.つ",
     "inCourse": true
   },
   "丁": {
@@ -106,18 +108,21 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "一",
       "亅"
-    ]
+    ],
+    "readings": "チョウ・テイ・チン / ひのと"
   },
   "七": {
     "keyword": "seven",
     "story": "This kanji is our good old seven, turned upside down.",
     "components": [],
+    "readings": "シチ / なな・なな.つ・なの",
     "inCourse": true
   },
   "万": {
     "keyword": "ten thousand",
     "story": "I bound (勹) ten thousand dollars together and hid it under the floor (一).",
     "components": [],
+    "readings": "マン・バン / よろず",
     "inCourse": true
   },
   "丈": {
@@ -127,7 +132,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "一",
       "丶"
-    ]
+    ],
+    "readings": "ジョウ / たけ・だけ"
   },
   "三": {
     "keyword": "three",
@@ -136,6 +142,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "二"
     ],
+    "readings": "サン・ゾウ / み・み.つ・みっ.つ",
     "inCourse": true
   },
   "上": {
@@ -145,6 +152,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "卜"
     ],
+    "readings": "ジョウ・ショウ・シャン / うえ・-うえ・うわ-",
     "inCourse": true
   },
   "下": {
@@ -155,6 +163,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "卜"
     ],
+    "readings": "カ・ゲ / した・しも・もと",
     "inCourse": true
   },
   "不": {
@@ -165,7 +174,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "一",
       "丶"
-    ]
+    ],
+    "readings": "フ・ブ"
   },
   "且": {
     "keyword": "moreover",
@@ -173,7 +183,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "一",
       "目"
-    ]
+    ],
+    "readings": "ショ・ソ・ショウ / か.つ"
   },
   "世": {
     "keyword": "generation",
@@ -181,7 +192,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "｜",
       "一"
-    ]
+    ],
+    "readings": "セイ・セ・ソウ / よ"
   },
   "両": {
     "keyword": "both",
@@ -191,7 +203,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "冂",
       "山"
-    ]
+    ],
+    "readings": "リョウ / てる・ふたつ"
   },
   "並": {
     "keyword": "row",
@@ -199,7 +212,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "｜",
       "丷"
-    ]
+    ],
+    "readings": "ヘイ・ホウ / な.み・なみ・なら.べる"
   },
   "中": {
     "keyword": "middle",
@@ -208,6 +222,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "口"
     ],
+    "readings": "チュウ / なか・うち・あた.る",
     "inCourse": true
   },
   "丸": {
@@ -216,7 +231,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "九",
       "丶"
-    ]
+    ],
+    "readings": "ガン / まる・まる.める・まる.い"
   },
   "主": {
     "keyword": "lord",
@@ -224,7 +240,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "王",
       "丶"
-    ]
+    ],
+    "readings": "シュ・ス・シュウ / ぬし・おも・あるじ"
   },
   "久": {
     "keyword": "long time",
@@ -232,7 +249,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ノ",
       "入"
-    ]
+    ],
+    "readings": "キュウ・ク / ひさ.しい"
   },
   "乗": {
     "keyword": "ride",
@@ -242,17 +260,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "禾",
       "ハ"
-    ]
+    ],
+    "readings": "ジョウ・ショウ / の.る・-の.り・の.せる"
   },
   "乙": {
     "keyword": "second",
     "story": "It is weird that this character means second and resembles an inverted 2.",
-    "components": []
+    "components": [],
+    "readings": "オツ・イツ / おと-・きのと"
   },
   "九": {
     "keyword": "nine",
     "story": "Kinda of looks like the kanji of 1 一 with the kanji of 8 八 added. So think of it as 一＋八＝九",
     "components": [],
+    "readings": "キュウ・ク / ここの・ここの.つ",
     "inCourse": true
   },
   "乳": {
@@ -261,7 +282,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "孔",
       "爪"
-    ]
+    ],
+    "readings": "ニュウ / ちち・ち"
   },
   "予": {
     "keyword": "beforehand",
@@ -270,7 +292,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "マ",
       "一",
       "亅"
-    ]
+    ],
+    "readings": "ヨ・シャ / あらかじ.め"
   },
   "事": {
     "keyword": "matter",
@@ -278,18 +301,21 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "可",
       "ヨ"
-    ]
+    ],
+    "readings": "ジ・ズ / こと・つか.う・つか.える"
   },
   "二": {
     "keyword": "two",
     "story": "Like the Roman numeral II, which reduplicates the numeral I, the kanji for two is a simple reduplication of the horizontal stroke that means one. The order of writing goes from above to below, with the first stroke slightly shorter.",
     "components": [],
+    "readings": "ニ・ジ / ふた・ふた.つ・ふたたび",
     "inCourse": true
   },
   "五": {
     "keyword": "five",
     "story": "三 + two vertical lines = 5.",
     "components": [],
+    "readings": "ゴ / いつ・いつ.つ",
     "inCourse": true
   },
   "井": {
@@ -300,7 +326,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "一",
       "二"
-    ]
+    ],
+    "readings": "セイ・ショウ / い"
   },
   "亘": {
     "keyword": "span",
@@ -308,7 +335,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "三",
       "日"
-    ]
+    ],
+    "readings": "コウ・カン・セン / わた.る・もと.める"
   },
   "亜": {
     "keyword": "Asia",
@@ -317,14 +345,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "一",
       "口"
-    ]
+    ],
+    "readings": "ア / つ.ぐ"
   },
   "亡": {
     "keyword": "deceased",
     "story": "A top hat (亠) hanging on a hook (乚) in the front hall, right where the deceased left it the day he died, reminds us of him and his kanji.",
     "components": [
       "亠"
-    ]
+    ],
+    "readings": "ボウ・モウ / な.い・な.き-・ほろ.びる"
   },
   "交": {
     "keyword": "mingle",
@@ -332,7 +362,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "父",
       "亠"
-    ]
+    ],
+    "readings": "コウ / まじ.わる・まじ.える・ま.じる"
   },
   "京": {
     "keyword": "capital",
@@ -341,12 +372,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "小",
       "亠"
-    ]
+    ],
+    "readings": "キョウ・ケイ・キン / みやこ"
   },
   "人": {
     "keyword": "person",
     "story": "The character for enter (入) showed someone walking inwards (in terms of the direction of writing), the one for person, shown here, represents someone walking outwards.",
     "components": [],
+    "readings": "ジン・ニン / ひと・-り・-と",
     "inCourse": true
   },
   "仁": {
@@ -355,7 +388,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "二"
-    ]
+    ],
+    "readings": "ジン・ニ・ニン"
   },
   "今": {
     "keyword": "now",
@@ -363,7 +397,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "𠆢",
       "一"
-    ]
+    ],
+    "readings": "コン・キン / いま"
   },
   "介": {
     "keyword": "jammed in",
@@ -371,7 +406,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ハ",
       "𠆢"
-    ]
+    ],
+    "readings": "カイ"
   },
   "仕": {
     "keyword": "attend",
@@ -379,7 +415,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "士"
-    ]
+    ],
+    "readings": "シ・ジ / つか.える"
   },
   "他": {
     "keyword": "other",
@@ -387,7 +424,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "也"
-    ]
+    ],
+    "readings": "タ / ほか"
   },
   "代": {
     "keyword": "substitute",
@@ -395,7 +433,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "弋"
-    ]
+    ],
+    "readings": "ダイ・タイ / か.わる・かわ.る・かわ.り"
   },
   "令": {
     "keyword": "orders",
@@ -403,7 +442,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "今",
       "卩"
-    ]
+    ],
+    "readings": "レイ"
   },
   "休": {
     "keyword": "rest",
@@ -411,7 +451,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "木"
-    ]
+    ],
+    "readings": "キュウ / やす.む・やす.まる・やす.める"
   },
   "会": {
     "keyword": "meeting",
@@ -421,6 +462,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "𠆢",
       "厶"
     ],
+    "readings": "カイ・エ / あ.う・あ.わせる・あつ.まる",
     "inCourse": true
   },
   "伝": {
@@ -429,7 +471,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "仁",
       "厶"
-    ]
+    ],
+    "readings": "デン・テン / つた.わる・つた.える・つた.う"
   },
   "伯": {
     "keyword": "chief",
@@ -437,7 +480,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "白"
-    ]
+    ],
+    "readings": "ハク"
   },
   "伺": {
     "keyword": "visit a superior",
@@ -445,7 +489,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "可"
-    ]
+    ],
+    "readings": "シ / うかが.う"
   },
   "似": {
     "keyword": "similar",
@@ -454,7 +499,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "人",
       "丶"
-    ]
+    ],
+    "readings": "ジ / に.る・ひ.る"
   },
   "低": {
     "keyword": "lower",
@@ -463,7 +509,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "氏",
       "一"
-    ]
+    ],
+    "readings": "テイ / ひく.い・ひく.める・ひく.まる"
   },
   "住": {
     "keyword": "dwell",
@@ -471,7 +518,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "主",
       "⺅"
-    ]
+    ],
+    "readings": "ジュウ・ヂュウ・チュウ / す.む・す.まう・-ず.まい"
   },
   "体": {
     "keyword": "body",
@@ -480,7 +528,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "木",
       "一",
       "⺅"
-    ]
+    ],
+    "readings": "タイ・テイ / からだ・かたち"
   },
   "何": {
     "keyword": "what",
@@ -489,6 +538,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "可"
     ],
+    "readings": "カ / なに・なん・なに-",
     "inCourse": true
   },
   "作": {
@@ -498,6 +548,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "乍"
     ],
+    "readings": "サク・サ / つく.る・つく.り・-づく.り",
     "inCourse": true
   },
   "使": {
@@ -507,6 +558,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "吏"
     ],
+    "readings": "シ / つか.う・つか.い・-つか.い",
     "inCourse": true
   },
   "例": {
@@ -515,7 +567,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "列"
-    ]
+    ],
+    "readings": "レイ / たと.える"
   },
   "供": {
     "keyword": "submit",
@@ -523,7 +576,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "共",
       "⺅"
-    ]
+    ],
+    "readings": "キョウ・ク・クウ / そな.える・とも・-ども"
   },
   "便": {
     "keyword": "convenience",
@@ -535,7 +589,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "日",
       "田"
-    ]
+    ],
+    "readings": "ベン・ビン / たよ.り"
   },
   "信": {
     "keyword": "faith",
@@ -543,7 +598,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "言"
-    ]
+    ],
+    "readings": "シン"
   },
   "借": {
     "keyword": "borrow",
@@ -552,7 +608,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "仁",
       "日",
       "廾"
-    ]
+    ],
+    "readings": "シャク / か.りる"
   },
   "値": {
     "keyword": "price",
@@ -560,7 +617,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "直"
-    ]
+    ],
+    "readings": "チ / ね・あたい"
   },
   "傘": {
     "keyword": "umbrella",
@@ -569,7 +627,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "十",
       "人",
       "𠆢"
-    ]
+    ],
+    "readings": "サン / かさ"
   },
   "備": {
     "keyword": "equip",
@@ -578,7 +637,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "花",
       "用",
       "厂"
-    ]
+    ],
+    "readings": "ビ / そな.える・そな.わる・つぶさ.に"
   },
   "働": {
     "keyword": "work",
@@ -586,7 +646,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "動"
-    ]
+    ],
+    "readings": "ドウ / はたら.く"
   },
   "僚": {
     "keyword": "colleague",
@@ -596,7 +657,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "小",
       "日",
       "大"
-    ]
+    ],
+    "readings": "リョウ"
   },
   "優": {
     "keyword": "tenderness",
@@ -604,7 +666,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "憂"
-    ]
+    ],
+    "readings": "ユウ・ウ / やさ.しい・すぐ.れる・まさ.る"
   },
   "元": {
     "keyword": "beginning",
@@ -612,7 +675,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "二",
       "儿"
-    ]
+    ],
+    "readings": "ゲン・ガン / もと"
   },
   "兄": {
     "keyword": "elder brother",
@@ -621,6 +685,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "儿"
     ],
+    "readings": "ケイ・キョウ / あに",
     "inCourse": true
   },
   "先": {
@@ -631,6 +696,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "土",
       "儿"
     ],
+    "readings": "セン / さき・ま.ず",
     "inCourse": true
   },
   "免": {
@@ -640,12 +706,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亜",
       "勹",
       "儿"
-    ]
+    ],
+    "readings": "メン / まぬか.れる・まぬが.れる"
   },
   "入": {
     "keyword": "enter",
     "story": "This character is meant to be a picture of someone walking leftwards, putting one leg forward in order to enter someplace. Since the \"in\" side of a character is the left, it should be easy to remember the writing of this character.",
     "components": [],
+    "readings": "ニュウ・ジュ / い.る・-い.る・-い.り",
     "inCourse": true
   },
   "全": {
@@ -654,7 +722,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "王",
       "介"
-    ]
+    ],
+    "readings": "ゼン / まった.く・すべ.て"
   },
   "八": {
     "keyword": "eight",
@@ -662,6 +731,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ハ"
     ],
+    "readings": "ハチ・ハツ / や・や.つ・やっ.つ",
     "inCourse": true
   },
   "公": {
@@ -670,7 +740,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ハ",
       "厶"
-    ]
+    ],
+    "readings": "コウ・ク / おおやけ"
   },
   "六": {
     "keyword": "six",
@@ -679,6 +750,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ハ",
       "亠"
     ],
+    "readings": "ロク・リク / む・む.つ・むっ.つ",
     "inCourse": true
   },
   "共": {
@@ -689,7 +761,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "一",
       "二"
-    ]
+    ],
+    "readings": "キョウ / とも・とも.に・-ども"
   },
   "具": {
     "keyword": "tool",
@@ -697,7 +770,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "且",
       "ハ"
-    ]
+    ],
+    "readings": "グ / そな.える・つぶさ.に"
   },
   "兼": {
     "keyword": "concurrently",
@@ -706,7 +780,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "並",
       "ヨ",
       "ハ"
-    ]
+    ],
+    "readings": "ケン / か.ねる・-か.ねる"
   },
   "内": {
     "keyword": "inside",
@@ -714,7 +789,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "人",
       "冂"
-    ]
+    ],
+    "readings": "ナイ・ダイ / うち"
   },
   "円": {
     "keyword": "yen/circle",
@@ -725,6 +801,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "｜"
     ],
+    "readings": "エン / まる.い・まる・まど",
     "inCourse": true
   },
   "冒": {
@@ -733,7 +810,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "目"
-    ]
+    ],
+    "readings": "ボウ / おか.す"
   },
   "写": {
     "keyword": "copy",
@@ -742,7 +820,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "冖",
       "勹"
-    ]
+    ],
+    "readings": "シャ・ジャ / うつ.す・うつ.る・うつ-"
   },
   "冬": {
     "keyword": "winter",
@@ -750,7 +829,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "夂",
       "丶"
-    ]
+    ],
+    "readings": "トウ / ふゆ"
   },
   "冷": {
     "keyword": "cool",
@@ -758,7 +838,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "令",
       "冫"
-    ]
+    ],
+    "readings": "レイ / つめ.たい・ひ.える・ひ.や"
   },
   "出": {
     "keyword": "exit",
@@ -767,12 +848,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "山",
       "山"
     ],
+    "readings": "シュツ・スイ / で.る・-で・だ.す",
     "inCourse": true
   },
   "刀": {
     "keyword": "sword",
     "story": "This sword is so sharp, it can cut the top part of カ off in カタナ.",
-    "components": []
+    "components": [],
+    "readings": "トウ / かたな・そり"
   },
   "刃": {
     "keyword": "blade",
@@ -780,7 +863,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "刀",
       "丶"
-    ]
+    ],
+    "readings": "ジン・ニン / は・やいば・き.る"
   },
   "分": {
     "keyword": "part",
@@ -789,6 +873,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "刀",
       "ハ"
     ],
+    "readings": "ブン・フン・ブ / わ.ける・わ.け・わ.かれる",
     "inCourse": true
   },
   "切": {
@@ -797,7 +882,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "刀",
       "匕"
-    ]
+    ],
+    "readings": "セツ・サイ / き.る・-き.る・き.り"
   },
   "列": {
     "keyword": "file",
@@ -805,14 +891,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺉",
       "歹"
-    ]
+    ],
+    "readings": "レツ・レ"
   },
   "初": {
     "keyword": "first time",
     "story": "\"This is the first time we've been out of the Shire, Mr. Frodo!\" Says Sam, covering himself with his cloak (衤) and clutching his dagger (刀)",
     "components": [
       "刀"
-    ]
+    ],
+    "readings": "ショ / はじ.め・はじ.めて・はつ"
   },
   "別": {
     "keyword": "separate",
@@ -821,7 +909,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺉",
       "加",
       "勹"
-    ]
+    ],
+    "readings": "ベツ / わか.れる・わ.ける"
   },
   "利": {
     "keyword": "profit",
@@ -829,7 +918,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "禾",
       "⺉"
-    ]
+    ],
+    "readings": "リ / き.く"
   },
   "到": {
     "keyword": "arrival",
@@ -837,7 +927,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺉",
       "至"
-    ]
+    ],
+    "readings": "トウ / いた.る"
   },
   "則": {
     "keyword": "rule",
@@ -845,7 +936,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "貝",
       "⺉"
-    ]
+    ],
+    "readings": "ソク / のっと.る・のり・すなわち"
   },
   "前": {
     "keyword": "in front of",
@@ -855,12 +947,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "月",
       "丷"
     ],
+    "readings": "ゼン / まえ・-まえ",
     "inCourse": true
   },
   "力": {
     "keyword": "power",
     "story": "With a little imagination, one can see a muscle in this simple, two-stroke character meaning power.",
-    "components": []
+    "components": [],
+    "readings": "リョク・リキ・リイ / ちから"
   },
   "功": {
     "keyword": "achievement",
@@ -868,7 +962,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "工",
       "力"
-    ]
+    ],
+    "readings": "コウ・ク / いさお"
   },
   "加": {
     "keyword": "add",
@@ -876,7 +971,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "力"
-    ]
+    ],
+    "readings": "カ / くわ.える・くわ.わる"
   },
   "勉": {
     "keyword": "exertion",
@@ -884,7 +980,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "力",
       "免"
-    ]
+    ],
+    "readings": "ベン / つと.める"
   },
   "動": {
     "keyword": "move",
@@ -892,7 +989,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "重",
       "力"
-    ]
+    ],
+    "readings": "ドウ / うご.く・うご.かす"
   },
   "務": {
     "keyword": "task",
@@ -901,7 +999,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "矛",
       "力",
       "攵"
-    ]
+    ],
+    "readings": "ム / つと.める"
   },
   "勺": {
     "keyword": "ladle",
@@ -909,7 +1008,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "丶",
       "勹"
-    ]
+    ],
+    "readings": "シャク"
   },
   "勿": {
     "keyword": "not",
@@ -917,7 +1017,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ノ",
       "勹"
-    ]
+    ],
+    "readings": "モチ・ブツ・ボツ / なか.れ・なし"
   },
   "匂": {
     "keyword": "aroma",
@@ -925,7 +1026,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "勹",
       "匕"
-    ]
+    ],
+    "readings": "にお.う・にお.い・にお.わせる"
   },
   "包": {
     "keyword": "wrap",
@@ -933,19 +1035,22 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "勹",
       "已"
-    ]
+    ],
+    "readings": "ホウ / つつ.む・くる.む"
   },
   "匕": {
     "keyword": "spoon",
     "story": "I sat on the ground, feeding myself jelly with a spoon.",
-    "components": []
+    "components": [],
+    "readings": "ヒ / さじ"
   },
   "化": {
     "keyword": "change",
     "story": "Spoon(匕)-Man(亻): A new Marvel superhero, is a person (亻) who can change into a spoon (匕) anytime he wants.",
     "components": [
       "匕"
-    ]
+    ],
+    "readings": "カ・ケ / ば.ける・ば.かす・ふ.ける"
   },
   "北": {
     "keyword": "north",
@@ -953,7 +1058,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "匕",
       "爿"
-    ]
+    ],
+    "readings": "ホク / きた"
   },
   "医": {
     "keyword": "doctor",
@@ -961,12 +1067,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "矢",
       "匚"
-    ]
+    ],
+    "readings": "イ / い.やす・い.する・くすし"
   },
   "十": {
     "keyword": "ten",
     "story": "Turn this character 45 degrees either way and you have the x used for the Roman numeral ten.",
     "components": [],
+    "readings": "ジュウ・ジッ・ジュッ / とお・と・そ",
     "inCourse": true
   },
   "千": {
@@ -976,6 +1084,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "十"
     ],
+    "readings": "セン / ち",
     "inCourse": true
   },
   "午": {
@@ -985,6 +1094,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "干",
       "𠂉"
     ],
+    "readings": "ゴ / うま",
     "inCourse": true
   },
   "半": {
@@ -994,6 +1104,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "丷"
     ],
+    "readings": "ハン / なか.ば",
     "inCourse": true
   },
   "卑": {
@@ -1002,7 +1113,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "十",
       "田"
-    ]
+    ],
+    "readings": "ヒ / いや.しい・いや.しむ・いや.しめる"
   },
   "南": {
     "keyword": "south",
@@ -1010,7 +1122,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "丷",
       "冂"
-    ]
+    ],
+    "readings": "ナン・ナ / みなみ"
   },
   "単": {
     "keyword": "simple",
@@ -1018,7 +1131,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "卑",
       "⺌"
-    ]
+    ],
+    "readings": "タン / ひとえ"
   },
   "占": {
     "keyword": "fortune-telling",
@@ -1026,7 +1140,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "卜"
-    ]
+    ],
+    "readings": "セン / し.める・うらな.う"
   },
   "危": {
     "keyword": "dangerous",
@@ -1034,7 +1149,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "勹",
       "厄"
-    ]
+    ],
+    "readings": "キ / あぶ.ない・あや.うい・あや.ぶむ"
   },
   "即": {
     "keyword": "instant",
@@ -1042,7 +1158,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "艮",
       "卩"
-    ]
+    ],
+    "readings": "ソク / つ.く・つ.ける・すなわ.ち"
   },
   "卵": {
     "keyword": "egg",
@@ -1052,7 +1169,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "卜",
       "丶",
       "卩"
-    ]
+    ],
+    "readings": "ラン / たまご"
   },
   "厄": {
     "keyword": "unlucky",
@@ -1060,7 +1178,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "卩",
       "厂"
-    ]
+    ],
+    "readings": "ヤク"
   },
   "原": {
     "keyword": "meadow",
@@ -1069,7 +1188,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "小",
       "白",
       "厂"
-    ]
+    ],
+    "readings": "ゲン / はら"
   },
   "厳": {
     "keyword": "stern",
@@ -1078,7 +1198,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "敢",
       "⺌",
       "厂"
-    ]
+    ],
+    "readings": "ゲン・ゴン / おごそ.か・きび.しい・いか.めしい"
   },
   "去": {
     "keyword": "gone",
@@ -1086,7 +1207,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "土",
       "厶"
-    ]
+    ],
+    "readings": "キョ・コ / さ.る・-さ.る"
   },
   "参": {
     "keyword": "visit",
@@ -1095,12 +1217,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "厶",
       "彡"
-    ]
+    ],
+    "readings": "サン・シン / まい.る・まい-・まじわる"
   },
   "又": {
     "keyword": "again",
     "story": "Think of the phrase じゃ又 [じゃまた] which is a farewell similar to \"then again\". Also 又ね [またね] and 又明日 [またあした] which is like saying \"again tomorrow\". Note this kanji is rarely used, most of the time JP people spell it out \"また\" except for in the last example: 又明日 .",
-    "components": []
+    "components": [],
+    "readings": "ユウ / また・また-・また.の-"
   },
   "友": {
     "keyword": "friend",
@@ -1110,6 +1234,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "又"
     ],
+    "readings": "ユウ / とも",
     "inCourse": true
   },
   "反": {
@@ -1118,7 +1243,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "又",
       "厂"
-    ]
+    ],
+    "readings": "ハン・ホン・タン / そ.る・そ.らす・かえ.す"
   },
   "叔": {
     "keyword": "uncle",
@@ -1127,7 +1253,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "小",
       "卜",
       "又"
-    ]
+    ],
+    "readings": "シュク"
   },
   "取": {
     "keyword": "take",
@@ -1135,7 +1262,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "耳",
       "又"
-    ]
+    ],
+    "readings": "シュ / と.る・と.り・と.り-"
   },
   "受": {
     "keyword": "accept",
@@ -1144,14 +1272,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "爪",
       "又",
       "冖"
-    ]
+    ],
+    "readings": "ジュ / う.ける・-う.け・う.かる"
   },
   "口": {
     "keyword": "mouth",
     "story": "Like several of the first characters we shall learn, the kanji for mouth is a clear pictograph. Since there are no circular shapes in the kanji, the square must be used to depict the circle.",
     "components": [
       "囗"
-    ]
+    ],
+    "readings": "コウ・ク / くち"
   },
   "古": {
     "keyword": "old",
@@ -1160,6 +1290,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "十"
     ],
+    "readings": "コ / ふる.い・ふる-・-ふる.す",
     "inCourse": true
   },
   "句": {
@@ -1168,7 +1299,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "勹"
-    ]
+    ],
+    "readings": "ク"
   },
   "叫": {
     "keyword": "shout",
@@ -1176,7 +1308,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "中",
       "十"
-    ]
+    ],
+    "readings": "キョウ / さけ.ぶ"
   },
   "召": {
     "keyword": "summon",
@@ -1184,7 +1317,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "刀"
-    ]
+    ],
+    "readings": "ショウ / め.す"
   },
   "可": {
     "keyword": "can",
@@ -1193,7 +1327,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "口",
       "亅"
-    ]
+    ],
+    "readings": "カ・コク / -べ.き・-べ.し"
   },
   "台": {
     "keyword": "pedestal",
@@ -1201,7 +1336,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "厶"
-    ]
+    ],
+    "readings": "ダイ・タイ / うてな・われ・つかさ"
   },
   "史": {
     "keyword": "history",
@@ -1209,7 +1345,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ノ",
       "口"
-    ]
+    ],
+    "readings": "シ"
   },
   "右": {
     "keyword": "right",
@@ -1219,6 +1356,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "口"
     ],
+    "readings": "ウ・ユウ / みぎ",
     "inCourse": true
   },
   "号": {
@@ -1228,7 +1366,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "口",
       "勹"
-    ]
+    ],
+    "readings": "ゴウ / さけ.ぶ・よびな"
   },
   "司": {
     "keyword": "company director",
@@ -1237,7 +1376,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "口",
       "亅"
-    ]
+    ],
+    "readings": "シ / つかさど.る"
   },
   "各": {
     "keyword": "each",
@@ -1245,7 +1385,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "夂"
-    ]
+    ],
+    "readings": "カク / おのおの"
   },
   "合": {
     "keyword": "fit",
@@ -1253,7 +1394,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "今"
-    ]
+    ],
+    "readings": "ゴウ・ガッ・カッ / あ.う・-あ.う・あ.い"
   },
   "吉": {
     "keyword": "good luck",
@@ -1261,7 +1403,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "士"
-    ]
+    ],
+    "readings": "キチ・キツ / よし"
   },
   "同": {
     "keyword": "same",
@@ -1270,7 +1413,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "冂",
       "一"
-    ]
+    ],
+    "readings": "ドウ / おな.じ"
   },
   "名": {
     "keyword": "name",
@@ -1279,6 +1423,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "夕"
     ],
+    "readings": "メイ・ミョウ / な・-な",
     "inCourse": true
   },
   "吏": {
@@ -1289,7 +1434,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "口",
       "丶"
-    ]
+    ],
+    "readings": "リ"
   },
   "吐": {
     "keyword": "spit",
@@ -1297,7 +1443,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "土"
-    ]
+    ],
+    "readings": "ト / は.く・つ.く"
   },
   "向": {
     "keyword": "facing",
@@ -1305,7 +1452,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "冂"
-    ]
+    ],
+    "readings": "コウ / む.く・む.い・-む.き"
   },
   "君": {
     "keyword": "You (colloquial)",
@@ -1313,7 +1461,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "右",
       "ヨ"
-    ]
+    ],
+    "readings": "クン / きみ・-ぎみ"
   },
   "吹": {
     "keyword": "blow",
@@ -1321,7 +1470,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "欠",
       "口"
-    ]
+    ],
+    "readings": "スイ / ふ.く"
   },
   "吾": {
     "keyword": "I",
@@ -1329,7 +1479,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "五"
-    ]
+    ],
+    "readings": "ゴ / われ・わが-・あ-"
   },
   "呈": {
     "keyword": "display",
@@ -1337,7 +1488,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "王",
       "口"
-    ]
+    ],
+    "readings": "テイ"
   },
   "周": {
     "keyword": "circumference",
@@ -1345,7 +1497,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "吐",
       "冂"
-    ]
+    ],
+    "readings": "シュウ / まわ.り"
   },
   "味": {
     "keyword": "flavor",
@@ -1353,7 +1506,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "未",
       "口"
-    ]
+    ],
+    "readings": "ミ / あじ・あじ.わう"
   },
   "呼": {
     "keyword": "call",
@@ -1362,7 +1516,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "丷",
       "亅"
-    ]
+    ],
+    "readings": "コ / よ.ぶ"
   },
   "和": {
     "keyword": "harmony",
@@ -1370,7 +1525,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "禾",
       "口"
-    ]
+    ],
+    "readings": "ワ・オ・カ / やわ.らぐ・やわ.らげる・なご.む"
   },
   "咲": {
     "keyword": "blossom",
@@ -1379,7 +1535,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "器",
       "人",
       "丷"
-    ]
+    ],
+    "readings": "ショウ / さ.く・-ざき"
   },
   "員": {
     "keyword": "employee",
@@ -1387,7 +1544,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "貝",
       "口"
-    ]
+    ],
+    "readings": "イン"
   },
   "唯": {
     "keyword": "solely",
@@ -1395,7 +1553,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "隹"
-    ]
+    ],
+    "readings": "ユイ・イ / ただ"
   },
   "問": {
     "keyword": "question",
@@ -1403,7 +1562,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "門"
-    ]
+    ],
+    "readings": "モン / と.う・と.い・とん"
   },
   "喜": {
     "keyword": "rejoice",
@@ -1411,7 +1571,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "士",
       "豆"
-    ]
+    ],
+    "readings": "キ / よろこ.ぶ・よろこ.ばす"
   },
   "嘆": {
     "keyword": "sigh",
@@ -1420,7 +1581,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "天",
       "口",
       "⺾"
-    ]
+    ],
+    "readings": "タン / なげ.く・なげ.かわしい"
   },
   "器": {
     "keyword": "container",
@@ -1428,7 +1590,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "大"
-    ]
+    ],
+    "readings": "キ / うつわ"
   },
   "四": {
     "keyword": "four",
@@ -1437,6 +1600,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "儿",
       "囗"
     ],
+    "readings": "シ / よ・よ.つ・よっ.つ",
     "inCourse": true
   },
   "困": {
@@ -1445,7 +1609,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "木",
       "囗"
-    ]
+    ],
+    "readings": "コン / こま.る"
   },
   "図": {
     "keyword": "map",
@@ -1453,7 +1618,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "斗",
       "囗"
-    ]
+    ],
+    "readings": "ズ・ト / え・はか.る"
   },
   "国": {
     "keyword": "country",
@@ -1462,6 +1628,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "囗",
       "玉"
     ],
+    "readings": "コク / くに",
     "inCourse": true
   },
   "園": {
@@ -1470,12 +1637,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "衣",
       "土"
-    ]
+    ],
+    "readings": "エン / その"
   },
   "土": {
     "keyword": "soil",
     "story": "The grave was marked by a cross sticking out of the soil.",
     "components": [],
+    "readings": "ド・ト / つち",
     "inCourse": true
   },
   "地": {
@@ -1484,7 +1653,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "土",
       "也"
-    ]
+    ],
+    "readings": "チ・ジ"
   },
   "垣": {
     "keyword": "hedge",
@@ -1492,7 +1662,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "旦",
       "土"
-    ]
+    ],
+    "readings": "エン / かき"
   },
   "場": {
     "keyword": "location",
@@ -1500,7 +1671,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "垣",
       "勿"
-    ]
+    ],
+    "readings": "ジョウ・チョウ / ば"
   },
   "塩": {
     "keyword": "salt",
@@ -1509,7 +1681,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "吐",
       "皿",
       "𠂉"
-    ]
+    ],
+    "readings": "エン / しお"
   },
   "境": {
     "keyword": "boundary",
@@ -1518,7 +1691,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "音",
       "土",
       "儿"
-    ]
+    ],
+    "readings": "キョウ・ケイ / さかい"
   },
   "増": {
     "keyword": "increase",
@@ -1526,7 +1700,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "曽",
       "土"
-    ]
+    ],
+    "readings": "ゾウ / ま.す・ま.し・ふ.える"
   },
   "壊": {
     "keyword": "demolition",
@@ -1535,12 +1710,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "園",
       "十",
       "⺲"
-    ]
+    ],
+    "readings": "カイ・エ / こわ.す・こわ.れる・やぶ.る"
   },
   "士": {
     "keyword": "samurai",
     "story": "A samurai has broad shoulders (士) and doesn't soil (土) himself.\nOne of the readings is: さむらい聖闘士星矢[セイ.トウ.{シ}.セイ.や](saint.fight.warrior.star.arrow)Saint Seiya",
-    "components": []
+    "components": [],
+    "readings": "シ / さむらい"
   },
   "声": {
     "keyword": "voice",
@@ -1548,7 +1725,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "士",
       "尸"
-    ]
+    ],
+    "readings": "セイ・ショウ / こえ・こわ-"
   },
   "売": {
     "keyword": "sell",
@@ -1557,7 +1735,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "士",
       "儿",
       "冖"
-    ]
+    ],
+    "readings": "バイ / う.る・う.れる"
   },
   "変": {
     "keyword": "unusual",
@@ -1565,7 +1744,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "亠",
       "夂"
-    ]
+    ],
+    "readings": "ヘン / か.わる・か.わり・か.える"
   },
   "夏": {
     "keyword": "summer",
@@ -1573,12 +1753,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "自",
       "夂"
-    ]
+    ],
+    "readings": "カ・ガ・ゲ / なつ"
   },
   "夕": {
     "keyword": "evening",
     "story": "In the evening, ta (タ) crescent moon hangs in ta (タ) sky.",
-    "components": []
+    "components": [],
+    "readings": "セキ / ゆう"
   },
   "外": {
     "keyword": "outside",
@@ -1587,6 +1769,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "卜",
       "夕"
     ],
+    "readings": "ガイ・ゲ / そと・ほか・はず.す",
     "inCourse": true
   },
   "多": {
@@ -1596,6 +1779,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "夕",
       "夕"
     ],
+    "readings": "タ / おお.い・まさ.に・まさ.る",
     "inCourse": true
   },
   "夜": {
@@ -1605,7 +1789,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺅",
       "夕",
       "亠"
-    ]
+    ],
+    "readings": "ヤ / よ・よる"
   },
   "夢": {
     "keyword": "dream",
@@ -1615,12 +1800,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "夕",
       "冖",
       "⺾"
-    ]
+    ],
+    "readings": "ム・ボウ / ゆめ・ゆめ.みる・くら.い"
   },
   "大": {
     "keyword": "large",
     "story": "One (一) person (人) showing itself large/big by widening its arms to scare a bear away.\n大丈夫",
     "components": [],
+    "readings": "ダイ・タイ / おお-・おお.きい・-おお.いに",
     "inCourse": true
   },
   "天": {
@@ -1630,6 +1817,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "大"
     ],
+    "readings": "テン / あまつ・あめ・あま-",
     "inCourse": true
   },
   "太": {
@@ -1638,7 +1826,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "大",
       "丶"
-    ]
+    ],
+    "readings": "タイ・タ / ふと.い・ふと.る"
   },
   "夫": {
     "keyword": "husband",
@@ -1648,7 +1837,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "二",
       "大",
       "亠"
-    ]
+    ],
+    "readings": "フ・フウ・ブ / おっと・それ"
   },
   "失": {
     "keyword": "lose",
@@ -1658,7 +1848,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "人",
       "二",
       "大"
-    ]
+    ],
+    "readings": "シツ / うしな.う・う.せる"
   },
   "奇": {
     "keyword": "strange",
@@ -1666,12 +1857,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "可",
       "大"
-    ]
+    ],
+    "readings": "キ / く.しき・あや.しい・くし"
   },
   "女": {
     "keyword": "woman",
     "story": "To remember the order of strokes, remember a female ninja is called a \"kunoichi\". That is, く(hiragana) ノ(katakana) 一 (kanji, ichi=one).",
     "components": [],
+    "readings": "ジョ・ニョ・ニョウ / おんな・め",
     "inCourse": true
   },
   "奴": {
@@ -1680,7 +1873,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "女",
       "又"
-    ]
+    ],
+    "readings": "ド / やつ・やっこ"
   },
   "好": {
     "keyword": "fond",
@@ -1688,7 +1882,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "子",
       "女"
-    ]
+    ],
+    "readings": "コウ / この.む・す.く・よ.い"
   },
   "妹": {
     "keyword": "younger sister",
@@ -1696,7 +1891,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "未",
       "女"
-    ]
+    ],
+    "readings": "マイ / いもうと"
   },
   "姉": {
     "keyword": "elder sister",
@@ -1704,7 +1900,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "市",
       "女"
-    ]
+    ],
+    "readings": "シ / あね・はは"
   },
   "始": {
     "keyword": "commence",
@@ -1712,7 +1909,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "台",
       "女"
-    ]
+    ],
+    "readings": "シ / はじ.める・-はじ.める・はじ.まる"
   },
   "婚": {
     "keyword": "marriage",
@@ -1720,7 +1918,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "昏",
       "女"
-    ]
+    ],
+    "readings": "コン"
   },
   "嫌": {
     "keyword": "dislike",
@@ -1728,7 +1927,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "兼",
       "女"
-    ]
+    ],
+    "readings": "ケン・ゲン / きら.う・きら.い・いや"
   },
   "嬉": {
     "keyword": "delighted",
@@ -1736,12 +1936,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "喜",
       "女"
-    ]
+    ],
+    "readings": "キ / うれ.しい・たの.しむ"
   },
   "子": {
     "keyword": "child",
     "story": "A pictograph of a child, with arms outstretched for mother (or perhaps because she is chasing a rat?).",
     "components": [],
+    "readings": "シ・ス・ツ / こ・-こ・ね",
     "inCourse": true
   },
   "孔": {
@@ -1750,7 +1952,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "乙",
       "子"
-    ]
+    ],
+    "readings": "コウ・ク / あな"
   },
   "字": {
     "keyword": "character",
@@ -1759,6 +1962,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "子",
       "宀"
     ],
+    "readings": "ジ / あざ・あざな・-な",
     "inCourse": true
   },
   "孝": {
@@ -1767,7 +1971,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "子",
       "⺹"
-    ]
+    ],
+    "readings": "コウ・キョウ"
   },
   "季": {
     "keyword": "season",
@@ -1775,7 +1980,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "禾",
       "子"
-    ]
+    ],
+    "readings": "キ"
   },
   "学": {
     "keyword": "study",
@@ -1785,6 +1991,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺌",
       "冖"
     ],
+    "readings": "ガク / まな.ぶ",
     "inCourse": true
   },
   "守": {
@@ -1793,7 +2000,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "寸",
       "宀"
-    ]
+    ],
+    "readings": "シュ・ス / まも.る・まも.り・もり"
   },
   "安": {
     "keyword": "inexpensive",
@@ -1802,6 +2010,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "女",
       "宀"
     ],
+    "readings": "アン / やす.い・やす.まる・やす",
     "inCourse": true
   },
   "完": {
@@ -1810,7 +2019,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "宀",
       "元"
-    ]
+    ],
+    "readings": "カン"
   },
   "官": {
     "keyword": "bureaucrat",
@@ -1818,7 +2028,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "中",
       "宀"
-    ]
+    ],
+    "readings": "カン"
   },
   "定": {
     "keyword": "determine",
@@ -1826,7 +2037,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "疋",
       "宀"
-    ]
+    ],
+    "readings": "テイ・ジョウ / さだ.める・さだ.まる・さだ.か"
   },
   "客": {
     "keyword": "guest",
@@ -1834,7 +2046,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "各",
       "宀"
-    ]
+    ],
+    "readings": "キャク・カク"
   },
   "室": {
     "keyword": "room",
@@ -1842,7 +2055,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "至",
       "宀"
-    ]
+    ],
+    "readings": "シツ / むろ"
   },
   "家": {
     "keyword": "house",
@@ -1850,7 +2064,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "宀",
       "豕"
-    ]
+    ],
+    "readings": "カ・ケ / いえ・や・うち"
   },
   "宿": {
     "keyword": "inn",
@@ -1858,7 +2073,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "伯",
       "宀"
-    ]
+    ],
+    "readings": "シュク / やど・やど.る・やど.す"
   },
   "寂": {
     "keyword": "lonely",
@@ -1866,7 +2082,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "叔",
       "宀"
-    ]
+    ],
+    "readings": "ジャク・セキ / さび・さび.しい・さび.れる"
   },
   "寒": {
     "keyword": "cold",
@@ -1876,7 +2093,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "宀",
       "丶",
       "井"
-    ]
+    ],
+    "readings": "カン / さむ.い"
   },
   "寝": {
     "keyword": "lie down",
@@ -1887,7 +2105,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "冖",
       "宀",
       "爿"
-    ]
+    ],
+    "readings": "シン / ね.る・ね.かす・い.ぬ"
   },
   "察": {
     "keyword": "guess",
@@ -1897,7 +2116,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "示",
       "宀",
       "癶"
-    ]
+    ],
+    "readings": "サツ"
   },
   "寧": {
     "keyword": "rather",
@@ -1909,12 +2129,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亅",
       "宀",
       "皿"
-    ]
+    ],
+    "readings": "ネイ / むし.ろ"
   },
   "寸": {
     "keyword": "measurement",
     "story": "The decimal system uses drops (丶) of ten (十) as a measurement.",
-    "components": []
+    "components": [],
+    "readings": "スン"
   },
   "寺": {
     "keyword": "Buddhist temple",
@@ -1922,7 +2144,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "寸",
       "土"
-    ]
+    ],
+    "readings": "ジ / てら"
   },
   "寿": {
     "keyword": "longevity",
@@ -1932,7 +2155,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "寸",
       "二"
-    ]
+    ],
+    "readings": "ジュ・ス・シュウ / ことぶき・ことぶ.く・ことほ.ぐ"
   },
   "封": {
     "keyword": "seal",
@@ -1940,7 +2164,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "寸",
       "土"
-    ]
+    ],
+    "readings": "フウ・ホウ"
   },
   "将": {
     "keyword": "leader",
@@ -1949,12 +2174,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "寸",
       "爪",
       "爿"
-    ]
+    ],
+    "readings": "ショウ・ソウ / まさ.に・はた・まさ"
   },
   "小": {
     "keyword": "little",
     "story": "A little penguin with its wings at its side.",
     "components": [],
+    "readings": "ショウ / ちい.さい・こ-・お-",
     "inCourse": true
   },
   "少": {
@@ -1964,6 +2191,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "小"
     ],
+    "readings": "ショウ / すく.ない・すこ.し",
     "inCourse": true
   },
   "尺": {
@@ -1972,7 +2200,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "尸",
       "丶"
-    ]
+    ],
+    "readings": "シャク・セキ / さし"
   },
   "局": {
     "keyword": "bureau",
@@ -1980,7 +2209,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "尸"
-    ]
+    ],
+    "readings": "キョク / つぼね"
   },
   "屋": {
     "keyword": "rooftop",
@@ -1988,7 +2218,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "至",
       "尸"
-    ]
+    ],
+    "readings": "オク / や"
   },
   "履": {
     "keyword": "put on lower body clothing/footgear",
@@ -1996,24 +2227,28 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "復",
       "尸"
-    ]
+    ],
+    "readings": "リ / は.く"
   },
   "山": {
     "keyword": "mountain",
     "story": "Note the clearer outline of a triangular mountain here.",
     "components": [],
+    "readings": "サン・セン / やま",
     "inCourse": true
   },
   "川": {
     "keyword": "stream",
     "story": "Three streams grouped together might cause a flood!",
     "components": [],
+    "readings": "セン / かわ",
     "inCourse": true
   },
   "工": {
     "keyword": "craft",
     "story": "The pictograph of an I beam, like the kind used in heavy construction work on buildings and bridges, gives us the character for craft in general.",
-    "components": []
+    "components": [],
+    "readings": "コウ・ク・グ"
   },
   "左": {
     "keyword": "left",
@@ -2023,6 +2258,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "工"
     ],
+    "readings": "サ・シャ / ひだり",
     "inCourse": true
   },
   "差": {
@@ -2031,7 +2267,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "工",
       "羊"
-    ]
+    ],
+    "readings": "サ / さ.す・さ.し"
   },
   "巾": {
     "keyword": "towel",
@@ -2039,7 +2276,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "冂",
       "｜"
-    ]
+    ],
+    "readings": "キン・フク / おお.い・ちきり・きれ"
   },
   "市": {
     "keyword": "market",
@@ -2047,7 +2285,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "巾",
       "亠"
-    ]
+    ],
+    "readings": "シ / いち"
   },
   "布": {
     "keyword": "linen",
@@ -2056,7 +2295,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "一",
       "巾"
-    ]
+    ],
+    "readings": "フ・ホ / ぬの・し.く・きれ"
   },
   "帝": {
     "keyword": "sovereign",
@@ -2066,7 +2306,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "丷",
       "立",
       "冖"
-    ]
+    ],
+    "readings": "テイ / みかど"
   },
   "帰": {
     "keyword": "homecoming",
@@ -2077,6 +2318,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "巾",
       "冖"
     ],
+    "readings": "キ / かえ.る・かえ.す・おく.る",
     "inCourse": true
   },
   "帽": {
@@ -2085,7 +2327,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "巾",
       "冒"
-    ]
+    ],
+    "readings": "ボウ・モウ / ずきん・おお.う"
   },
   "干": {
     "keyword": "dry",
@@ -2093,14 +2336,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "十",
       "一"
-    ]
+    ],
+    "readings": "カン / ほ.す・ほ.し-・-ぼ.し"
   },
   "平": {
     "keyword": "even",
     "story": "If you divide one (一) (written vertically as丨) into two (二) smaller (小) equal portions, they will make the pans of a scale balance evenly, i.e. flat or level. This is a picture of the pans of a scale balancing.",
     "components": [
       "丷"
-    ]
+    ],
+    "readings": "ヘイ・ビョウ・ヒョウ / たい.ら・たい.らげる・ひら"
   },
   "年": {
     "keyword": "year",
@@ -2109,6 +2354,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "干",
       "𠂉"
     ],
+    "readings": "ネン / とし",
     "inCourse": true
   },
   "幸": {
@@ -2117,7 +2363,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "辛",
       "亠"
-    ]
+    ],
+    "readings": "コウ / さいわ.い・さち・しあわ.せ"
   },
   "幾": {
     "keyword": "how many",
@@ -2127,7 +2374,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "幺",
       "戈",
       "丶"
-    ]
+    ],
+    "readings": "キ / いく-・いく.つ・いく.ら"
   },
   "広": {
     "keyword": "wide",
@@ -2135,7 +2383,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "厶",
       "广"
-    ]
+    ],
+    "readings": "コウ / ひろ.い・ひろ.まる・ひろ.める"
   },
   "店": {
     "keyword": "store",
@@ -2143,7 +2392,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "占",
       "广"
-    ]
+    ],
+    "readings": "テン / みせ・たな"
   },
   "座": {
     "keyword": "sit",
@@ -2153,7 +2403,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "土",
       "人",
       "广"
-    ]
+    ],
+    "readings": "ザ / すわ.る"
   },
   "庫": {
     "keyword": "warehouse",
@@ -2161,7 +2412,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "車",
       "广"
-    ]
+    ],
+    "readings": "コ・ク / くら"
   },
   "庭": {
     "keyword": "garden/courtyard",
@@ -2170,7 +2422,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "王",
       "广",
       "廴"
-    ]
+    ],
+    "readings": "テイ / にわ"
   },
   "建": {
     "keyword": "build",
@@ -2178,7 +2431,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "廴",
       "聿"
-    ]
+    ],
+    "readings": "ケン・コン / た.てる・た.て・-だ.て"
   },
   "弁": {
     "keyword": "valve",
@@ -2186,7 +2440,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "厶",
       "廾"
-    ]
+    ],
+    "readings": "ベン・ヘン / かんむり・わきま.える・わ.ける"
   },
   "式": {
     "keyword": "style",
@@ -2194,12 +2449,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "工",
       "弋"
-    ]
+    ],
+    "readings": "シキ"
   },
   "弓": {
     "keyword": "bow",
     "story": "This character pictures the bent wooden bow.",
-    "components": []
+    "components": [],
+    "readings": "キュウ / ゆみ"
   },
   "弘": {
     "keyword": "vast",
@@ -2207,7 +2464,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "弓",
       "厶"
-    ]
+    ],
+    "readings": "コウ・グ / ひろ.い"
   },
   "弟": {
     "keyword": "younger brother",
@@ -2215,7 +2473,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "並",
       "弓"
-    ]
+    ],
+    "readings": "テイ・ダイ・デ / おとうと"
   },
   "弱": {
     "keyword": "weak",
@@ -2223,7 +2482,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "弓",
       "冫"
-    ]
+    ],
+    "readings": "ジャク / よわ.い・よわ.る・よわ.まる"
   },
   "強": {
     "keyword": "strong",
@@ -2231,7 +2491,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "弘",
       "虫"
-    ]
+    ],
+    "readings": "キョウ・ゴウ / つよ.い・つよ.まる・つよ.める"
   },
   "当": {
     "keyword": "hit",
@@ -2239,7 +2500,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ヨ",
       "⺌"
-    ]
+    ],
+    "readings": "トウ / あ.たる・あ.たり・あ.てる"
   },
   "形": {
     "keyword": "shape",
@@ -2250,7 +2512,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "二",
       "一"
-    ]
+    ],
+    "readings": "ケイ・ギョウ / かた・-がた・かたち"
   },
   "彼": {
     "keyword": "he",
@@ -2258,7 +2521,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "皮",
       "彳"
-    ]
+    ],
+    "readings": "ヒ / かれ・かの・か.の"
   },
   "待": {
     "keyword": "wait",
@@ -2267,6 +2531,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "寺",
       "彳"
     ],
+    "readings": "タイ / ま.つ・-ま.ち",
     "inCourse": true
   },
   "後": {
@@ -2277,6 +2542,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "幺",
       "彳"
     ],
+    "readings": "ゴ・コウ / のち・うし.ろ・うしろ",
     "inCourse": true
   },
   "従": {
@@ -2286,7 +2552,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "丷",
       "疋",
       "彳"
-    ]
+    ],
+    "readings": "ジュウ・ショウ・ジュ / したが.う・したが.える・より"
   },
   "得": {
     "keyword": "gain",
@@ -2295,7 +2562,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "寸",
       "旦",
       "彳"
-    ]
+    ],
+    "readings": "トク / え.る・う.る"
   },
   "復": {
     "keyword": "restore",
@@ -2304,12 +2572,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "日",
       "夂",
       "彳"
-    ]
+    ],
+    "readings": "フク / また"
   },
   "心": {
     "keyword": "heart",
     "story": "This character, a pictographic representation of the heart, is among the most widely used primitives we shall meet.\n心臓を捧げよ! (しん.ぞうをささ.げよ) [Dedicate Your Heart!]",
-    "components": []
+    "components": [],
+    "readings": "シン / こころ・-ごころ"
   },
   "必": {
     "keyword": "invariably",
@@ -2317,7 +2587,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ノ",
       "心"
-    ]
+    ],
+    "readings": "ヒツ / かなら.ず"
   },
   "忍": {
     "keyword": "endure",
@@ -2325,7 +2596,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "心",
       "刃"
-    ]
+    ],
+    "readings": "ニン / しの.ぶ・しの.ばせる"
   },
   "志": {
     "keyword": "intention",
@@ -2333,7 +2605,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "士",
       "心"
-    ]
+    ],
+    "readings": "シ / シリング・こころざ.す・こころざし"
   },
   "忘": {
     "keyword": "forget",
@@ -2341,14 +2614,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "心",
       "亡"
-    ]
+    ],
+    "readings": "ボウ / わす.れる"
   },
   "忙": {
     "keyword": "busy",
     "story": "Busy (as in \"occupied\") means a state of mind (忄) where all other thoughts have perished (亡).",
     "components": [
       "亡"
-    ]
+    ],
+    "readings": "ボウ・モウ / いそが.しい・せわ.しい・おそ.れる"
   },
   "念": {
     "keyword": "wish",
@@ -2356,7 +2631,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "今",
       "心"
-    ]
+    ],
+    "readings": "ネン"
   },
   "怒": {
     "keyword": "angry",
@@ -2364,7 +2640,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "奴",
       "心"
-    ]
+    ],
+    "readings": "ド・ヌ / いか.る・おこ.る"
   },
   "怖": {
     "keyword": "dreadful",
@@ -2372,7 +2649,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "布",
       "⺖"
-    ]
+    ],
+    "readings": "フ・ホ / こわ.い・こわ.がる・お.じる"
   },
   "思": {
     "keyword": "think",
@@ -2381,6 +2659,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "心",
       "田"
     ],
+    "readings": "シ / おも.う・おもえら.く・おぼ.す",
     "inCourse": true
   },
   "急": {
@@ -2390,7 +2669,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ヨ",
       "心",
       "勹"
-    ]
+    ],
+    "readings": "キュウ / いそ.ぐ・いそ.ぎ・せ.く"
   },
   "恥": {
     "keyword": "shame",
@@ -2398,7 +2678,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "耳",
       "心"
-    ]
+    ],
+    "readings": "チ / は.じる・はじ・は.じらう"
   },
   "悪": {
     "keyword": "bad/evil",
@@ -2406,7 +2687,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "亜",
       "心"
-    ]
+    ],
+    "readings": "アク・オ / わる.い・わる-・あ.し"
   },
   "悲": {
     "keyword": "sad",
@@ -2414,7 +2696,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "心",
       "非"
-    ]
+    ],
+    "readings": "ヒ / かな.しい・かな.しむ"
   },
   "意": {
     "keyword": "idea",
@@ -2422,7 +2705,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "音",
       "心"
-    ]
+    ],
+    "readings": "イ"
   },
   "感": {
     "keyword": "emotion",
@@ -2432,7 +2716,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "心",
       "戈"
-    ]
+    ],
+    "readings": "カン"
   },
   "憂": {
     "keyword": "melancholy",
@@ -2442,7 +2727,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "心",
       "冖",
       "白"
-    ]
+    ],
+    "readings": "ユウ / うれ.える・うれ.い・う.い"
   },
   "成": {
     "keyword": "turn into",
@@ -2450,7 +2736,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ノ",
       "戈"
-    ]
+    ],
+    "readings": "セイ・ジョウ / な.る・な.す・-な.す"
   },
   "我": {
     "keyword": "ego",
@@ -2459,7 +2746,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亅",
       "戈",
       "手"
-    ]
+    ],
+    "readings": "ガ / われ・わ・わ.が-"
   },
   "戸": {
     "keyword": "door",
@@ -2467,7 +2755,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "一",
       "尸"
-    ]
+    ],
+    "readings": "コ / と"
   },
   "戻": {
     "keyword": "turn back",
@@ -2475,7 +2764,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "戸",
       "大"
-    ]
+    ],
+    "readings": "レイ / もど.す・もど.る"
   },
   "所": {
     "keyword": "place",
@@ -2483,12 +2773,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "斤",
       "戸"
-    ]
+    ],
+    "readings": "ショ / ところ・-ところ・どころ"
   },
   "手": {
     "keyword": "hand",
     "story": "Any way you count them, there are either too many or too few fingers to see a good pictograph of a hand in this character. But that it is, and so you must.",
-    "components": []
+    "components": [],
+    "readings": "シュ・ズ / て・て-・-て"
   },
   "払": {
     "keyword": "pay",
@@ -2496,7 +2788,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "厶",
       "⺘"
-    ]
+    ],
+    "readings": "フツ・ヒツ・ホツ / はら.う・-はら.い・-ばら.い"
   },
   "拶": {
     "keyword": "imminent",
@@ -2505,7 +2798,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "巛",
       "夕",
       "⺘"
-    ]
+    ],
+    "readings": "サツ / せま.る"
   },
   "拾": {
     "keyword": "pick up",
@@ -2513,7 +2807,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "合",
       "⺘"
-    ]
+    ],
+    "readings": "シュウ・ジュウ / ひろ.う"
   },
   "持": {
     "keyword": "hold",
@@ -2522,6 +2817,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "寺",
       "⺘"
     ],
+    "readings": "ジ / も.つ・-も.ち・も.てる",
     "inCourse": true
   },
   "挨": {
@@ -2530,7 +2826,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "矢",
       "払"
-    ]
+    ],
+    "readings": "アイ / ひら.く"
   },
   "捨": {
     "keyword": "discard",
@@ -2538,7 +2835,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "舎",
       "⺘"
-    ]
+    ],
+    "readings": "シャ / す.てる"
   },
   "掃": {
     "keyword": "sweep",
@@ -2548,7 +2846,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "巾",
       "冖",
       "⺘"
-    ]
+    ],
+    "readings": "ソウ・シュ / は.く"
   },
   "授": {
     "keyword": "impart",
@@ -2556,7 +2855,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "受",
       "⺘"
-    ]
+    ],
+    "readings": "ジュ / さず.ける・さず.かる"
   },
   "探": {
     "keyword": "grope",
@@ -2566,7 +2866,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "儿",
       "冖",
       "⺘"
-    ]
+    ],
+    "readings": "タン / さぐ.る・さが.す"
   },
   "撮": {
     "keyword": "snapshot",
@@ -2575,7 +2876,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "取",
       "日",
       "⺘"
-    ]
+    ],
+    "readings": "サツ / と.る・つま.む・-ど.り"
   },
   "政": {
     "keyword": "politics",
@@ -2583,7 +2885,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "止",
       "攵"
-    ]
+    ],
+    "readings": "セイ・ショウ / まつりごと・まん"
   },
   "敗": {
     "keyword": "failure",
@@ -2591,7 +2894,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "貝",
       "攵"
-    ]
+    ],
+    "readings": "ハイ / やぶ.れる"
   },
   "教": {
     "keyword": "teach",
@@ -2600,6 +2904,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "孝",
       "攵"
     ],
+    "readings": "キョウ / おし.える・おそ.わる",
     "inCourse": true
   },
   "敢": {
@@ -2608,7 +2913,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "耳",
       "攵"
-    ]
+    ],
+    "readings": "カン / あ.えて・あ.えない・あ.えず"
   },
   "散": {
     "keyword": "scatter",
@@ -2618,7 +2924,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "攵",
       "廾",
       "二"
-    ]
+    ],
+    "readings": "サン / ち.る・ち.らす・-ち.らす"
   },
   "数": {
     "keyword": "number",
@@ -2627,12 +2934,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "女",
       "米",
       "夂"
-    ]
+    ],
+    "readings": "スウ・ス・サク / かず・かぞ.える・しばしば"
   },
   "文": {
     "keyword": "sentence",
     "story": "Under the familiar top hat (亠) we see a crisscross (乂) pattern or design, like that found on woodwork or garments. This should make an ugly enough image to help remember it. It can be associated with sentence by thinking of a sentence as a grammatical pattern.",
     "components": [],
+    "readings": "ブン・モン / ふみ・あや",
     "inCourse": true
   },
   "斉": {
@@ -2643,12 +2952,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "文",
       "廾"
-    ]
+    ],
+    "readings": "セイ・サイ / そろ.う・ひと.しい・ひと.しく"
   },
   "斗": {
     "keyword": "Big Dipper",
     "story": "The Big Dipper here is of course the constellation of Ursa Major, of which this kanji is a sort of pictographic representation. The Big Dipper is a celestial measuring cup (斗).",
-    "components": []
+    "components": [],
+    "readings": "ト・トウ"
   },
   "料": {
     "keyword": "fee",
@@ -2656,12 +2967,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "斗",
       "米"
-    ]
+    ],
+    "readings": "リョウ"
   },
   "斤": {
     "keyword": "axe",
     "story": "The axe-wielding maniac drags (⺁) his latest victim to nail (丅) them to their basement.",
-    "components": []
+    "components": [],
+    "readings": "キン"
   },
   "新": {
     "keyword": "new",
@@ -2671,12 +2984,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "木",
       "斤"
     ],
+    "readings": "シン / あたら.しい・あら.た・あら-",
     "inCourse": true
   },
   "方": {
     "keyword": "direction",
     "story": "I always keep my directions bound (勹) to the bottom of my top hat (亠) so I won't lose them.\n仕方がない(し.かた.がない)[it can't be helped; it's inevitable]",
-    "components": []
+    "components": [],
+    "readings": "ホウ / かた・-かた・-がた"
   },
   "旅": {
     "keyword": "trip",
@@ -2684,7 +2999,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "方",
       "𠂉"
-    ]
+    ],
+    "readings": "リョ / たび"
   },
   "族": {
     "keyword": "tribe",
@@ -2692,12 +3008,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "方",
       "矢"
-    ]
+    ],
+    "readings": "ゾク"
   },
   "日": {
     "keyword": "day",
     "story": "Open the window, new day.",
     "components": [],
+    "readings": "ニチ・ジツ / ひ・-び・-か",
     "inCourse": true
   },
   "旦": {
@@ -2706,7 +3024,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "一",
       "日"
-    ]
+    ],
+    "readings": "タン・ダン / あき.らか・あきら・ただし"
   },
   "旧": {
     "keyword": "olden times",
@@ -2714,7 +3033,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "｜",
       "日"
-    ]
+    ],
+    "readings": "キュウ / ふる.い・もと"
   },
   "早": {
     "keyword": "early",
@@ -2722,7 +3042,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "十",
       "日"
-    ]
+    ],
+    "readings": "ソウ・サッ / はや.い・はや・はや-"
   },
   "明": {
     "keyword": "bright",
@@ -2730,7 +3051,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "月",
       "日"
-    ]
+    ],
+    "readings": "メイ・ミョウ・ミン / あ.かり・あか.るい・あか.るむ"
   },
   "昏": {
     "keyword": "dusk",
@@ -2738,7 +3060,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "氏",
       "日"
-    ]
+    ],
+    "readings": "コン / くら.い・くれ"
   },
   "易": {
     "keyword": "easy",
@@ -2746,7 +3069,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "勿"
-    ]
+    ],
+    "readings": "エキ・イ / やさ.しい・やす.い"
   },
   "星": {
     "keyword": "star",
@@ -2754,7 +3078,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "生",
       "日"
-    ]
+    ],
+    "readings": "セイ・ショウ / ほし・-ぼし"
   },
   "映": {
     "keyword": "reflect",
@@ -2764,7 +3089,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "日",
       "大",
       "冖"
-    ]
+    ],
+    "readings": "エイ / うつ.る・うつ.す・は.える"
   },
   "春": {
     "keyword": "springtime",
@@ -2773,7 +3099,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亘",
       "人",
       "大"
-    ]
+    ],
+    "readings": "シュン / はる"
   },
   "昨": {
     "keyword": "yesterday",
@@ -2782,7 +3109,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "ノ",
       "日"
-    ]
+    ],
+    "readings": "サク"
   },
   "是": {
     "keyword": "justice",
@@ -2790,7 +3118,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "疋"
-    ]
+    ],
+    "readings": "ゼ・シ / これ・この・ここ"
   },
   "昼": {
     "keyword": "daytime",
@@ -2798,7 +3127,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "旦",
       "尺"
-    ]
+    ],
+    "readings": "チュウ / ひる"
   },
   "時": {
     "keyword": "time",
@@ -2807,6 +3137,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "寺",
       "日"
     ],
+    "readings": "ジ / とき・-どき",
     "inCourse": true
   },
   "晩": {
@@ -2815,7 +3146,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "免",
       "日"
-    ]
+    ],
+    "readings": "バン"
   },
   "晴": {
     "keyword": "clear up",
@@ -2823,7 +3155,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "青",
       "日"
-    ]
+    ],
+    "readings": "セイ / は.れる・は.れ・は.れ-"
   },
   "暇": {
     "keyword": "spare time",
@@ -2831,7 +3164,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "又"
-    ]
+    ],
+    "readings": "カ / ひま・いとま"
   },
   "暑": {
     "keyword": "sultry",
@@ -2839,7 +3173,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "⺹"
-    ]
+    ],
+    "readings": "ショ / あつ.い"
   },
   "暖": {
     "keyword": "warmth",
@@ -2848,14 +3183,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "友",
       "爪",
       "日"
-    ]
+    ],
+    "readings": "ダン・ノン / あたた.か・あたた.かい・あたた.まる"
   },
   "暗": {
     "keyword": "darkness",
     "story": "When \"darkness covered the earth\" at the beginning of time, there was neither sun (日) nor sound (音).",
     "components": [
       "音"
-    ]
+    ],
+    "readings": "アン / くら.い・くら.む・くれ.る"
   },
   "曇": {
     "keyword": "cloudy weather",
@@ -2865,7 +3202,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "二",
       "日",
       "厶"
-    ]
+    ],
+    "readings": "ドン / くも.る"
   },
   "曜": {
     "keyword": "weekday",
@@ -2875,6 +3213,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "日",
       "隹"
     ],
+    "readings": "ヨウ",
     "inCourse": true
   },
   "曲": {
@@ -2883,7 +3222,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "｜",
       "日"
-    ]
+    ],
+    "readings": "キョク / ま.がる・ま.げる・くま"
   },
   "書": {
     "keyword": "write",
@@ -2892,6 +3232,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "日",
       "聿"
     ],
+    "readings": "ショ / か.く・-が.き・-がき",
     "inCourse": true
   },
   "曹": {
@@ -2901,7 +3242,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "一",
       "日"
-    ]
+    ],
+    "readings": "ソウ・ゾウ"
   },
   "曽": {
     "keyword": "formerly",
@@ -2910,7 +3252,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "田",
       "日",
       "丷"
-    ]
+    ],
+    "readings": "ソウ・ソ・ゾウ / かつ・かつて・すなわち"
   },
   "最": {
     "keyword": "utmost",
@@ -2918,12 +3261,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "旦",
       "取"
-    ]
+    ],
+    "readings": "サイ・シュ / もっと.も・つま"
   },
   "月": {
     "keyword": "month",
     "story": "A month is longer than a day (日).",
     "components": [],
+    "readings": "ゲツ・ガツ / つき",
     "inCourse": true
   },
   "有": {
@@ -2933,7 +3278,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ノ",
       "一",
       "月"
-    ]
+    ],
+    "readings": "ユウ・ウ / あ.る"
   },
   "服": {
     "keyword": "clothing",
@@ -2942,7 +3288,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "月",
       "又",
       "卩"
-    ]
+    ],
+    "readings": "フク"
   },
   "朝": {
     "keyword": "morning",
@@ -2950,12 +3297,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "月",
       "早"
-    ]
+    ],
+    "readings": "チョウ / あさ"
   },
   "木": {
     "keyword": "tree",
     "story": "The tree (木) does not yet (未) have extremities (末) of vermilion (朱).",
     "components": [],
+    "readings": "ボク・モク / き・こ-",
     "inCourse": true
   },
   "未": {
@@ -2967,7 +3316,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ハ",
       "木",
       "亠"
-    ]
+    ],
+    "readings": "ミ・ビ / いま.だ・ま.だ・ひつじ"
   },
   "末": {
     "keyword": "extremity",
@@ -2978,7 +3328,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ハ",
       "木",
       "亠"
-    ]
+    ],
+    "readings": "マツ・バツ / すえ・うら・うれ"
   },
   "本": {
     "keyword": "book",
@@ -2987,6 +3338,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "木"
     ],
+    "readings": "ホン / もと",
     "inCourse": true
   },
   "机": {
@@ -2995,7 +3347,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "木",
       "几"
-    ]
+    ],
+    "readings": "キ / つくえ"
   },
   "村": {
     "keyword": "village",
@@ -3003,7 +3356,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "寸",
       "木"
-    ]
+    ],
+    "readings": "ソン / むら"
   },
   "束": {
     "keyword": "bundle",
@@ -3012,7 +3366,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亜",
       "ハ",
       "木"
-    ]
+    ],
+    "readings": "ソク / たば・たば.ねる・つか"
   },
   "来": {
     "keyword": "come",
@@ -3021,6 +3376,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "米"
     ],
+    "readings": "ライ・タイ / く.る・きた.る・きた.す",
     "inCourse": true
   },
   "東": {
@@ -3029,7 +3385,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "槽",
       "田"
-    ]
+    ],
+    "readings": "トウ / ひがし"
   },
   "林": {
     "keyword": "grove",
@@ -3038,6 +3395,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "木",
       "木"
     ],
+    "readings": "リン / はやし",
     "inCourse": true
   },
   "果": {
@@ -3047,7 +3405,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "田",
       "木"
-    ]
+    ],
+    "readings": "カ / は.たす・はた.す・-は.たす"
   },
   "柏": {
     "keyword": "oak",
@@ -3055,7 +3414,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "白",
       "木"
-    ]
+    ],
+    "readings": "ハク・ヒャク・ビャク / かしわ"
   },
   "校": {
     "keyword": "school",
@@ -3064,6 +3424,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "交",
       "木"
     ],
+    "readings": "コウ・キョウ",
     "inCourse": true
   },
   "案": {
@@ -3072,7 +3433,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "安",
       "木"
-    ]
+    ],
+    "readings": "アン / つくえ"
   },
   "森": {
     "keyword": "forest",
@@ -3082,6 +3444,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "木",
       "木"
     ],
+    "readings": "シン / もり",
     "inCourse": true
   },
   "椅": {
@@ -3090,7 +3453,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "奇",
       "木"
-    ]
+    ],
+    "readings": "イ"
   },
   "椎": {
     "keyword": "shiitake",
@@ -3098,7 +3462,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "木",
       "隹"
-    ]
+    ],
+    "readings": "ツイ・スイ / つち・う.つ"
   },
   "業": {
     "keyword": "profession",
@@ -3106,7 +3471,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "羊",
       "耒"
-    ]
+    ],
+    "readings": "ギョウ・ゴウ / わざ"
   },
   "楽": {
     "keyword": "enjoyable",
@@ -3114,7 +3480,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "柏",
       "冫"
-    ]
+    ],
+    "readings": "ガク・ラク・ゴウ / たの.しい・たの.しむ・この.む"
   },
   "構": {
     "keyword": "posture",
@@ -3123,7 +3490,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "木",
       "冂",
       "干"
-    ]
+    ],
+    "readings": "コウ / かま.える・かま.う"
   },
   "様": {
     "keyword": "Title of honor",
@@ -3132,7 +3500,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "水",
       "木",
       "羊"
-    ]
+    ],
+    "readings": "ヨウ・ショウ / さま・さん"
   },
   "槽": {
     "keyword": "vat",
@@ -3140,7 +3509,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "曹",
       "木"
-    ]
+    ],
+    "readings": "ソウ / ふね"
   },
   "横": {
     "keyword": "sideways",
@@ -3151,7 +3521,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "二",
       "木",
       "廾"
-    ]
+    ],
+    "readings": "オウ / よこ"
   },
   "橋": {
     "keyword": "bridge",
@@ -3160,7 +3531,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "史",
       "木",
       "冂"
-    ]
+    ],
+    "readings": "キョウ / はし"
   },
   "機": {
     "keyword": "machine",
@@ -3168,7 +3540,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "幾",
       "木"
-    ]
+    ],
+    "readings": "キ / はた"
   },
   "欠": {
     "keyword": "lack/yawn",
@@ -3176,7 +3549,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "勹",
       "人"
-    ]
+    ],
+    "readings": "ケツ・ケン / か.ける・か.く"
   },
   "次": {
     "keyword": "next",
@@ -3184,7 +3558,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "欠",
       "冫"
-    ]
+    ],
+    "readings": "ジ・シ / つ.ぐ・つぎ"
   },
   "欲": {
     "keyword": "longing",
@@ -3192,7 +3567,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "欠",
       "谷"
-    ]
+    ],
+    "readings": "ヨク / ほっ.する・ほ.しい"
   },
   "歌": {
     "keyword": "sing/song",
@@ -3200,12 +3576,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "可",
       "欠"
-    ]
+    ],
+    "readings": "カ / うた・うた.う"
   },
   "止": {
     "keyword": "stop",
     "story": "If you find in the ground (土) a walking stick (丨) with a magic wand (卜), stop! Maybe it's some kind of macumba/black magic/voodoo bad thing.",
-    "components": []
+    "components": [],
+    "readings": "シ / と.まる・-ど.まり・と.める"
   },
   "歩": {
     "keyword": "walk",
@@ -3213,7 +3591,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "少",
       "止"
-    ]
+    ],
+    "readings": "ホ・ブ・フ / ある.く・あゆ.む"
   },
   "歯": {
     "keyword": "tooth",
@@ -3222,7 +3601,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "止",
       "米",
       "凵"
-    ]
+    ],
+    "readings": "シ / よわい・は・よわ.い"
   },
   "歴": {
     "keyword": "curriculum",
@@ -3231,7 +3611,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "止",
       "麻",
       "厂"
-    ]
+    ],
+    "readings": "レキ・レッキ"
   },
   "死": {
     "keyword": "death",
@@ -3241,7 +3622,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "夕",
       "匕",
       "歹"
-    ]
+    ],
+    "readings": "シ / し.ぬ・し.に-"
   },
   "残": {
     "keyword": "remainder",
@@ -3250,7 +3632,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "歹",
       "戈",
       "二"
-    ]
+    ],
+    "readings": "ザン・サン / のこ.る・のこ.す・そこな.う"
   },
   "段": {
     "keyword": "grade",
@@ -3260,12 +3643,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "殳",
       "ノ",
       "一"
-    ]
+    ],
+    "readings": "ダン・タン"
   },
   "母": {
     "keyword": "mother",
     "story": "The two breasts of a mother who breastfeeds.",
     "components": [],
+    "readings": "ボ / はは・も",
     "inCourse": true
   },
   "毎": {
@@ -3275,6 +3660,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "𠂉",
       "母"
     ],
+    "readings": "マイ / ごと・-ごと.に",
     "inCourse": true
   },
   "毒": {
@@ -3284,17 +3670,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "土",
       "亠",
       "二"
-    ]
+    ],
+    "readings": "ドク"
   },
   "比": {
     "keyword": "compare",
     "story": "With two spoons (匕), one in each hand, you compare your mother's cooking with your mother-in-law's.",
-    "components": []
+    "components": [],
+    "readings": "ヒ / くら.べる"
   },
   "氏": {
     "keyword": "family name",
     "story": "Looks a bit like Ft => Family title => Family name.",
-    "components": []
+    "components": [],
+    "readings": "シ / うじ・-うじ"
   },
   "気": {
     "keyword": "spirit",
@@ -3303,12 +3692,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "气",
       "メ"
     ],
+    "readings": "キ・ケ / いき・き",
     "inCourse": true
   },
   "水": {
     "keyword": "water",
     "story": "Dropping the walking stick (丨) into the water sent out droplets (丶) in 4 directions.",
     "components": [],
+    "readings": "スイ / みず・みず-",
     "inCourse": true
   },
   "氷": {
@@ -3317,7 +3708,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "水",
       "丶"
-    ]
+    ],
+    "readings": "ヒョウ / こおり・ひ・こお.る"
   },
   "汚": {
     "keyword": "dirty",
@@ -3326,7 +3718,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "三",
       "⺡",
       "勹"
-    ]
+    ],
+    "readings": "オ / けが.す・けが.れる・けが.らわしい"
   },
   "決": {
     "keyword": "decide",
@@ -3337,7 +3730,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "大",
       "二",
       "ユ"
-    ]
+    ],
+    "readings": "ケツ / き.める・-ぎ.め・き.まる"
   },
   "油": {
     "keyword": "oil",
@@ -3345,7 +3739,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "湿",
       "田"
-    ]
+    ],
+    "readings": "ユ・ユウ / あぶら"
   },
   "治": {
     "keyword": "reign",
@@ -3353,7 +3748,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "台",
       "⺡"
-    ]
+    ],
+    "readings": "ジ・チ / おさ.める・おさ.まる・なお.る"
   },
   "泣": {
     "keyword": "cry",
@@ -3361,7 +3757,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "立"
-    ]
+    ],
+    "readings": "キュウ / な.く"
   },
   "注": {
     "keyword": "pour",
@@ -3369,7 +3766,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "主",
       "⺡"
-    ]
+    ],
+    "readings": "チュウ / そそ.ぐ・さ.す・つ.ぐ"
   },
   "泳": {
     "keyword": "swim",
@@ -3377,7 +3775,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "氷"
-    ]
+    ],
+    "readings": "エイ / およ.ぐ"
   },
   "洗": {
     "keyword": "wash",
@@ -3385,7 +3784,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "先",
       "⺡"
-    ]
+    ],
+    "readings": "セン / あら.う"
   },
   "派": {
     "keyword": "faction",
@@ -3394,7 +3794,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "斤",
       "⺡",
       "厂"
-    ]
+    ],
+    "readings": "ハ"
   },
   "浴": {
     "keyword": "bathe",
@@ -3402,7 +3803,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "谷"
-    ]
+    ],
+    "readings": "ヨク / あ.びる・あ.びせる"
   },
   "海": {
     "keyword": "sea",
@@ -3411,6 +3813,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺡",
       "毎"
     ],
+    "readings": "カイ / うみ",
     "inCourse": true
   },
   "消": {
@@ -3419,7 +3822,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "肖",
       "⺡"
-    ]
+    ],
+    "readings": "ショウ / き.える・け.す"
   },
   "涼": {
     "keyword": "refreshing",
@@ -3427,7 +3831,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "京",
       "⺡"
-    ]
+    ],
+    "readings": "リョウ / すず.しい・すず.む・すず.やか"
   },
   "済": {
     "keyword": "finished",
@@ -3435,7 +3840,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "斉"
-    ]
+    ],
+    "readings": "サイ・セイ / す.む・-ず.み・-ずみ"
   },
   "減": {
     "keyword": "dwindle",
@@ -3445,7 +3851,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺡",
       "亅",
       "戈"
-    ]
+    ],
+    "readings": "ゲン / へ.る・へ.らす"
   },
   "渡": {
     "keyword": "transit",
@@ -3454,7 +3861,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺡",
       "又",
       "广"
-    ]
+    ],
+    "readings": "ト / わた.る・-わた.る・わた.す"
   },
   "港": {
     "keyword": "harbor",
@@ -3464,7 +3872,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ハ",
       "已",
       "井"
-    ]
+    ],
+    "readings": "コウ / みなと"
   },
   "湿": {
     "keyword": "damp",
@@ -3472,7 +3881,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "旧",
       "⺡"
-    ]
+    ],
+    "readings": "シツ・シュウ / しめ.る・しめ.す・うるお.う"
   },
   "準": {
     "keyword": "semi-",
@@ -3480,7 +3890,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "隹"
-    ]
+    ],
+    "readings": "ジュン / じゅん.じる・じゅん.ずる・なぞら.える"
   },
   "漢": {
     "keyword": "Sino-",
@@ -3488,7 +3899,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "嘆"
-    ]
+    ],
+    "readings": "カン"
   },
   "濯": {
     "keyword": "laundry",
@@ -3496,12 +3908,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ヨ",
       "準"
-    ]
+    ],
+    "readings": "タク / すす.ぐ・ゆす.ぐ"
   },
   "火": {
     "keyword": "fire",
     "story": "Pictograph of fire.",
     "components": [],
+    "readings": "カ / ひ・-び・ほ-",
     "inCourse": true
   },
   "点": {
@@ -3510,7 +3924,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "占",
       "⺣"
-    ]
+    ],
+    "readings": "テン / つ.ける・つ.く・た.てる"
   },
   "無": {
     "keyword": "nothingness",
@@ -3519,7 +3934,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "⺣",
       "𠂉"
-    ]
+    ],
+    "readings": "ム・ブ / な.い"
   },
   "然": {
     "keyword": "sort of thing",
@@ -3528,7 +3944,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "犬",
       "夕",
       "⺣"
-    ]
+    ],
+    "readings": "ゼン・ネン / しか・しか.り・しか.し"
   },
   "熱": {
     "keyword": "fever",
@@ -3538,33 +3955,39 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "丸",
       "儿",
       "⺣"
-    ]
+    ],
+    "readings": "ネツ / あつ.い"
   },
   "爪": {
     "keyword": "claw",
     "story": "This character is a pictograph of a bird's claw, and from there comes to mean animal claws in general (including human fingernails). Use the \"w\" in claw to remember the shape of this kanji.",
-    "components": []
+    "components": [],
+    "readings": "ソウ / つめ・つま-"
   },
   "父": {
     "keyword": "father",
     "story": "It is a pictograph of your father tying his tie!",
     "components": [],
+    "readings": "フ / ちち",
     "inCourse": true
   },
   "片": {
     "keyword": "one-sided",
     "story": "A one-sided romance–he proposes and she says no.\n片翼の天使(かた.よく.の.てん.し)[One-Winged Angel]",
-    "components": []
+    "components": [],
+    "readings": "ヘン / かた-・かた"
   },
   "牙": {
     "keyword": "tusk",
     "story": "I get my tusks at Tusks-牙-Us. This is a pictograph of an elephant. The box shape on the left is its ear, the long vertical stroke is his trunk and the last, diagonal stroke (ノ) is his tusk.",
-    "components": []
+    "components": [],
+    "readings": "ガ・ゲ / きば・は"
   },
   "牛": {
     "keyword": "cow",
     "story": "A cow bleeds vermilion (朱) when you cut off two of it's legs.",
-    "components": []
+    "components": [],
+    "readings": "ギュウ / うし"
   },
   "物": {
     "keyword": "thing",
@@ -3572,7 +3995,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "勿",
       "牛"
-    ]
+    ],
+    "readings": "ブツ・モツ / もの・もの-"
   },
   "特": {
     "keyword": "special",
@@ -3580,7 +4004,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "牛",
       "寺"
-    ]
+    ],
+    "readings": "トク"
   },
   "犬": {
     "keyword": "dog",
@@ -3588,7 +4013,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "大",
       "丶"
-    ]
+    ],
+    "readings": "ケン / いぬ・いぬ-"
   },
   "狭": {
     "keyword": "cramped",
@@ -3599,7 +4025,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "丷",
       "⺨",
       "亠"
-    ]
+    ],
+    "readings": "キョウ・コウ / せま.い・せば.める・せば.まる"
   },
   "猫": {
     "keyword": "cat",
@@ -3607,7 +4034,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "苗",
       "⺨"
-    ]
+    ],
+    "readings": "ビョウ / ねこ"
   },
   "玉": {
     "keyword": "ball",
@@ -3615,12 +4043,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "王",
       "丶"
-    ]
+    ],
+    "readings": "ギョク / たま・たま-・-だま"
   },
   "王": {
     "keyword": "king",
     "story": "A king is one (一) who rules over the soil (土) of the land.",
-    "components": []
+    "components": [],
+    "readings": "オウ・-ノウ"
   },
   "珍": {
     "keyword": "rare",
@@ -3629,7 +4059,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "王",
       "𠆢",
       "彡"
-    ]
+    ],
+    "readings": "チン / めずら.しい・たから"
   },
   "理": {
     "keyword": "logic",
@@ -3637,7 +4068,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "王",
       "里"
-    ]
+    ],
+    "readings": "リ / ことわり"
   },
   "環": {
     "keyword": "ring (shape)",
@@ -3646,12 +4078,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "衰",
       "呈",
       "⺲"
-    ]
+    ],
+    "readings": "カン / わ"
   },
   "生": {
     "keyword": "life",
     "story": "A single drop (丶) added to the element for grow up (龶) gives us the character for life.",
     "components": [],
+    "readings": "セイ・ショウ / い.きる・い.かす・い.ける",
     "inCourse": true
   },
   "産": {
@@ -3663,17 +4097,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "立",
       "亠",
       "厂"
-    ]
+    ],
+    "readings": "サン / う.む・う.まれる・うぶ-"
   },
   "用": {
     "keyword": "utilize",
     "story": "To tenderize meat (月) in an emergency wilderness situation, just utilize your walking stick (丨)!",
-    "components": []
+    "components": [],
+    "readings": "ヨウ / もち.いる"
   },
   "田": {
     "keyword": "rice field",
     "story": "Ten (十) rice fields can feed many mouths (口).",
     "components": [],
+    "readings": "デン / た",
     "inCourse": true
   },
   "由": {
@@ -3682,7 +4119,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "旧",
       "田"
-    ]
+    ],
+    "readings": "ユ・ユウ・ユイ / よし・よ.る"
   },
   "男": {
     "keyword": "man",
@@ -3691,6 +4129,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "田",
       "力"
     ],
+    "readings": "ダン・ナン / おとこ・お",
     "inCourse": true
   },
   "町": {
@@ -3700,7 +4139,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "田",
       "亅"
-    ]
+    ],
+    "readings": "チョウ / まち"
   },
   "画": {
     "keyword": "brush stroke",
@@ -3709,7 +4149,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "田",
       "凵"
-    ]
+    ],
+    "readings": "ガ・カク・エ / えが.く・かく.する・かぎ.る"
   },
   "界": {
     "keyword": "world",
@@ -3718,7 +4159,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "田",
       "𠆢",
       "儿"
-    ]
+    ],
+    "readings": "カイ"
   },
   "番": {
     "keyword": "numerical order",
@@ -3726,7 +4168,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "田",
       "釆"
-    ]
+    ],
+    "readings": "バン / つが.い"
   },
   "疲": {
     "keyword": "tired",
@@ -3734,7 +4177,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "皮",
       "疒"
-    ]
+    ],
+    "readings": "ヒ / つか.れる・-づか.れ・つか.らす"
   },
   "病": {
     "keyword": "ill",
@@ -3742,7 +4186,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "内",
       "疒"
-    ]
+    ],
+    "readings": "ビョウ・ヘイ / や.む・-や.み・やまい"
   },
   "痛": {
     "keyword": "pain",
@@ -3751,7 +4196,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "用",
       "疒",
       "マ"
-    ]
+    ],
+    "readings": "ツウ / いた.い・いた.む・いた.ましい"
   },
   "発": {
     "keyword": "discharge",
@@ -3759,7 +4205,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "元",
       "癶"
-    ]
+    ],
+    "readings": "ハツ・ホツ / た.つ・あば.く・おこ.る"
   },
   "登": {
     "keyword": "ascend",
@@ -3767,12 +4214,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "豆",
       "癶"
-    ]
+    ],
+    "readings": "トウ・ト・ドウ / のぼ.る・あ.がる"
   },
   "白": {
     "keyword": "white",
     "story": "A white ray is a drop (丶) of sun (日).",
-    "components": []
+    "components": [],
+    "readings": "ハク・ビャク / しろ・しら-・しろ.い"
   },
   "百": {
     "keyword": "hundred",
@@ -3781,6 +4230,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "白"
     ],
+    "readings": "ヒャク・ビャク / もも",
     "inCourse": true
   },
   "皆": {
@@ -3789,24 +4239,28 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "白",
       "比"
-    ]
+    ],
+    "readings": "カイ / みな・みんな"
   },
   "皮": {
     "keyword": "pelt",
     "story": "The simplest way to remember this character is to see it as built up from that for support (支). The first stroke can then stand for something \"hanging\" down from the support (支), namely its pelt. The barb at the end of the second stroke is the only other change.",
     "components": [
       "又"
-    ]
+    ],
+    "readings": "ヒ / かわ"
   },
   "皿": {
     "keyword": "dish",
     "story": "The kanji for a dish is, clearly, the pictograph of a painted or carved bowl, seen from the side. Also it could be three dishes stacked side-by-side in a dishwasher.",
-    "components": []
+    "components": [],
+    "readings": "ベイ / さら"
   },
   "目": {
     "keyword": "eye",
     "story": "目 _ 目",
-    "components": []
+    "components": [],
+    "readings": "モク・ボク / め・-め・ま-"
   },
   "直": {
     "keyword": "straightaway",
@@ -3816,7 +4270,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "目",
       "｜",
       "一"
-    ]
+    ],
+    "readings": "チョク・ジキ・ジカ / ただ.ちに・なお.す・-なお.す"
   },
   "真": {
     "keyword": "true",
@@ -3824,7 +4279,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "具",
       "十"
-    ]
+    ],
+    "readings": "シン / ま・ま-・まこと"
   },
   "眼": {
     "keyword": "eyeball",
@@ -3832,7 +4288,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "艮",
       "目"
-    ]
+    ],
+    "readings": "ガン・ゲン / まなこ・め"
   },
   "着": {
     "keyword": "don",
@@ -3840,14 +4297,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "目",
       "羊"
-    ]
+    ],
+    "readings": "チャク・ジャク / き.る・き.せる・つ.く"
   },
   "矛": {
     "keyword": "halberd",
     "story": "Mao (マオ) gets his head chopped off by a halberd.",
     "components": [
       "マ"
-    ]
+    ],
+    "readings": "ム・ボウ / ほこ"
   },
   "矢": {
     "keyword": "arrow",
@@ -3855,7 +4314,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "大",
       "𠂉"
-    ]
+    ],
+    "readings": "シ / や"
   },
   "知": {
     "keyword": "know",
@@ -3864,6 +4324,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "矢"
     ],
+    "readings": "チ / し.る・し.らせる",
     "inCourse": true
   },
   "短": {
@@ -3872,14 +4333,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "豆",
       "矢"
-    ]
+    ],
+    "readings": "タン / みじか.い"
   },
   "石": {
     "keyword": "stone",
     "story": "Indiana Jones jumps up and grabs the lip of cliff (厂) just in time to evade the huge stone rolling out of the mouth (口) of the cave!\n一石二鳥 (いっ.せき.に.ちょう)[killing two birds with one stone]",
     "components": [
       "口"
-    ]
+    ],
+    "readings": "セキ・シャク・コク / いし"
   },
   "砂": {
     "keyword": "sand",
@@ -3887,7 +4350,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "少",
       "石"
-    ]
+    ],
+    "readings": "サ・シャ / すな"
   },
   "確": {
     "keyword": "assurance",
@@ -3896,7 +4360,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "石",
       "宀",
       "隹"
-    ]
+    ],
+    "readings": "カク・コウ / たし.か・たし.かめる"
   },
   "磨": {
     "keyword": "grind",
@@ -3904,7 +4369,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "石",
       "麻"
-    ]
+    ],
+    "readings": "マ / みが.く・す.る"
   },
   "示": {
     "keyword": "show",
@@ -3912,7 +4378,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "二",
       "小"
-    ]
+    ],
+    "readings": "ジ・シ / しめ.す"
   },
   "礼": {
     "keyword": "salutation",
@@ -3920,7 +4387,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺭",
       "乚"
-    ]
+    ],
+    "readings": "レイ・ライ"
   },
   "社": {
     "keyword": "company",
@@ -3929,6 +4397,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "土",
       "⺭"
     ],
+    "readings": "シャ / やしろ",
     "inCourse": true
   },
   "祝": {
@@ -3937,7 +4406,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "兄",
       "⺭"
-    ]
+    ],
+    "readings": "シュク・シュウ / いわ.う"
   },
   "私": {
     "keyword": "private",
@@ -3946,6 +4416,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "禾",
       "厶"
     ],
+    "readings": "シ / わたくし・わたし",
     "inCourse": true
   },
   "秋": {
@@ -3954,7 +4425,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "火",
       "禾"
-    ]
+    ],
+    "readings": "シュウ / あき・とき"
   },
   "科": {
     "keyword": "department",
@@ -3962,7 +4434,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "禾",
       "斗"
-    ]
+    ],
+    "readings": "カ"
   },
   "穴": {
     "keyword": "hole",
@@ -3971,7 +4444,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "ハ",
       "宀",
       "儿"
-    ]
+    ],
+    "readings": "ケツ / あな"
   },
   "空": {
     "keyword": "empty",
@@ -3980,6 +4454,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "穴",
       "工"
     ],
+    "readings": "クウ / そら・あ.く・あ.き",
     "inCourse": true
   },
   "窓": {
@@ -3989,12 +4464,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "穴",
       "心",
       "厶"
-    ]
+    ],
+    "readings": "ソウ・ス / まど・てんまど・けむだし"
   },
   "立": {
     "keyword": "stand up",
     "story": "A vase that can't stand up won't be a vase for long.",
     "components": [],
+    "readings": "リツ・リュウ・リットル / た.つ・-た.つ・た.ち-",
     "inCourse": true
   },
   "端": {
@@ -4004,14 +4481,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "山",
       "而",
       "立"
-    ]
+    ],
+    "readings": "タン / はし・は・はた"
   },
   "竹": {
     "keyword": "bamboo",
     "story": "Bamboo grows upwards, like a straight nail (丁), and at each stage of its growth (which legend associates with the arrival of the new moon) there is a jointed rootstock (the first stroke). Two such bamboo stalks are pictured here.",
     "components": [
       "𠂉"
-    ]
+    ],
+    "readings": "チク / たけ"
   },
   "笑": {
     "keyword": "laugh",
@@ -4020,7 +4499,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "禾",
       "竹",
       "大"
-    ]
+    ],
+    "readings": "ショウ / わら.う・え.む"
   },
   "筆": {
     "keyword": "writing brush",
@@ -4028,7 +4508,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "竹",
       "聿"
-    ]
+    ],
+    "readings": "ヒツ / ふで"
   },
   "筒": {
     "keyword": "cylinder",
@@ -4036,7 +4517,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "向",
       "竹"
-    ]
+    ],
+    "readings": "トウ / つつ"
   },
   "答": {
     "keyword": "solution",
@@ -4045,7 +4527,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "竹",
       "𠆢"
-    ]
+    ],
+    "readings": "トウ / こた.える・こた.え"
   },
   "節": {
     "keyword": "node",
@@ -4053,7 +4536,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "即",
       "竹"
-    ]
+    ],
+    "readings": "セツ・セチ / ふし・-ぶし・のっと"
   },
   "簡": {
     "keyword": "simplicity",
@@ -4061,12 +4545,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "竹",
       "間"
-    ]
+    ],
+    "readings": "カン・ケン / えら.ぶ・ふだ"
   },
   "米": {
     "keyword": "rice",
     "story": "This kanji has a pictographic resemblance to a number of grains of rice lying on a plate in the shape of a star.",
-    "components": []
+    "components": [],
+    "readings": "ベイ・マイ・メエトル / こめ・よね"
   },
   "糖": {
     "keyword": "sugar",
@@ -4075,7 +4561,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "米",
       "广"
-    ]
+    ],
+    "readings": "トウ"
   },
   "糸": {
     "keyword": "thread",
@@ -4083,7 +4570,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "幺",
       "小"
-    ]
+    ],
+    "readings": "シ / いと"
   },
   "約": {
     "keyword": "promise",
@@ -4091,7 +4579,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "勺"
-    ]
+    ],
+    "readings": "ヤク / つづ.まる・つづ.める・つづま.やか"
   },
   "紙": {
     "keyword": "paper",
@@ -4099,7 +4588,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "氏",
       "糸"
-    ]
+    ],
+    "readings": "シ / かみ"
   },
   "素": {
     "keyword": "elementary",
@@ -4107,7 +4597,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "毒"
-    ]
+    ],
+    "readings": "ソ・ス / もと"
   },
   "細": {
     "keyword": "dainty",
@@ -4115,7 +4606,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "田"
-    ]
+    ],
+    "readings": "サイ / ほそ.い・ほそ.る・こま.か"
   },
   "紳": {
     "keyword": "sire",
@@ -4123,7 +4615,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "由",
       "糸"
-    ]
+    ],
+    "readings": "シン"
   },
   "紹": {
     "keyword": "introduce",
@@ -4131,7 +4624,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "召",
       "糸"
-    ]
+    ],
+    "readings": "ショウ"
   },
   "終": {
     "keyword": "end",
@@ -4139,7 +4633,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "夂"
-    ]
+    ],
+    "readings": "シュウ / お.わる・-お.わる・おわ.る"
   },
   "経": {
     "keyword": "sutra",
@@ -4148,7 +4643,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "糸",
       "土",
       "又"
-    ]
+    ],
+    "readings": "ケイ・キョウ・キン / へ.る・た.つ・たていと"
   },
   "結": {
     "keyword": "tie",
@@ -4156,7 +4652,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "吉",
       "糸"
-    ]
+    ],
+    "readings": "ケツ・ケチ / むす.ぶ・ゆ.う・ゆ.わえる"
   },
   "絡": {
     "keyword": "entwine",
@@ -4164,7 +4661,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "各",
       "糸"
-    ]
+    ],
+    "readings": "ラク / から.む・から.まる"
   },
   "給": {
     "keyword": "salary",
@@ -4172,7 +4670,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "合",
       "糸"
-    ]
+    ],
+    "readings": "キュウ / たま.う・たも.う・-たま.え"
   },
   "絵": {
     "keyword": "painting",
@@ -4180,7 +4679,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "会"
-    ]
+    ],
+    "readings": "カイ・エ"
   },
   "続": {
     "keyword": "continue",
@@ -4188,7 +4688,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "売",
       "糸"
-    ]
+    ],
+    "readings": "ゾク・ショク・コウ / つづ.く・つづ.ける・つぐ.ない"
   },
   "緒": {
     "keyword": "thong",
@@ -4196,7 +4697,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "暑"
-    ]
+    ],
+    "readings": "ショ・チョ / お・いとぐち"
   },
   "締": {
     "keyword": "tighten",
@@ -4204,7 +4706,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "帝",
       "糸"
-    ]
+    ],
+    "readings": "テイ / し.まる・し.まり・し.める"
   },
   "練": {
     "keyword": "practice",
@@ -4213,7 +4716,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "紳",
       "ハ",
       "木"
-    ]
+    ],
+    "readings": "レン / ね.る・ね.り"
   },
   "縦": {
     "keyword": "vertical",
@@ -4221,7 +4725,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "糸",
       "従"
-    ]
+    ],
+    "readings": "ジュウ / たて"
   },
   "置": {
     "keyword": "placement",
@@ -4231,7 +4736,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺲",
       "一",
       "｜"
-    ]
+    ],
+    "readings": "チ / お.く・-お.き"
   },
   "羊": {
     "keyword": "sheep",
@@ -4239,7 +4745,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "王",
       "丷"
-    ]
+    ],
+    "readings": "ヨウ / ひつじ"
   },
   "義": {
     "keyword": "righteousness",
@@ -4247,14 +4754,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "羊",
       "我"
-    ]
+    ],
+    "readings": "ギ"
   },
   "羽": {
     "keyword": "feathers",
     "story": "From the pictograph of two bird-wings, we get feathers.",
     "components": [
       "冫"
-    ]
+    ],
+    "readings": "ウ / は・わ・はね"
   },
   "習": {
     "keyword": "learn",
@@ -4262,7 +4771,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "羽",
       "白"
-    ]
+    ],
+    "readings": "シュウ・ジュ / なら.う・なら.い"
   },
   "考": {
     "keyword": "consider",
@@ -4270,7 +4780,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺹",
       "勹"
-    ]
+    ],
+    "readings": "コウ / かんが.える・かんが.え"
   },
   "者": {
     "keyword": "someone",
@@ -4278,12 +4789,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "⺹"
-    ]
+    ],
+    "readings": "シャ / もの"
   },
   "耳": {
     "keyword": "ear",
     "story": "The pictograph for the ear looks much like that for eye, but note how the stroke order gives it a different look.",
-    "components": []
+    "components": [],
+    "readings": "ジ / みみ"
   },
   "聞": {
     "keyword": "hear",
@@ -4292,6 +4805,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "耳",
       "門"
     ],
+    "readings": "ブン・モン / き.く・き.こえる",
     "inCourse": true
   },
   "肉": {
@@ -4300,7 +4814,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "冂",
       "人"
-    ]
+    ],
+    "readings": "ニク / しし"
   },
   "肖": {
     "keyword": "resemblance",
@@ -4308,7 +4823,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "月",
       "⺌"
-    ]
+    ],
+    "readings": "ショウ / あやか.る"
   },
   "育": {
     "keyword": "bring up",
@@ -4317,21 +4833,24 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "月",
       "亠",
       "厶"
-    ]
+    ],
+    "readings": "イク / そだ.つ・そだ.ち・そだ.てる"
   },
   "臣": {
     "keyword": "retainer",
     "story": "Fire 臣mblem Fates has a lot of retainers as characters.",
     "components": [
       "匚"
-    ]
+    ],
+    "readings": "シン・ジン"
   },
   "自": {
     "keyword": "oneself",
     "story": "To use an eyedropper by oneself, aim from above to put a drop (丶) into the eye (目).",
     "components": [
       "目"
-    ]
+    ],
+    "readings": "ジ・シ / みずか.ら・おの.ずから・おの.ずと"
   },
   "至": {
     "keyword": "reach",
@@ -4340,12 +4859,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "土",
       "厶"
-    ]
+    ],
+    "readings": "シ / いた.る"
   },
   "臼": {
     "keyword": "mortar",
     "story": "The mortar referred to in this key word is a stone or wooden basin used for grinding with a pestle. I went pictograph with this one: a cracked white rice grain–one that has been bashed in a mortar.",
-    "components": []
+    "components": [],
+    "readings": "キュウ・グ / うす・うすづ.く"
   },
   "興": {
     "keyword": "entertain",
@@ -4354,14 +4875,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "臼",
       "同",
       "ハ"
-    ]
+    ],
+    "readings": "コウ・キョウ / おこ.る・おこ.す"
   },
   "舌": {
     "keyword": "tongue",
     "story": "A thousand (千) mouths (口) speak the same tongue.",
     "components": [
       "口"
-    ]
+    ],
+    "readings": "ゼツ / した"
   },
   "舎": {
     "keyword": "cottage",
@@ -4369,14 +4892,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "吐",
       "𠆢"
-    ]
+    ],
+    "readings": "シャ・セキ / やど.る"
   },
   "良": {
     "keyword": "good",
     "story": "Have you ever heard the expression \"Good as gold\"? In here there's a drop (丶) of difference: it's \"good as silver (艮).\"",
     "components": [
       "艮"
-    ]
+    ],
+    "readings": "リョウ / よ.い・-よ.い・い.い"
   },
   "色": {
     "keyword": "color",
@@ -4384,7 +4909,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "巴",
       "勹"
-    ]
+    ],
+    "readings": "ショク・シキ / いろ"
   },
   "芝": {
     "keyword": "turf",
@@ -4392,7 +4918,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "亠",
       "⺾"
-    ]
+    ],
+    "readings": "シ / しば"
   },
   "花": {
     "keyword": "flower",
@@ -4400,7 +4927,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "⺾"
-    ]
+    ],
+    "readings": "カ・ケ / はな"
   },
   "苗": {
     "keyword": "seedling",
@@ -4408,7 +4936,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "田",
       "⺾"
-    ]
+    ],
+    "readings": "ビョウ・ミョウ / なえ・なわ-"
   },
   "苦": {
     "keyword": "suffering",
@@ -4416,7 +4945,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "古",
       "⺾"
-    ]
+    ],
+    "readings": "ク / くる.しい・-ぐる.しい・くる.しむ"
   },
   "英": {
     "keyword": "England",
@@ -4425,7 +4955,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺾",
       "大",
       "冖"
-    ]
+    ],
+    "readings": "エイ / はなぶさ"
   },
   "茂": {
     "keyword": "overgrown",
@@ -4433,7 +4964,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "戈",
       "⺾"
-    ]
+    ],
+    "readings": "モ / しげ.る"
   },
   "茶": {
     "keyword": "tea",
@@ -4442,7 +4974,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "𠆢",
       "⺾",
       "木"
-    ]
+    ],
+    "readings": "チャ・サ"
   },
   "荷": {
     "keyword": "baggage",
@@ -4450,7 +4983,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "伺",
       "⺾"
-    ]
+    ],
+    "readings": "カ / に"
   },
   "菜": {
     "keyword": "vegetable",
@@ -4458,7 +4992,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "采",
       "⺾"
-    ]
+    ],
+    "readings": "サイ / な"
   },
   "落": {
     "keyword": "fall",
@@ -4467,7 +5002,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "各",
       "⺡",
       "⺾"
-    ]
+    ],
+    "readings": "ラク / お.ちる・お.ち・お.とす"
   },
   "葉": {
     "keyword": "leaf",
@@ -4476,7 +5012,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "木",
       "世",
       "⺾"
-    ]
+    ],
+    "readings": "ヨウ / は"
   },
   "蔵": {
     "keyword": "storehouse",
@@ -4485,7 +5022,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "臣",
       "茂",
       "厂"
-    ]
+    ],
+    "readings": "ゾウ・ソウ / くら・おさ.める・かく.れる"
   },
   "薬": {
     "keyword": "medicine",
@@ -4493,12 +5031,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺾",
       "楽"
-    ]
+    ],
+    "readings": "ヤク / くすり"
   },
   "虫": {
     "keyword": "insect",
     "story": "Insect in one drop of amber. Think Jurassic Park.",
-    "components": []
+    "components": [],
+    "readings": "チュウ・キ / むし"
   },
   "行": {
     "keyword": "going",
@@ -4507,6 +5047,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "彳",
       "丁"
     ],
+    "readings": "コウ・ギョウ・アン / い.く・ゆ.く・-ゆ.き",
     "inCourse": true
   },
   "衣": {
@@ -4514,7 +5055,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "At the top we see the top hat (亠), and at the bottom a pictographic representation of the folds of a garment.",
     "components": [
       "亠"
-    ]
+    ],
+    "readings": "イ・エ / ころも・きぬ・-ぎ"
   },
   "表": {
     "keyword": "surface",
@@ -4523,7 +5065,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "園",
       "士",
       "二"
-    ]
+    ],
+    "readings": "ヒョウ / おもて・-おもて・あらわ.す"
   },
   "衰": {
     "keyword": "decline",
@@ -4531,7 +5074,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "衣",
       "一"
-    ]
+    ],
+    "readings": "スイ / おとろ.える"
   },
   "裏": {
     "keyword": "back",
@@ -4539,7 +5083,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "衣",
       "里"
-    ]
+    ],
+    "readings": "リ / うら"
   },
   "複": {
     "keyword": "duplicate",
@@ -4548,12 +5093,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⻂",
       "日",
       "夂"
-    ]
+    ],
+    "readings": "フク"
   },
   "西": {
     "keyword": "west",
     "story": "To our way of counting directions, the west always comes fourth. So it is convenient to find the character for four (四) in this kanji. But since we want only one (一) of the four (四) directions, the west adds the one (一) at the top and sucks the human legs (兀) a bit out of their mouth (口) in the process. This is NOT sign of the bird (酉).",
-    "components": []
+    "components": [],
+    "readings": "セイ・サイ・ス / にし"
   },
   "要": {
     "keyword": "need",
@@ -4561,7 +5108,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "女",
       "西"
-    ]
+    ],
+    "readings": "ヨウ / い.る・かなめ"
   },
   "見": {
     "keyword": "see",
@@ -4570,6 +5118,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "目",
       "儿"
     ],
+    "readings": "ケン / み.る・み.える・み.せる",
     "inCourse": true
   },
   "規": {
@@ -4581,7 +5130,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "人",
       "二",
       "大"
-    ]
+    ],
+    "readings": "キ"
   },
   "覚": {
     "keyword": "memorize",
@@ -4590,7 +5140,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "見",
       "⺌",
       "冖"
-    ]
+    ],
+    "readings": "カク / おぼ.える・さ.ます・さ.める"
   },
   "親": {
     "keyword": "parent",
@@ -4600,7 +5151,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "幸",
       "丷",
       "木"
-    ]
+    ],
+    "readings": "シン / おや・おや-・した.しい"
   },
   "角": {
     "keyword": "angle",
@@ -4609,7 +5161,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "勹",
       "月",
       "｜"
-    ]
+    ],
+    "readings": "カク / かど・つの"
   },
   "触": {
     "keyword": "touch",
@@ -4617,12 +5170,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "角",
       "虫"
-    ]
+    ],
+    "readings": "ショク / ふ.れる・さわ.る・さわ"
   },
   "言": {
     "keyword": "say",
     "story": "Soundwaves coming from the mouth as you say things.",
     "components": [],
+    "readings": "ゲン・ゴン / い.う・こと",
     "inCourse": true
   },
   "計": {
@@ -4631,7 +5186,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "十"
-    ]
+    ],
+    "readings": "ケイ / はか.る・はか.らう"
   },
   "試": {
     "keyword": "test",
@@ -4639,7 +5195,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "式"
-    ]
+    ],
+    "readings": "シ / こころ.みる・ため.す"
   },
   "話": {
     "keyword": "tale",
@@ -4648,6 +5205,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "言",
       "舌"
     ],
+    "readings": "ワ / はな.す・はなし",
     "inCourse": true
   },
   "誌": {
@@ -4656,7 +5214,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "志"
-    ]
+    ],
+    "readings": "シ"
   },
   "認": {
     "keyword": "acknowledge",
@@ -4664,7 +5223,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "忍"
-    ]
+    ],
+    "readings": "ニン / みと.める・したた.める"
   },
   "誕": {
     "keyword": "nativity",
@@ -4674,7 +5234,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "言",
       "止",
       "廴"
-    ]
+    ],
+    "readings": "タン"
   },
   "語": {
     "keyword": "word",
@@ -4683,6 +5244,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "言",
       "吾"
     ],
+    "readings": "ゴ / かた.る・かた.らう",
     "inCourse": true
   },
   "説": {
@@ -4692,7 +5254,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "言",
       "兄",
       "丷"
-    ]
+    ],
+    "readings": "セツ・ゼイ / と.く"
   },
   "読": {
     "keyword": "read",
@@ -4701,6 +5264,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "言",
       "売"
     ],
+    "readings": "ドク・トク・トウ / よ.む・-よ.み",
     "inCourse": true
   },
   "誰": {
@@ -4709,7 +5273,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "隹"
-    ]
+    ],
+    "readings": "スイ / だれ・たれ・た"
   },
   "調": {
     "keyword": "tune",
@@ -4717,7 +5282,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "周"
-    ]
+    ],
+    "readings": "チョウ / しら.べる・しら.べ・ととの.う"
   },
   "警": {
     "keyword": "admonish",
@@ -4727,7 +5293,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "句",
       "夂",
       "⺾"
-    ]
+    ],
+    "readings": "ケイ / いまし.める"
   },
   "議": {
     "keyword": "deliberation",
@@ -4735,7 +5302,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "言",
       "義"
-    ]
+    ],
+    "readings": "ギ"
   },
   "谷": {
     "keyword": "valley",
@@ -4743,7 +5311,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "介"
-    ]
+    ],
+    "readings": "コク / たに・きわ.まる"
   },
   "豆": {
     "keyword": "beans",
@@ -4751,7 +5320,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "丷"
-    ]
+    ],
+    "readings": "トウ・ズ / まめ・まめ-"
   },
   "貝": {
     "keyword": "shellfish",
@@ -4759,7 +5329,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "目",
       "ハ"
-    ]
+    ],
+    "readings": "バイ / かい"
   },
   "財": {
     "keyword": "fortune",
@@ -4769,7 +5340,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "貝",
       "亅"
-    ]
+    ],
+    "readings": "ザイ・サイ・ゾク / たから"
   },
   "買": {
     "keyword": "buy",
@@ -4778,6 +5350,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⺲",
       "貝"
     ],
+    "readings": "バイ / か.う",
     "inCourse": true
   },
   "貸": {
@@ -4786,7 +5359,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "代",
       "貝"
-    ]
+    ],
+    "readings": "タイ / か.す・か.し-・かし-"
   },
   "賑": {
     "keyword": "bustling",
@@ -4794,7 +5368,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "貝",
       "辰"
-    ]
+    ],
+    "readings": "シン / にぎ.わい・にぎ.やか・にぎ.わす"
   },
   "質": {
     "keyword": "quality",
@@ -4802,21 +5377,24 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "貝",
       "斤"
-    ]
+    ],
+    "readings": "シツ・シチ・チ / たち・ただ.す・もと"
   },
   "赤": {
     "keyword": "red",
     "story": "Think of two drops (丶) of red blood falling on the soil (土) from a bloody sword (刅).",
     "components": [
       "土"
-    ]
+    ],
+    "readings": "セキ・シャク / あか・あか-・あか.い"
   },
   "走": {
     "keyword": "run",
     "story": "When your foot (疋) touches the soil (土) at high speed, you're on a run.",
     "components": [
       "土"
-    ]
+    ],
+    "readings": "ソウ / はし.る"
   },
   "起": {
     "keyword": "rouse",
@@ -4824,7 +5402,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "走",
       "已"
-    ]
+    ],
+    "readings": "キ / お.きる・お.こる・お.こす"
   },
   "趣": {
     "keyword": "gist",
@@ -4832,7 +5411,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "取",
       "走"
-    ]
+    ],
+    "readings": "シュ / おもむき・おもむ.く"
   },
   "足": {
     "keyword": "foot",
@@ -4840,7 +5420,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "口",
       "止"
-    ]
+    ],
+    "readings": "ソク / あし・た.りる・た.る"
   },
   "踊": {
     "keyword": "dance",
@@ -4849,12 +5430,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "足",
       "用",
       "マ"
-    ]
+    ],
+    "readings": "ヨウ / おど.る"
   },
   "車": {
     "keyword": "car",
     "story": "My car is so fast it can go through ten (十) rice fields (田) in ten (十) minutes.",
-    "components": []
+    "components": [],
+    "readings": "シャ / くるま"
   },
   "軍": {
     "keyword": "army",
@@ -4862,7 +5445,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "車",
       "冖"
-    ]
+    ],
+    "readings": "グン / いくさ"
   },
   "転": {
     "keyword": "revolve",
@@ -4871,7 +5455,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "車",
       "二",
       "厶"
-    ]
+    ],
+    "readings": "テン / ころ.がる・ころ.げる・ころ.がす"
   },
   "軽": {
     "keyword": "lightly",
@@ -4880,7 +5465,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "車",
       "土",
       "又"
-    ]
+    ],
+    "readings": "ケイ・キョウ・キン / かる.い・かろ.やか・かろ.んじる"
   },
   "辛": {
     "keyword": "spicy",
@@ -4888,7 +5474,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "十",
       "立"
-    ]
+    ],
+    "readings": "シン / から.い・つら.い・-づら.い"
   },
   "辞": {
     "keyword": "resign",
@@ -4896,7 +5483,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "辛",
       "舌"
-    ]
+    ],
+    "readings": "ジ / や.める・いな.む"
   },
   "辰": {
     "keyword": "sign of the dragon",
@@ -4904,7 +5492,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "衣",
       "厂"
-    ]
+    ],
+    "readings": "シン・ジン / たつ"
   },
   "近": {
     "keyword": "near",
@@ -4912,7 +5501,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "斤",
       "⻌"
-    ]
+    ],
+    "readings": "キン・コン / ちか.い"
   },
   "返": {
     "keyword": "return",
@@ -4920,7 +5510,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⻌",
       "反"
-    ]
+    ],
+    "readings": "ヘン / かえ.す・-かえ.す・かえ.る"
   },
   "送": {
     "keyword": "send off",
@@ -4929,7 +5520,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⻌",
       "丷",
       "大"
-    ]
+    ],
+    "readings": "ソウ / おく.る"
   },
   "通": {
     "keyword": "traffic",
@@ -4938,7 +5530,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⻌",
       "用",
       "マ"
-    ]
+    ],
+    "readings": "ツウ・ツ / とお.る・とお.り・-とお.り"
   },
   "連": {
     "keyword": "take along",
@@ -4946,7 +5539,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⻌",
       "車"
-    ]
+    ],
+    "readings": "レン / つら.なる・つら.ねる・つ.れる"
   },
   "週": {
     "keyword": "week",
@@ -4955,6 +5549,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "周",
       "⻌"
     ],
+    "readings": "シュウ",
     "inCourse": true
   },
   "遅": {
@@ -4964,7 +5559,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⻌",
       "羊",
       "尸"
-    ]
+    ],
+    "readings": "チ / おく.れる・おく.らす・おそ.い"
   },
   "遊": {
     "keyword": "play",
@@ -4973,7 +5569,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⻌",
       "子",
       "旅"
-    ]
+    ],
+    "readings": "ユウ・ユ / あそ.ぶ・あそ.ばす"
   },
   "運": {
     "keyword": "carry",
@@ -4981,7 +5578,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⻌",
       "軍"
-    ]
+    ],
+    "readings": "ウン / はこ.ぶ"
   },
   "道": {
     "keyword": "road-way",
@@ -4989,7 +5587,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⻌",
       "首"
-    ]
+    ],
+    "readings": "ドウ・トウ / みち・いう"
   },
   "達": {
     "keyword": "accomplished",
@@ -4998,7 +5597,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "⻌",
       "土",
       "羊"
-    ]
+    ],
+    "readings": "タツ・ダ / -たち"
   },
   "違": {
     "keyword": "difference",
@@ -5006,7 +5606,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⻌",
       "韋"
-    ]
+    ],
+    "readings": "イ / ちが.う・ちが.い・ちが.える"
   },
   "遠": {
     "keyword": "distant",
@@ -5015,7 +5616,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "衣",
       "吐",
       "⻌"
-    ]
+    ],
+    "readings": "エン・オン / とお.い"
   },
   "適": {
     "keyword": "suitable",
@@ -5023,7 +5625,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⻌",
       "啇"
-    ]
+    ],
+    "readings": "テキ / かな.う"
   },
   "選": {
     "keyword": "elect",
@@ -5034,7 +5637,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "二",
       "ハ",
       "已"
-    ]
+    ],
+    "readings": "セン / えら.ぶ・え.る・よ.る"
   },
   "邪": {
     "keyword": "wicked",
@@ -5042,7 +5646,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "牙",
       "⻏"
-    ]
+    ],
+    "readings": "ジャ / よこし.ま"
   },
   "部": {
     "keyword": "section",
@@ -5051,7 +5656,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "口",
       "⻏",
       "立"
-    ]
+    ],
+    "readings": "ブ / -べ"
   },
   "郵": {
     "keyword": "mail",
@@ -5060,7 +5666,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "｜",
       "一",
       "⻏"
-    ]
+    ],
+    "readings": "ユウ"
   },
   "都": {
     "keyword": "metropolis",
@@ -5068,12 +5675,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "暑",
       "⻏"
-    ]
+    ],
+    "readings": "ト・ツ / みやこ"
   },
   "酉": {
     "keyword": "sign of the bird",
     "story": "The driver had drunk too much whiskey (酉) and was driving too fast, giving all the slow drivers the sign of the bird.",
-    "components": []
+    "components": [],
+    "readings": "ユウ / とり"
   },
   "配": {
     "keyword": "distribute",
@@ -5081,7 +5690,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "酉",
       "已"
-    ]
+    ],
+    "readings": "ハイ / くば.る"
   },
   "酒": {
     "keyword": "sake",
@@ -5089,7 +5699,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺡",
       "酉"
-    ]
+    ],
+    "readings": "シュ / さけ・さか-"
   },
   "醤": {
     "keyword": "soy sauce",
@@ -5097,7 +5708,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "将",
       "酉"
-    ]
+    ],
+    "readings": "ショウ / ひしお"
   },
   "采": {
     "keyword": "dice/die",
@@ -5105,12 +5717,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "爪",
       "木"
-    ]
+    ],
+    "readings": "サイ / と.る・いろどり"
   },
   "里": {
     "keyword": "parent's home",
     "story": "The soil (土) beneath that rice field (田) also belongs to my parent's home. Their full property lot is about one square ri (3.927km or 2.44 miles​).",
-    "components": []
+    "components": [],
+    "readings": "リ / さと"
   },
   "重": {
     "keyword": "heavy",
@@ -5121,7 +5735,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "日",
       "里"
-    ]
+    ],
+    "readings": "ジュウ・チョウ / え・おも.い・おも.り"
   },
   "野": {
     "keyword": "plains",
@@ -5130,7 +5745,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "矛",
       "里",
       "亅"
-    ]
+    ],
+    "readings": "ヤ・ショ / の・の-"
   },
   "金": {
     "keyword": "gold",
@@ -5140,6 +5756,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "王",
       "丷"
     ],
+    "readings": "キン・コン・ゴン / かね・かな-・-がね",
     "inCourse": true
   },
   "鉄": {
@@ -5148,7 +5765,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "金",
       "矢"
-    ]
+    ],
+    "readings": "テツ / くろがね"
   },
   "鉛": {
     "keyword": "lead (metal)",
@@ -5156,7 +5774,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "金",
       "口"
-    ]
+    ],
+    "readings": "エン / なまり"
   },
   "銀": {
     "keyword": "silver",
@@ -5164,7 +5783,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "金",
       "艮"
-    ]
+    ],
+    "readings": "ギン / しろがね"
   },
   "鍵": {
     "keyword": "key",
@@ -5172,7 +5792,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "金",
       "建"
-    ]
+    ],
+    "readings": "ケン / かぎ"
   },
   "鏡": {
     "keyword": "mirror",
@@ -5181,18 +5802,21 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "音",
       "金",
       "儿"
-    ]
+    ],
+    "readings": "キョウ・ケイ / かがみ"
   },
   "長": {
     "keyword": "long",
     "story": "The Geisha with long hair (镸) uses an ornate lacquered hairpin (长) to bundle it all up.",
     "components": [],
+    "readings": "チョウ / なが.い・おさ",
     "inCourse": true
   },
   "門": {
     "keyword": "gates",
     "story": "The gates to Hell, guarded by Cerebus or... Bill Gates?",
-    "components": []
+    "components": [],
+    "readings": "モン / かど・と"
   },
   "閉": {
     "keyword": "closed",
@@ -5202,7 +5826,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "一",
       "門",
       "亅"
-    ]
+    ],
+    "readings": "ヘイ / と.じる・と.ざす・し.める"
   },
   "開": {
     "keyword": "open",
@@ -5213,7 +5838,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "廾",
       "二",
       "ノ"
-    ]
+    ],
+    "readings": "カイ / ひら.く・ひら.き・-びら.き"
   },
   "間": {
     "keyword": "interval",
@@ -5222,6 +5848,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "日",
       "門"
     ],
+    "readings": "カン・ケン / あいだ・ま・あい",
     "inCourse": true
   },
   "降": {
@@ -5230,7 +5857,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "夂",
       "⻖"
-    ]
+    ],
+    "readings": "コウ・ゴ / お.りる・お.ろす・ふ.る"
   },
   "院": {
     "keyword": "Inst.",
@@ -5238,7 +5866,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "完",
       "⻖"
-    ]
+    ],
+    "readings": "イン"
   },
   "除": {
     "keyword": "exclude",
@@ -5247,7 +5876,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "示",
       "今",
       "⻖"
-    ]
+    ],
+    "readings": "ジョ・ジ / のぞ.く・-よ.け"
   },
   "険": {
     "keyword": "precipitous",
@@ -5257,7 +5887,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "人",
       "𠆢",
       "⻖"
-    ]
+    ],
+    "readings": "ケン / けわ.しい"
   },
   "陽": {
     "keyword": "sunshine",
@@ -5266,7 +5897,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "旦",
       "⻖",
       "勿"
-    ]
+    ],
+    "readings": "ヨウ / ひ"
   },
   "隣": {
     "keyword": "neighbor",
@@ -5275,7 +5907,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "舛",
       "米",
       "⻖"
-    ]
+    ],
+    "readings": "リン / とな.る・となり"
   },
   "集": {
     "keyword": "gather",
@@ -5283,7 +5916,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "木",
       "隹"
-    ]
+    ],
+    "readings": "シュウ / あつ.まる・あつ.める・つど.う"
   },
   "雑": {
     "keyword": "miscellaneous",
@@ -5291,7 +5925,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "椎",
       "九"
-    ]
+    ],
+    "readings": "ザツ・ゾウ / まじ.える・まじ.る"
   },
   "難": {
     "keyword": "difficult",
@@ -5301,12 +5936,14 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "唯",
       "大",
       "二"
-    ]
+    ],
+    "readings": "ナン / かた.い・-がた.い・むずか.しい"
   },
   "雨": {
     "keyword": "rain",
     "story": "This kanji, also a primitive, is one of the clearest instances we have of a complex pictograph. The top line is the sky, the next 3 strokes a pair of clouds, and the final 4 dots the rain collected there and waiting to fall.",
     "components": [],
+    "readings": "ウ / あめ・あま-・-さめ",
     "inCourse": true
   },
   "雪": {
@@ -5315,7 +5952,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "ヨ",
       "雨"
-    ]
+    ],
+    "readings": "セツ / ゆき"
   },
   "電": {
     "keyword": "electricity",
@@ -5325,6 +5963,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "田",
       "乙"
     ],
+    "readings": "デン",
     "inCourse": true
   },
   "震": {
@@ -5333,7 +5972,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "雨",
       "辰"
-    ]
+    ],
+    "readings": "シン / ふる.う・ふる.える・ふる.わせる"
   },
   "青": {
     "keyword": "blue",
@@ -5341,7 +5981,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "月",
       "毒"
-    ]
+    ],
+    "readings": "セイ・ショウ / あお・あお-・あお.い"
   },
   "静": {
     "keyword": "quiet",
@@ -5351,17 +5992,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亅",
       "勹",
       "ヨ"
-    ]
+    ],
+    "readings": "セイ・ジョウ / しず-・しず.か・しず.まる"
   },
   "非": {
     "keyword": "un-",
     "story": "This key word, a negating prefix, is a doodle of a heavy iron pole with bars extending in both directions, to create the picture of a jail cell. From there to \"un-\" is but a short step. People in the jail cell are un-friendly, un-comely, and un-cooperative.\nuncomely: unpleasant to look at : not comely.",
-    "components": []
+    "components": [],
+    "readings": "ヒ / あら.ず"
   },
   "面": {
     "keyword": "mask",
     "story": "A last minute Halloween mask where it's just a comb (而) and an opening in the middle for my eye (目) to see. Or is it a hundred (百) eyes (目)?",
-    "components": []
+    "components": [],
+    "readings": "メン・ベン / おも・おもて・つら"
   },
   "革": {
     "keyword": "leather",
@@ -5369,7 +6013,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "廾",
       "古"
-    ]
+    ],
+    "readings": "カク / かわ"
   },
   "靴": {
     "keyword": "shoes",
@@ -5377,7 +6022,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "⺅",
       "革"
-    ]
+    ],
+    "readings": "カ / くつ"
   },
   "鞄": {
     "keyword": "bag",
@@ -5385,7 +6031,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "革",
       "包"
-    ]
+    ],
+    "readings": "ハク・ホウ・ビョウ / かばん"
   },
   "音": {
     "keyword": "sound",
@@ -5393,14 +6040,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "日",
       "立"
-    ]
+    ],
+    "readings": "オン・イン・-ノン / おと・ね"
   },
   "頁": {
     "keyword": "page",
     "story": "One (一) drop (丶) of ink from a shellfish (貝) can fill a whole page.",
     "components": [
       "貝"
-    ]
+    ],
+    "readings": "ケツ / ぺえじ・おおがい・かしら"
   },
   "須": {
     "keyword": "ought",
@@ -5408,7 +6057,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "頁",
       "彡"
-    ]
+    ],
+    "readings": "ス・シュ / すべから.く・すべし・ひげ"
   },
   "頭": {
     "keyword": "head",
@@ -5416,7 +6066,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "豆",
       "頁"
-    ]
+    ],
+    "readings": "トウ・ズ・ト / あたま・かしら・-がしら"
   },
   "題": {
     "keyword": "topic",
@@ -5424,7 +6075,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "是",
       "頁"
-    ]
+    ],
+    "readings": "ダイ"
   },
   "顔": {
     "keyword": "face",
@@ -5434,7 +6086,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "立",
       "亠",
       "厂"
-    ]
+    ],
+    "readings": "ガン / かお"
   },
   "願": {
     "keyword": "petition",
@@ -5442,7 +6095,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "原",
       "頁"
-    ]
+    ],
+    "readings": "ガン / ねが.う・-ねがい"
   },
   "風": {
     "keyword": "wind",
@@ -5451,17 +6105,20 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "几",
       "虫",
       "ノ"
-    ]
+    ],
+    "readings": "フウ・フ / かぜ・かざ-"
   },
   "飛": {
     "keyword": "fly",
     "story": "Two hummingbirds (飞) fly to the measuring box (升) filled with sugar water.",
-    "components": []
+    "components": [],
+    "readings": "ヒ / と.ぶ・と.ばす・-と.ばす"
   },
   "食": {
     "keyword": "eat",
     "story": "\"Eating under the umbrella (𠆢)\" is a euphemism for dining al fresco, specifically eating at a pushcart vendor. A good (良) thing for a person (人) to do sometimes.",
     "components": [],
+    "readings": "ショク・ジキ / く.う・く.らう・た.べる",
     "inCourse": true
   },
   "飯": {
@@ -5470,7 +6127,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "食",
       "反"
-    ]
+    ],
+    "readings": "ハン / めし"
   },
   "飲": {
     "keyword": "drink",
@@ -5479,6 +6137,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "欠",
       "食"
     ],
+    "readings": "イン・オン / の.む・-の.み",
     "inCourse": true
   },
   "飼": {
@@ -5490,7 +6149,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "亅",
       "𠆢",
       "食"
-    ]
+    ],
+    "readings": "シ / か.う"
   },
   "館": {
     "keyword": "Bldg.",
@@ -5498,7 +6158,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "官",
       "食"
-    ]
+    ],
+    "readings": "カン / やかた・たて"
   },
   "首": {
     "keyword": "neck",
@@ -5506,14 +6167,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "自",
       "丷"
-    ]
+    ],
+    "readings": "シュ / くび"
   },
   "馬": {
     "keyword": "horse",
     "story": "Pictograph top three horizontal and two holding vertical strokes = the horse's mane Ḙ flowing in the wind; ヿ = the horse's tail; 灬 = the horse's legs.",
     "components": [
       "⺣"
-    ]
+    ],
+    "readings": "バ / うま・うま-・ま"
   },
   "駄": {
     "keyword": "useless",
@@ -5521,7 +6184,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "太",
       "馬"
-    ]
+    ],
+    "readings": "ダ・タ"
   },
   "駅": {
     "keyword": "station",
@@ -5529,7 +6193,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "馬",
       "尺"
-    ]
+    ],
+    "readings": "エキ"
   },
   "験": {
     "keyword": "verification",
@@ -5539,7 +6204,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "人",
       "馬",
       "𠆢"
-    ]
+    ],
+    "readings": "ケン・ゲン / あかし・しるし・ため.す"
   },
   "高": {
     "keyword": "tall",
@@ -5550,6 +6216,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "冂",
       "口"
     ],
+    "readings": "コウ / たか.い・たか・-だか",
     "inCourse": true
   },
   "髪": {
@@ -5558,7 +6225,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "夂",
       "髟"
-    ]
+    ],
+    "readings": "ハツ / かみ"
   },
   "魚": {
     "keyword": "fish",
@@ -5566,14 +6234,16 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "田",
       "⺣"
-    ]
+    ],
+    "readings": "ギョ / うお・さかな・-ざかな"
   },
   "鳥": {
     "keyword": "bird",
     "story": "A white (白) bird with one (一) massive tail feather (刁).\n一石二鳥 (いっ.せき.に.ちょう)[killing two birds with one stone]",
     "components": [
       "⺣"
-    ]
+    ],
+    "readings": "チョウ / とり"
   },
   "麻": {
     "keyword": "hemp",
@@ -5581,7 +6251,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "木",
       "广"
-    ]
+    ],
+    "readings": "マ・マア / あさ"
   },
   "黄": {
     "keyword": "yellow",
@@ -5589,7 +6260,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "田",
       "ハ"
-    ]
+    ],
+    "readings": "コウ・オウ / き・こ-"
   },
   "黒": {
     "keyword": "black",
@@ -5597,7 +6269,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "里",
       "⺣"
-    ]
+    ],
+    "readings": "コク / くろ・くろ.ずむ・くろ.い"
   },
   "黙": {
     "keyword": "silence",
@@ -5605,7 +6278,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "components": [
       "犬",
       "黒"
-    ]
+    ],
+    "readings": "モク・ボク / だま.る・もだ.す"
   },
   "鼻": {
     "keyword": "nose",
@@ -5614,6 +6288,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
       "自",
       "田",
       "廾"
-    ]
+    ],
+    "readings": "ビ / はな"
   }
 };

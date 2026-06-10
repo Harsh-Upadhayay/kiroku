@@ -8,6 +8,7 @@ its own RRTK entry (so the breakdown UI can drill down).
 Data sources:
   - Component decomposition: KRADFILE (EDRDG, http://ftp.edrdg.org/pub/Nihongo/kradzip.zip)
   - Keywords + mnemonic stories: RRTK_Recognition_Remembering_The_Kanji.apkg (repo root)
+  - Readings (on/kun): KANJIDIC2 (EDRDG, http://www.edrdg.org/kanjidic/kanjidic2.xml.gz)
   - Radical meanings: curated table below (RTK-style learner names)
 
 Usage: python3 scripts/build-kanji-insights.py
@@ -30,6 +31,7 @@ APKG = os.path.join(REPO, "RRTK_Recognition_Remembering_The_Kanji.apkg")
 OUT = os.path.join(REPO, "src", "content", "n5", "kanji-insights.ts")
 KRAD_CACHE = "/tmp/kradzip-cache"
 KRAD_URL = "http://ftp.edrdg.org/pub/Nihongo/kradzip.zip"
+KANJIDIC_URL = "http://www.edrdg.org/kanjidic/kanjidic2.xml.gz"
 
 def is_kanji(ch):
     return "一" <= ch <= "鿿"
@@ -185,6 +187,33 @@ def load_kradfile():
     return krad
 
 
+def load_kanjidic():
+    """kanji -> 'オン・オン / くん・くん' (up to 3 on + 3 kun readings)."""
+    path = os.path.join(KRAD_CACHE, "kanjidic2.xml")
+    if not os.path.exists(path):
+        os.makedirs(KRAD_CACHE, exist_ok=True)
+        gz_path = path + ".gz"
+        subprocess.run(["curl", "-sL", "-m", "120", "-o", gz_path, KANJIDIC_URL], check=True)
+        import gzip
+        with gzip.open(gz_path, "rb") as src, open(path, "wb") as dst:
+            dst.write(src.read())
+
+    readings = {}
+    xml = open(path, encoding="utf-8").read()
+    for block in re.finditer(r"<literal>(.)</literal>(.*?)</character>", xml, re.S):
+        kanji, body = block.group(1), block.group(2)
+        on = re.findall(r'<reading r_type="ja_on">([^<]+)</reading>', body)
+        kun = re.findall(r'<reading r_type="ja_kun">([^<]+)</reading>', body)
+        parts = []
+        if on:
+            parts.append("・".join(on[:3]))
+        if kun:
+            parts.append("・".join(kun[:3]))
+        if parts:
+            readings[kanji] = " / ".join(parts)
+    return readings
+
+
 def clean_html(text):
     text = re.sub(r"<br ?/?>|</div>|</p>", "\n", text)
     text = re.sub(r"<[^>]+>", "", text)
@@ -295,6 +324,7 @@ def group_components(kanji, comps, candidates):
 def main():
     krad = load_kradfile()
     rrtk = load_rrtk()
+    kanjidic = load_kanjidic()
     course, vocab_chars = load_targets()
     targets = course | vocab_chars
 
@@ -341,6 +371,8 @@ def main():
             "story": info["story"] if info else (extra[1] if extra else ""),
             "components": comps,
         }
+        if kanji in kanjidic:
+            entry["readings"] = kanjidic[kanji]
         if kanji in course:
             entry["inCourse"] = True
         entries[kanji] = entry
@@ -361,6 +393,7 @@ def main():
         f.write("  keyword: string;\n")
         f.write("  story: string;\n")
         f.write("  components: string[];\n")
+        f.write("  readings?: string;\n")
         f.write("  inCourse?: boolean;\n")
         f.write("}\n\n")
         f.write("export const RADICAL_MEANINGS: Record<string, string> = ")

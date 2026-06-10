@@ -61,7 +61,9 @@ export const KanjiBreakdownModal: React.FC<{ char: string; onClose: () => void }
         <div className="mt-3 text-center">
           <div className="text-7xl font-black text-zinc-950 leading-none">{current}</div>
           <div className="mt-2 text-lg font-black text-indigo-700">{insight.keyword}</div>
-          {courseEntry?.readings ? <div className="mt-1 text-sm font-black text-zinc-600">{courseEntry.readings}</div> : null}
+          {courseEntry?.readings || insight.readings ? (
+            <div className="mt-1 text-sm font-black text-zinc-600">{courseEntry?.readings || insight.readings}</div>
+          ) : null}
           {courseEntry && courseEntry.meaning !== insight.keyword ? (
             <div className="mt-1 text-xs font-bold uppercase tracking-wide text-zinc-400">In course: {courseEntry.meaning}</div>
           ) : null}
