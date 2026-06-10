@@ -19,6 +19,15 @@
     <link rel="shortcut icon" href="/icon-192.png" />
     <!-- Legacy ICO fallback -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <!-- Apply dark theme before first paint to avoid a light flash -->
+    <script>
+      try {
+        var kirokuTheme = localStorage.getItem("kiroku_theme_v1");
+        if (kirokuTheme === "dark" || (kirokuTheme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

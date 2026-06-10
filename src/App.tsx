@@ -24,6 +24,7 @@ import {
   Zap, BookOpen, Settings, Layers, GraduationCap,
   LogIn, LogOut, User, Volume2, VolumeX, ChevronDown,
   X, Mail, Key, Eye, EyeOff, UserPlus, Check, Sparkles, ShieldCheck,
+  Sun, Moon, Monitor,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB } from "./utils/db";
@@ -31,6 +32,40 @@ import { getCurrentUser, setCurrentUser, getRegisteredProfiles, saveRegisteredPr
 import { reconcileOnStartup, triggerPushSync, syncEvents } from "./utils/sync";
 import { getN5CourseProgress } from "./utils/n5-course";
 import { n5Course } from "./content/n5/raw";
+import {
+  getThemePreference,
+  resolveTheme,
+  setThemePreference,
+  THEME_CHANGED_EVENT,
+  type ThemePreference,
+} from "./utils/theme";
+
+// ─── Theme toggle (header) ───────────────────────────────────────────────────
+
+function useThemePreference(): ThemePreference {
+  const [preference, setPreference] = useState<ThemePreference>(getThemePreference);
+  useEffect(() => {
+    const onChange = () => setPreference(getThemePreference());
+    window.addEventListener(THEME_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(THEME_CHANGED_EVENT, onChange);
+  }, []);
+  return preference;
+}
+
+function ThemeToggle() {
+  const preference = useThemePreference();
+  const effective = resolveTheme(preference);
+  return (
+    <button
+      onClick={() => { sound.playTick(); setThemePreference(effective === "dark" ? "light" : "dark"); }}
+      aria-label={effective === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      title={effective === "dark" ? "Light mode" : "Dark mode"}
+      className="w-10 h-10 shrink-0 flex items-center justify-center rounded-2xl border-2 border-zinc-900 bg-white text-zinc-700 hover:bg-zinc-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer"
+    >
+      {effective === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
 
 // ─── Kana hub: combines Speed Sheets, SRS, and Characters/Config ────────────
 
@@ -135,8 +170,42 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
     });
   }
 
+  const themePreference = useThemePreference();
+  const themeOptions: { id: ThemePreference; label: string; icon: React.ReactNode }[] = [
+    { id: "light", label: "Light", icon: <Sun className="h-3.5 w-3.5" /> },
+    { id: "dark", label: "Dark", icon: <Moon className="h-3.5 w-3.5" /> },
+    { id: "system", label: "System", icon: <Monitor className="h-3.5 w-3.5" /> },
+  ];
+
   return (
     <div className="space-y-6 max-w-xl">
+      {/* Appearance */}
+      <div className="bg-white rounded-[28px] border-2 border-zinc-900 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <h3 className="text-sm font-black uppercase tracking-wider text-zinc-800 mb-4 flex items-center gap-2">
+          <Moon className="h-4 w-4 text-indigo-500" /> Appearance
+        </h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-black text-zinc-700 uppercase tracking-wide">Theme</p>
+            <p className="text-[10px] text-zinc-400 font-bold mt-0.5">System follows your device preference</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {themeOptions.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => { sound.playTick(); setThemePreference(option.id); }}
+                className={`flex items-center gap-1.5 px-3 h-10 rounded-xl border-2 border-zinc-900 text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer ${
+                  themePreference === option.id ? "bg-indigo-600 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"
+                }`}
+              >
+                {option.icon}
+                <span className="hidden sm:inline">{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Sound */}
       <div className="bg-white rounded-[28px] border-2 border-zinc-900 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <h3 className="text-sm font-black uppercase tracking-wider text-zinc-800 mb-4 flex items-center gap-2">
@@ -559,7 +628,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-100 text-zinc-900 flex flex-col antialiased p-3 sm:p-6 pb-12 font-sans">
+    <div className="app-shell min-h-screen bg-zinc-100 text-zinc-900 flex flex-col antialiased p-3 sm:p-6 pb-12 font-sans">
       <header className="max-w-7xl w-full mx-auto flex items-center justify-between mb-6 sm:mb-8 gap-4">
         {/* Logo */}
         <div className="flex items-center gap-3 select-none shrink-0">
@@ -599,8 +668,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* User button */}
-        <UserButton onSessionChange={setAppStateCurrentUser} />
+        {/* Theme + user */}
+        <div className="flex items-center gap-2 shrink-0">
+          <ThemeToggle />
+          <UserButton onSessionChange={setAppStateCurrentUser} />
+        </div>
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto space-y-6">
