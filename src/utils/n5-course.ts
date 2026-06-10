@@ -25,6 +25,8 @@ export interface N5DayProgress {
   kanjiIndex: number;
   stagesCompleted: Partial<Record<N5Stage, boolean>>;
   reviewDeferred?: boolean;
+  deferredVocabIds?: string[];
+  deferredKanjiIds?: string[];
   updatedAt: number;
 }
 
@@ -216,6 +218,71 @@ export function normalizeN5Cards(cards: N5SRSCard[] | null | undefined): N5SRSCa
     }));
 }
 
+export function effectiveVocabQueue(day: { vocab: N5VocabEntry[] }, state: N5DayProgress): N5VocabEntry[] {
+  const deferred = new Set(state.deferredVocabIds || []);
+  if (deferred.size === 0) return day.vocab;
+  const normal = day.vocab.filter((entry) => !deferred.has(entry.id));
+  const deferredItems = (state.deferredVocabIds || []).map((id) => day.vocab.find((entry) => entry.id === id)).filter(Boolean) as N5VocabEntry[];
+  return [...normal, ...deferredItems];
+}
+
+export function effectiveKanjiQueue(day: { kanji: N5KanjiEntry[] }, state: N5DayProgress): N5KanjiEntry[] {
+  const deferred = new Set(state.deferredKanjiIds || []);
+  if (deferred.size === 0) return day.kanji;
+  const normal = day.kanji.filter((entry) => !deferred.has(entry.kanji));
+  const deferredItems = (state.deferredKanjiIds || []).map((id) => day.kanji.find((entry) => entry.kanji === id)).filter(Boolean) as N5KanjiEntry[];
+  return [...normal, ...deferredItems];
+}
+
+export function deferVocabItem(progress: N5CourseProgress, day: number, entryId: string): N5CourseProgress {
+  const state = getN5DayState(progress, day);
+  const existing = state.deferredVocabIds || [];
+  // Remove from existing deferred list then re-append to put it at the end.
+  const updated = [...existing.filter((id) => id !== entryId), entryId];
+  return updateN5DayState(progress, day, { deferredVocabIds: updated });
+}
+
+export function deferKanjiItem(progress: N5CourseProgress, day: number, kanjiChar: string): N5CourseProgress {
+  const state = getN5DayState(progress, day);
+  const existing = state.deferredKanjiIds || [];
+  const updated = [...existing.filter((id) => id !== kanjiChar), kanjiChar];
+  return updateN5DayState(progress, day, { deferredKanjiIds: updated });
+}
+
+export function advanceVocabPure(
+  progress: N5CourseProgress,
+  cards: N5SRSCard[],
+  day: number,
+  dayPlan: { vocab: N5VocabEntry[] },
+  entry: N5VocabEntry,
+): { progress: N5CourseProgress; cards: N5SRSCard[] } {
+  const withLearned = markN5VocabLearned(progress, cards, day, entry);
+  const state = getN5DayState(withLearned.progress, day);
+  const queue = effectiveVocabQueue(dayPlan, state);
+  const nextIndex = state.vocabIndex + 1;
+  const nextProgress = nextIndex >= queue.length
+    ? completeN5Stage(withLearned.progress, day, "vocab")
+    : updateN5DayState(withLearned.progress, day, { vocabIndex: nextIndex });
+  return { progress: nextProgress, cards: withLearned.cards };
+}
+
+export function advanceKanjiPure(
+  progress: N5CourseProgress,
+  cards: N5SRSCard[],
+  day: number,
+  dayPlan: { kanji: N5KanjiEntry[] },
+  entry: N5KanjiEntry,
+): { progress: N5CourseProgress; cards: N5SRSCard[] } {
+  const withLearned = markN5KanjiLearned(progress, cards, day, entry);
+  const state = getN5DayState(withLearned.progress, day);
+  const queue = effectiveKanjiQueue(dayPlan, state);
+  const nextIndex = state.kanjiIndex + 1;
+  const nextProgress = nextIndex >= queue.length
+    ? completeN5Stage(withLearned.progress, day, "kanji")
+    : updateN5DayState(withLearned.progress, day, { kanjiIndex: nextIndex });
+  return { progress: nextProgress, cards: withLearned.cards };
+}
+
 export function cardIdForVocab(entry: Pick<N5VocabEntry, "id">): string {
   return `n5:vocab:${entry.id}`;
 }
@@ -335,11 +402,19 @@ export function getN5DayState(progress: N5CourseProgress, day: number): N5DayPro
 
 export function completeN5Stage(progress: N5CourseProgress, day: number, stage: N5Stage): N5CourseProgress {
   const state = getN5DayState(progress, day);
+  const updatedCompleted = { ...state.stagesCompleted, [stage]: true };
   const currentIndex = N5_STAGE_ORDER.indexOf(stage);
-  const nextStage = N5_STAGE_ORDER[Math.min(N5_STAGE_ORDER.length - 1, currentIndex + 1)];
+  // Advance to the first incomplete stage after the current one, or next in order as fallback.
+  let nextStage: N5Stage = N5_STAGE_ORDER[Math.min(N5_STAGE_ORDER.length - 1, currentIndex + 1)];
+  for (let i = currentIndex + 1; i < N5_STAGE_ORDER.length; i++) {
+    if (!updatedCompleted[N5_STAGE_ORDER[i]]) {
+      nextStage = N5_STAGE_ORDER[i];
+      break;
+    }
+  }
   return updateN5DayState(progress, day, {
     stage: nextStage,
-    stagesCompleted: { ...state.stagesCompleted, [stage]: true },
+    stagesCompleted: updatedCompleted,
   });
 }
 
@@ -557,6 +632,8 @@ function normalizeDayStates(input: Record<string, N5DayProgress>): Record<string
       kanjiIndex: Math.max(0, Number(state?.kanjiIndex || 0)),
       stagesCompleted: state?.stagesCompleted || {},
       reviewDeferred: Boolean(state?.reviewDeferred),
+      deferredVocabIds: uniqueStrings(state?.deferredVocabIds || []),
+      deferredKanjiIds: uniqueStrings(state?.deferredKanjiIds || []),
       updatedAt: Number(state?.updatedAt || 0),
     }];
   }));
