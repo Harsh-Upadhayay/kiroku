@@ -4,14 +4,18 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Flame,
   GraduationCap,
+  LayoutList,
   Lock,
   Map,
   Mic2,
   Play,
   Wifi,
   WifiOff,
+  X,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { n5Course } from "../content/n5/raw";
@@ -93,7 +97,7 @@ export const N5CoursePage: React.FC = () => {
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    const unsubscribe = syncEvents.subscribe(reload);
+    const unsubscribe = syncEvents.subscribe(() => reload(true));
     const interval = window.setInterval(() => setSyncDirty(hasSyncDirtyState()), 2500);
     return () => {
       window.removeEventListener("online", onOnline);
@@ -103,8 +107,8 @@ export const N5CoursePage: React.FC = () => {
     };
   }, []);
 
-  async function reload() {
-    setIsLoading(true);
+  async function reload(silent = false) {
+    if (!silent) setIsLoading(true);
     const [loadedProgress, loadedCards, loadedLogs] = await Promise.all([
       getN5CourseProgress(n5Course),
       getN5SRSCards(),
@@ -115,7 +119,7 @@ export const N5CoursePage: React.FC = () => {
     setCards(loadedCards);
     setLogs(loadedLogs);
     setSyncDirty(hasSyncDirtyState());
-    setIsLoading(false);
+    if (!silent) setIsLoading(false);
     if (JSON.stringify(trended.dueCountTrend) !== JSON.stringify(loadedProgress.dueCountTrend)) {
       await saveN5CourseProgress(trended);
     }
@@ -427,6 +431,19 @@ const LessonRunner: React.FC<{
 }> = (props) => {
   const stage = props.state.stage;
   const checkpoint = n5Course.checkpoints.find((item) => item.afterDay === props.day.day);
+  const [showMinimap, setShowMinimap] = useState(false);
+
+  async function handleMinimapNavigate(targetStage: N5Stage, index?: number) {
+    const patch: Partial<N5DayProgress> = { stage: targetStage };
+    if (index !== undefined) {
+      if (targetStage === "grammar") patch.grammarIndex = index;
+      else if (targetStage === "vocab") patch.vocabIndex = index;
+      else if (targetStage === "kanji") patch.kanjiIndex = index;
+    }
+    await props.onUpdateState(patch);
+    setShowMinimap(false);
+  }
+
   return (
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] min-h-[620px] flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-zinc-100 pb-4">
@@ -438,19 +455,224 @@ const LessonRunner: React.FC<{
           {props.readOnly && !props.isLocked && <span className="text-[9px] font-black uppercase text-zinc-400 border border-zinc-200 rounded-full px-2 py-0.5">Read-only</span>}
         </div>
         <StageRail current={stage} stagesCompleted={props.state.stagesCompleted} onNavigate={props.onNavigateStage} />
-        <SyncPill label={props.syncState} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMinimap((v) => !v)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-[10px] font-black uppercase transition-colors ${showMinimap ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400"}`}
+          >
+            <LayoutList className="h-3.5 w-3.5" /> Outline
+          </button>
+          <SyncPill label={props.syncState} />
+        </div>
       </div>
       <div className="pt-5 flex-1">
-        <motion.div key={`${props.day.day}-${stage}-${props.state.grammarIndex}-${props.state.vocabIndex}-${props.state.kanjiIndex}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 }}>
-          {stage === "review" && <ReviewStage {...props} />}
-          {stage === "grammar" && <GrammarStage {...props} />}
-          {stage === "vocab" && <VocabStage {...props} />}
-          {stage === "kanji" && <KanjiStage {...props} />}
-          {stage === "produce" && <ProduceStage {...props} />}
-          {stage === "done" && <DoneStage {...props} checkpoint={checkpoint} />}
-        </motion.div>
+        {showMinimap ? (
+          <LessonMinimap
+            day={props.day}
+            state={props.state}
+            cards={props.cards}
+            dueCards={props.dueCards}
+            progress={props.progress}
+            onNavigate={handleMinimapNavigate}
+            onClose={() => setShowMinimap(false)}
+          />
+        ) : (
+          <motion.div key={`${props.day.day}-${stage}-${props.state.grammarIndex}-${props.state.vocabIndex}-${props.state.kanjiIndex}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 }}>
+            {stage === "review" && <ReviewStage {...props} />}
+            {stage === "grammar" && <GrammarStage {...props} />}
+            {stage === "vocab" && <VocabStage {...props} />}
+            {stage === "kanji" && <KanjiStage {...props} />}
+            {stage === "produce" && <ProduceStage {...props} />}
+            {stage === "done" && <DoneStage {...props} checkpoint={checkpoint} />}
+          </motion.div>
+        )}
       </div>
     </div>
+  );
+};
+
+const LessonMinimap: React.FC<{
+  day: N5DayPlan;
+  state: N5DayProgress;
+  cards: N5SRSCard[];
+  dueCards: N5SRSCard[];
+  progress: N5CourseProgress;
+  onNavigate: (stage: N5Stage, index?: number) => void;
+  onClose: () => void;
+}> = ({ day, state, cards, dueCards, onNavigate, onClose }) => {
+  const [expanded, setExpanded] = useState<Set<N5Stage>>(() => new Set([state.stage]));
+  const vocabQueue = effectiveVocabQueue(day, state);
+  const kanjiQueue = effectiveKanjiQueue(day, state);
+  const tasks = productionTasks(day);
+
+  function toggle(s: N5Stage) {
+    setExpanded((prev) => { const n = new Set(prev); if (n.has(s)) n.delete(s); else n.add(s); return n; });
+  }
+
+  const sectionBase = "rounded-2xl border-2 overflow-hidden";
+  function sectionClass(s: N5Stage) {
+    if (state.stage === s) return `${sectionBase} border-indigo-400 bg-indigo-50`;
+    if (state.stagesCompleted?.[s]) return `${sectionBase} border-emerald-300 bg-emerald-50`;
+    return `${sectionBase} border-zinc-200 bg-white`;
+  }
+  function itemClass(active: boolean, completed: boolean) {
+    if (active) return "bg-indigo-600 text-white";
+    if (completed) return "text-emerald-700";
+    return "text-zinc-600 hover:bg-zinc-50";
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }} className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Day {day.day} · {day.title}</span>
+        <button onClick={onClose} className="text-zinc-400 hover:text-zinc-900"><X className="h-4 w-4" /></button>
+      </div>
+
+      {/* Review */}
+      <div className={sectionClass("review")}>
+        <button onClick={() => toggle("review")} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest">Review</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">{dueCards.length} due</span>
+            {state.stagesCompleted?.review && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          </div>
+          {expanded.has("review") ? <ChevronUp className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />}
+        </button>
+        {expanded.has("review") && (
+          <div className="px-2 pb-2 space-y-0.5">
+            {dueCards.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] font-bold text-zinc-400">No cards due</p>
+            ) : (
+              <button onClick={() => onNavigate("review")} className={`w-full text-left px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 ${itemClass(state.stage === "review", !!state.stagesCompleted?.review)}`}>
+                {dueCards.length} card{dueCards.length !== 1 ? "s" : ""} to review
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Grammar */}
+      <div className={sectionClass("grammar")}>
+        <button onClick={() => toggle("grammar")} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest">Grammar</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">{day.grammar.length}</span>
+            {state.stagesCompleted?.grammar && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          </div>
+          {expanded.has("grammar") ? <ChevronUp className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />}
+        </button>
+        {expanded.has("grammar") && (
+          <div className="px-2 pb-2 space-y-0.5">
+            {day.grammar.length === 0 ? <p className="px-2 py-1 text-[10px] font-bold text-zinc-400">No grammar points</p> : day.grammar.map((g, i) => {
+              const active = state.stage === "grammar" && state.grammarIndex === i;
+              const done = state.stage === "grammar" ? state.grammarIndex > i : !!state.stagesCompleted?.grammar;
+              return (
+                <button key={g.id} onClick={() => onNavigate("grammar", i)} className={`w-full text-left px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 transition-colors ${itemClass(active, done)}`}>
+                  {done && !active && <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />}
+                  {active && <span className="h-2 w-2 rounded-full bg-white shrink-0" />}
+                  {!done && !active && <span className="h-2 w-2 rounded-full border border-zinc-300 shrink-0" />}
+                  <span className="truncate">{g.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Vocab */}
+      <div className={sectionClass("vocab")}>
+        <button onClick={() => toggle("vocab")} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest">Vocab</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">{vocabQueue.length}</span>
+            {state.stagesCompleted?.vocab && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          </div>
+          {expanded.has("vocab") ? <ChevronUp className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />}
+        </button>
+        {expanded.has("vocab") && (
+          <div className="px-2 pb-2 space-y-0.5">
+            {vocabQueue.length === 0 ? <p className="px-2 py-1 text-[10px] font-bold text-zinc-400">No vocab</p> : vocabQueue.map((entry, i) => {
+              const active = state.stage === "vocab" && state.vocabIndex === i;
+              const learned = cards.some((c) => c.id === cardIdForVocab(entry));
+              const done = state.stage === "vocab" ? state.vocabIndex > i : !!state.stagesCompleted?.vocab;
+              const isDeferred = (state.deferredVocabIds || []).includes(entry.id);
+              return (
+                <button key={entry.id} onClick={() => onNavigate("vocab", i)} className={`w-full text-left px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 transition-colors ${itemClass(active, learned || done)}`}>
+                  {(learned || done) && !active ? <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" /> : active ? <span className="h-2 w-2 rounded-full bg-white shrink-0" /> : <span className="h-2 w-2 rounded-full border border-zinc-300 shrink-0" />}
+                  <span className="font-black">{entry.word}</span>
+                  <span className="opacity-60 truncate">· {entry.meaning}</span>
+                  {isDeferred && <span className="ml-auto text-[9px] font-black uppercase text-amber-600 shrink-0">deferred</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Kanji */}
+      <div className={sectionClass("kanji")}>
+        <button onClick={() => toggle("kanji")} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest">Kanji</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">{kanjiQueue.length}</span>
+            {state.stagesCompleted?.kanji && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          </div>
+          {expanded.has("kanji") ? <ChevronUp className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />}
+        </button>
+        {expanded.has("kanji") && (
+          <div className="px-2 pb-2 space-y-0.5">
+            {kanjiQueue.length === 0 ? <p className="px-2 py-1 text-[10px] font-bold text-zinc-400">No kanji</p> : kanjiQueue.map((entry, i) => {
+              const active = state.stage === "kanji" && state.kanjiIndex === i;
+              const learned = cards.some((c) => c.id === cardIdForKanji(entry));
+              const done = state.stage === "kanji" ? state.kanjiIndex > i : !!state.stagesCompleted?.kanji;
+              const isDeferred = (state.deferredKanjiIds || []).includes(entry.kanji);
+              return (
+                <button key={entry.kanji} onClick={() => onNavigate("kanji", i)} className={`w-full text-left px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 transition-colors ${itemClass(active, learned || done)}`}>
+                  {(learned || done) && !active ? <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" /> : active ? <span className="h-2 w-2 rounded-full bg-white shrink-0" /> : <span className="h-2 w-2 rounded-full border border-zinc-300 shrink-0" />}
+                  <span className="font-black text-base leading-none">{entry.kanji}</span>
+                  <span className="truncate">· {entry.meaning}</span>
+                  <span className="opacity-50 truncate text-[10px]">{entry.readings}</span>
+                  {isDeferred && <span className="ml-auto text-[9px] font-black uppercase text-amber-600 shrink-0">deferred</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Produce */}
+      <div className={sectionClass("produce")}>
+        <button onClick={() => toggle("produce")} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest">Produce</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">{tasks.length}</span>
+            {state.stagesCompleted?.produce && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          </div>
+          {expanded.has("produce") ? <ChevronUp className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />}
+        </button>
+        {expanded.has("produce") && (
+          <div className="px-2 pb-2 space-y-0.5">
+            {tasks.map((task) => (
+              <button key={task.id} onClick={() => onNavigate("produce")} className={`w-full text-left px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 transition-colors ${itemClass(state.stage === "produce", !!state.stagesCompleted?.produce)}`}>
+                {state.stagesCompleted?.produce && state.stage !== "produce" ? <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" /> : <span className="h-2 w-2 rounded-full border border-zinc-300 shrink-0" />}
+                <span className="truncate">{task.text}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Done */}
+      <div className={sectionClass("done")}>
+        <button onClick={() => onNavigate("done")} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest">Done</span>
+            {state.stagesCompleted?.done && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          </div>
+          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+        </button>
+      </div>
+    </motion.div>
   );
 };
 
@@ -541,9 +763,10 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const learned = cards.some((card) => card.id === cardIdForVocab(item));
   const hasPrev = state.vocabIndex > 0;
   const isDeferred = (state.deferredVocabIds || []).includes(item.id);
+  const displayPos = Math.min(state.vocabIndex + (state.deferredVocabIds?.length || 0) + 1, queue.length);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Vocab" title={`${state.vocabIndex + 1} of ${queue.length} words`} subtitle={day.vocabText} />
+      <StageHeading eyebrow="Vocab" title={`${displayPos} of ${queue.length} words`} subtitle={day.vocabText} />
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 text-center space-y-4">
         <button onClick={() => speakJapanese(item.example || item.word)} aria-label="Speak example" className="ml-auto flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-950">
           <Mic2 className="h-4 w-4" /> Speak
@@ -585,9 +808,10 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const learned = cards.some((card) => card.id === cardIdForKanji(item));
   const hasPrev = state.kanjiIndex > 0;
   const isDeferred = (state.deferredKanjiIds || []).includes(item.kanji);
+  const displayPos = Math.min(state.kanjiIndex + (state.deferredKanjiIds?.length || 0) + 1, queue.length);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Kanji" title={`${state.kanjiIndex + 1} of ${queue.length} kanji`} subtitle={day.kanjiText} />
+      <StageHeading eyebrow="Kanji" title={`${displayPos} of ${queue.length} kanji`} subtitle={day.kanjiText} />
       {day.unresolvedKanjiChars.length ? <p className="text-xs font-bold text-zinc-500">From the day plan only: {day.unresolvedKanjiChars.join(" ")}</p> : null}
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 grid gap-4 md:grid-cols-[180px_1fr] items-center">
         <div className="text-center">
