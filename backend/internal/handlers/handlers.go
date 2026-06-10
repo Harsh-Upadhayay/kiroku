@@ -63,7 +63,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	joined := auth.NowMillis()
-	defaultState := `{"srs_cards_list":[],"active_rows":["hiragana:vowels"],"streak_info":{"current":0,"highest":0,"updatedAt":0},"anki_v3_collection":null,"_meta":{"schemaVersion":3,"generatedAt":0}}`
+	defaultState := `{"srs_cards_list":[],"active_rows":["hiragana:vowels"],"streak_info":{"current":0,"highest":0,"updatedAt":0},"anki_v3_collection":null,"n5_course_progress":null,"n5_srs_cards":[],"_meta":{"schemaVersion":4,"generatedAt":0}}`
 
 	err = db.CreateUser(h.DB, email, hash, joined, defaultState)
 	if err != nil {

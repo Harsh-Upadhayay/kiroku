@@ -18,13 +18,15 @@ type APIResponse struct {
 }
 
 type SyncState struct {
-	Meta             Meta           `json:"_meta"`
-	ActiveRows       []string       `json:"active_rows"`
-	ActiveRowsInfo   map[string]any `json:"active_rows_info"`
-	StreakInfo       StreakInfo     `json:"streak_info"`
-	SRSCards         []SRSCard      `json:"srs_cards_list"`
-	DeletedDeckIDs   []string       `json:"deleted_deck_ids"`
-	AnkiV3Collection map[string]any `json:"anki_v3_collection,omitempty"`
+	Meta             Meta             `json:"_meta"`
+	ActiveRows       []string         `json:"active_rows"`
+	ActiveRowsInfo   map[string]any   `json:"active_rows_info"`
+	StreakInfo       StreakInfo       `json:"streak_info"`
+	SRSCards         []SRSCard        `json:"srs_cards_list"`
+	DeletedDeckIDs   []string         `json:"deleted_deck_ids"`
+	AnkiV3Collection map[string]any   `json:"anki_v3_collection,omitempty"`
+	N5CourseProgress map[string]any   `json:"n5_course_progress,omitempty"`
+	N5SRSCards       []map[string]any `json:"n5_srs_cards,omitempty"`
 }
 
 type Meta struct {

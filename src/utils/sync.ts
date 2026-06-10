@@ -1,6 +1,8 @@
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB, setSyncRequestSuppressed } from "./db";
 import { DEFAULT_ACTIVE_GROUP_IDS } from "../types";
 import { normalizeActiveRows, normalizeSRSCards } from "./srs";
+import { n5Course } from "../content/n5/raw";
+import { normalizeN5Cards, normalizeN5Progress, type N5CourseProgress, type N5SRSCard } from "./n5-course";
 
 export interface SyncState {
   _meta?: {
@@ -15,6 +17,8 @@ export interface SyncState {
   streak_info: { current: number; highest: number };
   anki_v3_collection?: any;
   deleted_deck_ids?: string[];
+  n5_course_progress?: N5CourseProgress;
+  n5_srs_cards?: N5SRSCard[];
 }
 
 const SYNC_DIRTY_KEY = "kiroku_sync_dirty_v1";
@@ -104,10 +108,12 @@ async function collectSyncState(): Promise<SyncState> {
   const streak_info = await getSettingFromDB<{ current: number; highest: number; updatedAt?: number }>("streak_info", { current: 0, highest: 0 });
   const anki_v3_collection = await getSettingFromDB<any>("anki_v3_collection", null);
   const deleted_deck_ids = await getSettingFromDB<string[]>("deleted_deck_ids", []);
+  const n5_course_progress = normalizeN5Progress(await getSettingFromDB<Partial<N5CourseProgress> | null>("n5_course_progress", null), n5Course);
+  const n5_srs_cards = normalizeN5Cards(await getSettingFromDB<N5SRSCard[]>("n5_srs_cards", []));
 
   return {
     _meta: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       clientId,
       generatedAt: now,
       dirtySince: dirtySince(),
@@ -121,6 +127,8 @@ async function collectSyncState(): Promise<SyncState> {
     } as any,
     anki_v3_collection,
     deleted_deck_ids,
+    n5_course_progress,
+    n5_srs_cards: stampCollection(n5_srs_cards as any[], now) as N5SRSCard[],
   };
 }
 
@@ -231,6 +239,12 @@ export async function triggerPullSync(email: string): Promise<boolean> {
       }
       if (Array.isArray(state.deleted_deck_ids)) {
         await saveSettingToDB("deleted_deck_ids", state.deleted_deck_ids);
+      }
+      if (state.n5_course_progress) {
+        await saveSettingToDB("n5_course_progress", normalizeN5Progress(state.n5_course_progress, n5Course));
+      }
+      if (Array.isArray(state.n5_srs_cards)) {
+        await saveSettingToDB("n5_srs_cards", normalizeN5Cards(state.n5_srs_cards));
       }
     } finally {
       setSyncRequestSuppressed(false);

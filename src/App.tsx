@@ -22,8 +22,9 @@ import { SpeedSheet } from "./components/SpeedSheet";
 import { SrsQuiz } from "./components/SrsQuiz";
 import { CharDictionary } from "./components/CharDictionary";
 import { AnkiPage } from "./components/AnkiPage";
+import { N5CoursePage } from "./components/N5CoursePage";
 import { sound } from "./utils/audio";
-import { Zap, BookOpen, Settings, Layers } from "lucide-react";
+import { Zap, BookOpen, Settings, Layers, GraduationCap } from "lucide-react";
 import { motion } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB } from "./utils/db";
 import { getCurrentUser, User } from "./utils/auth";
@@ -34,7 +35,7 @@ export default function App() {
   // Primary state trackers
   const [cards, setCards] = useState<SRSCard[]>([]);
   const [activeRows, setActiveRows] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"speed" | "srs" | "anki" | "dictionary">("anki");
+  const [activeTab, setActiveTab] = useState<"n5" | "speed" | "srs" | "anki" | "dictionary">("n5");
 
   // User auth state tracking
   const [currentUser, setAppStateCurrentUser] = useState<User | null>(null);
@@ -235,6 +236,7 @@ export default function App() {
         <div className="flex justify-center mb-6">
           <div className="flex bg-white rounded-3xl border-2 border-zinc-900 p-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.95)] max-w-2xl w-full overflow-x-auto">
             {[
+              { id: "n5", label: "N5 Course", icon: GraduationCap },
               { id: "speed", label: "Speed Sheets", icon: Zap },
               { id: "srs", label: "Kana SRS", icon: BookOpen },
               { id: "anki", label: "Anki Decks", icon: Layers },
@@ -265,6 +267,16 @@ export default function App() {
 
         {/* ACTIVE MODULE CONTAINER */}
         <div className="w-full">
+          {activeTab === "n5" && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <N5CoursePage />
+            </motion.div>
+          )}
+
           {activeTab === "speed" && (
             <motion.div
               initial={{ opacity: 0, y: 5 }}
@@ -325,6 +337,7 @@ export default function App() {
       {/* FOOTER */}
       <footer className="mt-12 max-w-7xl w-full mx-auto flex flex-col sm:flex-row justify-between items-center text-xs font-black text-zinc-400 uppercase tracking-widest pt-6 border-t-2 border-zinc-200">
         <div className="flex gap-4">
+          <button onClick={() => { sound.playTick(); setActiveTab("n5"); }} className={`transition-colors ${activeTab === "n5" ? "text-zinc-950" : "hover:text-zinc-900"}`}>N5 Course</button>
           <button onClick={() => { sound.playTick(); setActiveTab("speed"); }} className={`transition-colors ${activeTab === "speed" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Speed Quiz</button>
           <button onClick={() => { sound.playTick(); setActiveTab("srs"); }} className={`transition-colors ${activeTab === "srs" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Kana SRS</button>
           <button onClick={() => { sound.playTick(); setActiveTab("anki"); }} className={`transition-colors ${activeTab === "anki" ? "text-zinc-950" : "hover:text-zinc-900"}`}>Anki Decks</button>
