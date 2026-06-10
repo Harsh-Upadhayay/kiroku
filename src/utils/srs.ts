@@ -8,11 +8,11 @@ import {
   getKanaGroupLabel,
 } from "../types";
 import { 
-  saveAllCardsToDB, 
-  saveCardToDB, 
-  logReviewActionToDB, 
-  saveSettingToDB, 
-  clearAllIndexedDB 
+  saveAllCardsToDB,
+  saveCardToDB,
+  logReviewActionToDB,
+  saveSettingToDB,
+  clearKanaDataFromDB
 } from "./db";
 
 // SRS Box Intervals in milliseconds
@@ -289,8 +289,8 @@ export function resetAllData(): void {
     localStorage.setItem(getPrefixedKey(STORAGE_KEYS.SRS_HIGH_STREAK), "0");
     localStorage.setItem(getPrefixedKey(STORAGE_KEYS.ACTIVE_ROWS), JSON.stringify(DEFAULT_ACTIVE_GROUP_IDS));
     
-    // Clear IndexedDB completely
-    clearAllIndexedDB().catch((e) => console.error("Failed to clear IndexedDB on reset", e));
+    // Clear only kana study data; N5/Anki data must survive a kana reset
+    clearKanaDataFromDB().catch((e) => console.error("Failed to clear kana data on reset", e));
   } catch (e) {
     console.error("Failed to reset storage content", e);
   }

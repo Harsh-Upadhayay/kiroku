@@ -375,7 +375,7 @@ const CourseHome: React.FC<{
         </div>
         <div className="bg-white border-2 border-zinc-900 rounded-[22px] p-4">
           <div className="flex items-center justify-between">
-            <MetricInline icon={<Flame className="h-5 w-5 text-amber-500" />} label="Streak" value={`${progress.streak.current} days`} />
+            <MetricInline icon={<Flame className="h-5 w-5 text-amber-500" />} label="Streak" value={`${progress.streak.current} ${progress.streak.current === 1 ? "day" : "days"}`} />
             <SyncPill label={syncState} />
           </div>
           <DaySegments progress={progress} />

@@ -328,6 +328,40 @@ export async function getSettingFromDB<T>(key: string, defaultValue: T): Promise
 }
 
 /**
+ * Clear only kana study data (cards, review log, kana-related settings).
+ * Leaves N5 course progress, Anki collections, media, and auth profiles intact.
+ */
+export async function clearKanaDataFromDB(): Promise<void> {
+  const KANA_SETTING_KEYS = ["srs_cards_list", "active_rows", "active_rows_info", "streak_info"];
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["cards", "review_actions", "settings"], "readwrite");
+
+    transaction.objectStore("cards").clear();
+    transaction.objectStore("review_actions").clear();
+
+    const settings = transaction.objectStore("settings");
+    const keysRequest = settings.getAllKeys();
+    keysRequest.onsuccess = () => {
+      (keysRequest.result as string[]).forEach((key) => {
+        // settings keys may be stored with a user prefix (user_scoped_..._<key>)
+        if (KANA_SETTING_KEYS.some((kanaKey) => key === kanaKey || key.endsWith("_" + kanaKey))) {
+          settings.delete(key);
+        }
+      });
+    };
+
+    transaction.oncomplete = () => {
+      resolve();
+    };
+
+    transaction.onerror = () => {
+      reject(transaction.error);
+    };
+  });
+}
+
+/**
  * Reset entire IndexedDB database tables
  */
 export async function clearAllIndexedDB(): Promise<void> {

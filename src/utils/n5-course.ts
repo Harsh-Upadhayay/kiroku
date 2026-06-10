@@ -127,6 +127,10 @@ export async function getN5CourseProgress(course: N5CourseData): Promise<N5Cours
 
 export async function saveN5CourseProgress(progress: N5CourseProgress): Promise<void> {
   await saveSettingToDB(PROGRESS_KEY, normalizeN5Progress(progress));
+  // Notify listeners (e.g. the app header day counter) that progress changed.
+  try {
+    window.dispatchEvent(new CustomEvent("kiroku:n5-progress-saved"));
+  } catch { /* non-browser context */ }
 }
 
 export async function getN5SRSCards(): Promise<N5SRSCard[]> {

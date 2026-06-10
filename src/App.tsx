@@ -523,7 +523,14 @@ export default function App() {
       handleForceRefreshDB();
       getN5CourseProgress(n5Course).then((p) => setN5Day(p.currentDay || p.unlockedDay || 1)).catch(() => {});
     });
-    return unsub;
+    const onN5Saved = () => {
+      getN5CourseProgress(n5Course).then((p) => setN5Day(p.currentDay || p.unlockedDay || 1)).catch(() => {});
+    };
+    window.addEventListener("kiroku:n5-progress-saved", onN5Saved);
+    return () => {
+      unsub();
+      window.removeEventListener("kiroku:n5-progress-saved", onN5Saved);
+    };
   }, []);
 
   useEffect(() => {
