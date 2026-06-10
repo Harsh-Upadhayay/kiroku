@@ -36,10 +36,32 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 	result.SRSCards = mergeSRSCards(existing.SRSCards, incoming.SRSCards)
 
 	result.AnkiV3Collection = mergeAnkiV3Collection(existing, incoming)
-	result.N5CourseProgress = mergeN5CourseProgress(existing.N5CourseProgress, incoming.N5CourseProgress)
-	result.N5SRSCards = mergeN5SRSCards(existing.N5SRSCards, incoming.N5SRSCards)
+
+	// An explicit course reset (resetAt) is authoritative: without this the
+	// union-style merge would resurrect wiped progress from the other side.
+	incomingReset := getNumber(incoming.N5CourseProgress, "resetAt")
+	existingReset := getNumber(existing.N5CourseProgress, "resetAt")
+	switch {
+	case incomingReset > 0 && incomingReset >= getNumber(existing.N5CourseProgress, "updatedAt"):
+		result.N5CourseProgress = cloneMap(incoming.N5CourseProgress)
+		result.N5SRSCards = cloneMapSlice(incoming.N5SRSCards)
+	case existingReset > 0 && existingReset > getNumber(incoming.N5CourseProgress, "updatedAt"):
+		result.N5CourseProgress = cloneMap(existing.N5CourseProgress)
+		result.N5SRSCards = cloneMapSlice(existing.N5SRSCards)
+	default:
+		result.N5CourseProgress = mergeN5CourseProgress(existing.N5CourseProgress, incoming.N5CourseProgress)
+		result.N5SRSCards = mergeN5SRSCards(existing.N5SRSCards, incoming.N5SRSCards)
+	}
 
 	return json.Marshal(result)
+}
+
+func cloneMapSlice(input []map[string]any) []map[string]any {
+	out := make([]map[string]any, 0, len(input))
+	for _, item := range input {
+		out = append(out, cloneMap(item))
+	}
+	return out
 }
 
 func mergeMeta(existing, incoming models.Meta) models.Meta {
@@ -168,6 +190,7 @@ func mergeN5CourseProgress(existing, incoming map[string]any) map[string]any {
 		copyScalar(result, incoming, "contentHash")
 		copyScalar(result, incoming, "currentDay")
 		copyScalar(result, incoming, "clientId")
+		copyScalar(result, incoming, "resetAt")
 		result["updatedAt"] = math.Max(getNumber(existing, "updatedAt"), getNumber(incoming, "updatedAt"))
 	}
 

@@ -167,6 +167,28 @@ export const N5CoursePage: React.FC = () => {
     setReviewStartedAt(Date.now());
   }
 
+  /** Repeat a completed day's coursework from scratch. Resets only that
+   * day's stage progress — SRS cards and learned lists are untouched. */
+  async function redoDay(day: number) {
+    if (!progress) return;
+    sound.playTick();
+    await persistProgress(updateN5DayState(progress, day, {
+      stage: "review",
+      grammarIndex: 0,
+      vocabIndex: 0,
+      kanjiIndex: 0,
+      stagesCompleted: {},
+      reviewDeferred: false,
+      deferredVocabIds: [],
+      deferredKanjiIds: [],
+    }));
+    setLessonDay(day);
+    setReadOnly(false);
+    setMode("lesson");
+    setIsBackShown(false);
+    setReviewStartedAt(Date.now());
+  }
+
   async function updateActiveState(patch: Partial<N5DayProgress>) {
     if (!progress) return;
     if (readOnly) {
@@ -381,6 +403,7 @@ export const N5CoursePage: React.FC = () => {
         onUpdateProduction={updateProduction}
         onCompleteDay={completeDay}
         onStartDayPractice={() => startCumulativeReview(activeDayNumber)}
+        onRedoDay={() => redoDay(activeDayNumber)}
         onSaveCheckpoint={async (checkpointId, status, checkedItems) => {
           await persistProgress(saveN5CheckpointReport(progress, checkpointId, status, checkedItems));
           if (status === "not-ready") {
@@ -663,6 +686,7 @@ const LessonRunner: React.FC<{
   onCompleteDay: () => Promise<void>;
   onSaveCheckpoint: (checkpointId: string, status: "ready" | "not-ready", checkedItems: string[]) => Promise<void>;
   onStartDayPractice: () => void;
+  onRedoDay: () => void;
 }> = (props) => {
   const stage = props.state.stage;
   const checkpoint = n5Course.checkpoints.find((item) => item.afterDay === props.day.day);
@@ -689,7 +713,18 @@ const LessonRunner: React.FC<{
             <ChevronLeft className="h-4 w-4" /> Home
           </button>
           {props.isLocked && <span className="text-[9px] font-black uppercase text-zinc-400 border border-zinc-200 rounded-full px-2 py-0.5">Preview</span>}
-          {props.readOnly && !props.isLocked && <span className="text-[9px] font-black uppercase text-zinc-400 border border-zinc-200 rounded-full px-2 py-0.5">Read-only</span>}
+          {props.readOnly && !props.isLocked && (
+            <>
+              <span className="text-[9px] font-black uppercase text-zinc-400 border border-zinc-200 rounded-full px-2 py-0.5">Read-only</span>
+              <button
+                onClick={props.onRedoDay}
+                title="Repeat this day's coursework from the start (your SRS progress is kept)"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full border-2 border-zinc-900 bg-amber-100 hover:bg-amber-200 text-[9px] font-black uppercase text-zinc-900"
+              >
+                <History className="h-3 w-3" /> Redo Day
+              </button>
+            </>
+          )}
         </div>
         <StageRail current={stage} stagesCompleted={props.state.stagesCompleted} onNavigate={props.onNavigateStage} />
         <div className="flex items-center gap-2">
@@ -1208,7 +1243,7 @@ const CourseMap: React.FC<{ progress: N5CourseProgress; onBack: () => void; onOp
     <button onClick={onBack} className="text-xs font-black uppercase text-zinc-500 hover:text-zinc-950 flex items-center gap-1"><ChevronLeft className="h-4 w-4" /> Course Home</button>
     <div>
       <h2 className="text-2xl font-black text-zinc-950">30-day map</h2>
-      <p className="text-sm font-bold text-zinc-500 mt-1">Completed days open as read-only review. Locked days open as preview.</p>
+      <p className="text-sm font-bold text-zinc-500 mt-1">Completed days open as read-only review — use "Redo Day" inside to repeat the coursework. Locked days open as preview.</p>
     </div>
     <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
       {n5Course.days.map((day) => {

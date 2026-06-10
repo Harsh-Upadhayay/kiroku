@@ -72,6 +72,9 @@ export interface N5CourseProgress {
   currentDay: number;
   updatedAt: number;
   clientId: string;
+  /** Set when the user wipes course progress; the backend merge treats a
+   * newer resetAt as authoritative instead of unioning old state back in. */
+  resetAt?: number;
 }
 
 export interface N5SRSCard {
@@ -139,6 +142,15 @@ export async function getN5SRSCards(): Promise<N5SRSCard[]> {
 
 export async function saveN5SRSCards(cards: N5SRSCard[]): Promise<void> {
   await saveSettingToDB(CARDS_KEY, normalizeN5Cards(cards));
+}
+
+/** Wipe all N5 course data (progress, SRS cards, review logs). Stamps
+ * resetAt so a signed-in user's wipe survives the server-side merge. */
+export async function resetN5CourseData(course: N5CourseData): Promise<void> {
+  const fresh = normalizeN5Progress({ resetAt: Date.now() }, course);
+  await saveN5SRSCards([]);
+  await saveN5ReviewLogs([]);
+  await saveN5CourseProgress(fresh);
 }
 
 export async function getN5ReviewLogs(): Promise<N5ReviewLog[]> {

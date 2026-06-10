@@ -30,7 +30,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB } from "./utils/db";
 import { getCurrentUser, setCurrentUser, getRegisteredProfiles, saveRegisteredProfiles, User as AppUser } from "./utils/auth";
 import { reconcileOnStartup, triggerPushSync, syncEvents } from "./utils/sync";
-import { getN5CourseProgress } from "./utils/n5-course";
+import { getN5CourseProgress, resetN5CourseData } from "./utils/n5-course";
 import { n5Course } from "./content/n5/raw";
 import {
   getThemePreference,
@@ -179,6 +179,8 @@ async function checkAndPullAppUpdates(setStatus: (status: UpdateStatus) => void)
 function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
   const [soundMuted, setSoundMuted] = useState(sound.muted);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+  const [resetCourseConfirm, setResetCourseConfirm] = useState(false);
+  const [courseWiped, setCourseWiped] = useState(false);
   const [batchSize, setBatchSize] = useState<number>(() => {
     return parseInt(localStorage.getItem("kiroku_kana_batch") || "20", 10);
   });
@@ -204,6 +206,13 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
       setResetConfirm(false);
       sound.playIncorrect();
     });
+  }
+
+  async function doCourseReset() {
+    await resetN5CourseData(n5Course);
+    setResetCourseConfirm(false);
+    setCourseWiped(true);
+    sound.playIncorrect();
   }
 
   const themePreference = useThemePreference();
@@ -318,30 +327,58 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
       </div>
 
       {/* Danger zone */}
-      <div className="bg-red-50 border-2 border-zinc-900 rounded-[24px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <h3 className="text-sm font-black uppercase tracking-wider text-red-800 mb-1 flex items-center gap-2">
+      <div className="bg-red-50 border-2 border-zinc-900 rounded-[24px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-5">
+        <h3 className="text-sm font-black uppercase tracking-wider text-red-800 flex items-center gap-2">
           ⚠ Danger Zone
         </h3>
-        <p className="text-[10px] text-red-700 font-bold uppercase tracking-wide mb-4">
-          Wipes all kana SRS boxes, study streaks, and restores defaults.
-        </p>
-        {!resetConfirm ? (
-          <button
-            onClick={() => { sound.playTick(); setResetConfirm(true); }}
-            className="py-2 px-4 bg-white hover:bg-red-100 text-red-600 rounded-xl border-2 border-zinc-900 text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
-          >
-            Reset Kana Progress
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button onClick={doReset} className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider border-2 border-zinc-900 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-              Yes, Reset
+
+        <div>
+          <p className="text-[10px] text-red-700 font-bold uppercase tracking-wide mb-3">
+            Wipes all kana SRS boxes, study streaks, and restores defaults.
+          </p>
+          {!resetConfirm ? (
+            <button
+              onClick={() => { sound.playTick(); setResetConfirm(true); }}
+              className="py-2 px-4 bg-white hover:bg-red-100 text-red-600 rounded-xl border-2 border-zinc-900 text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+            >
+              Reset Kana Progress
             </button>
-            <button onClick={() => setResetConfirm(false)} className="py-2 px-4 bg-white border-2 border-zinc-900 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-zinc-50 cursor-pointer">
-              Cancel
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={doReset} className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider border-2 border-zinc-900 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                Yes, Reset
+              </button>
+              <button onClick={() => setResetConfirm(false)} className="py-2 px-4 bg-white border-2 border-zinc-900 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-zinc-50 cursor-pointer">
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t-2 border-red-200 pt-4">
+          <p className="text-[10px] text-red-700 font-bold uppercase tracking-wide mb-3">
+            Wipes all N5 course progress: completed days, learned kanji/vocab, course SRS cards and review logs. Kana and Anki data are kept.
+          </p>
+          {courseWiped ? (
+            <p className="text-xs font-black uppercase text-red-700">Course progress wiped.</p>
+          ) : !resetCourseConfirm ? (
+            <button
+              onClick={() => { sound.playTick(); setResetCourseConfirm(true); }}
+              className="py-2 px-4 bg-white hover:bg-red-100 text-red-600 rounded-xl border-2 border-zinc-900 text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+            >
+              Reset N5 Course Progress
             </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={doCourseReset} className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider border-2 border-zinc-900 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                Yes, Wipe Course
+              </button>
+              <button onClick={() => setResetCourseConfirm(false)} className="py-2 px-4 bg-white border-2 border-zinc-900 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-zinc-50 cursor-pointer">
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
