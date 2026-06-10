@@ -669,7 +669,12 @@ export default function App() {
           ))}
         </div>
         <div className="mt-2 sm:mt-0">
-          <span>Tap a kana or grid cell to hear pronunciation</span>
+          <span>
+            {activeTab === "n5" && "Tap any kanji to see its parts & mnemonic"}
+            {activeTab === "kana" && "Tap a kana or grid cell to hear pronunciation"}
+            {activeTab === "anki" && "Import .apkg files to study your own decks"}
+            {activeTab === "settings" && "Settings are saved on this device"}
+          </span>
         </div>
       </footer>
     </div>

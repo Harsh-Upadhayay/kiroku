@@ -447,6 +447,8 @@ const LessonRunner: React.FC<{
     setShowMinimap(false);
   }
 
+  const dayProgress = lessonProgressFraction(props.day, props.state, props.dueCards.length);
+
   return (
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] min-h-[620px] flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-zinc-100 pb-4">
@@ -467,6 +469,12 @@ const LessonRunner: React.FC<{
           </button>
           <SyncPill label={props.syncState} />
         </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2" aria-label={`Day progress ${Math.round(dayProgress * 100)}%`}>
+        <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+          <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${Math.round(dayProgress * 100)}%` }} />
+        </div>
+        <span className="text-[9px] font-black text-zinc-400 tabular-nums shrink-0">{Math.round(dayProgress * 100)}%</span>
       </div>
       <div className="pt-5 flex-1">
         {showMinimap ? (
@@ -732,10 +740,11 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ dueC
   );
 };
 
-const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, onUpdateState, onCompleteStage }) => {
+const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, readOnly, onUpdateState, onCompleteStage }) => {
   const item = day.grammar[state.grammarIndex];
-  if (!item) return <StageShell eyebrow="Grammar" title="No grammar listed" subtitle={day.grammarText || "Continue to the next stage."} primaryLabel="Continue" onPrimary={() => onCompleteStage("grammar")} />;
   const isLast = state.grammarIndex >= day.grammar.length - 1;
+  useEnterAdvance(item && !readOnly ? () => (isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })) : null);
+  if (!item) return <StageShell eyebrow="Grammar" title="No grammar listed" subtitle={day.grammarText || "Continue to the next stage."} primaryLabel="Continue" onPrimary={() => onCompleteStage("grammar")} />;
   const hasPrev = state.grammarIndex > 0;
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -762,6 +771,7 @@ const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
 const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkVocabLearned, onAdvanceVocab, onDeferVocab, onCompleteStage, onUpdateState }) => {
   const queue = effectiveVocabQueue(day, state);
   const item = queue[state.vocabIndex];
+  useEnterAdvance(item ? () => (readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)) : null);
   if (!item) return <StageShell eyebrow="Vocab" title="No vocab listed" subtitle={day.vocabText || "Continue to kanji."} primaryLabel="Continue" onPrimary={() => onCompleteStage("vocab")} />;
   const learned = cards.some((card) => card.id === cardIdForVocab(item));
   const hasPrev = state.vocabIndex > 0;
@@ -784,7 +794,7 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ vocabIndex: state.vocabIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
-          {readOnly ? "Next" : learned ? "Continue" : "Learned"}
+          {readOnly ? "Next" : learned ? "Continue" : "Learned"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
           <button onClick={() => onDeferVocab(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
@@ -800,6 +810,7 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const queue = effectiveKanjiQueue(day, state);
   const item = queue[state.kanjiIndex];
   const [breakdownChar, setBreakdownChar] = useState<string | null>(null);
+  useEnterAdvance(item && !breakdownChar ? () => (readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)) : null);
   if (!item) return (
     <StageShell
       eyebrow="Kanji"
@@ -856,7 +867,7 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: state.kanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
-          {readOnly ? "Next" : learned ? "Continue" : "Learned"}
+          {readOnly ? "Next" : learned ? "Continue" : "Learned"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
           <button onClick={() => onDeferKanji(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
@@ -902,7 +913,7 @@ const ProduceStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
   );
 };
 
-const DoneStage: React.FC<React.ComponentProps<typeof LessonRunner> & { checkpoint?: (typeof n5Course.checkpoints)[number] }> = ({ day, progress, dueCards, checkpoint, onCompleteDay, onSaveCheckpoint, onBackHome, onUpdateState, readOnly }) => {
+const DoneStage: React.FC<React.ComponentProps<typeof LessonRunner> & { checkpoint?: (typeof n5Course.checkpoints)[number] }> = ({ day, progress, cards, dueCards, checkpoint, onCompleteDay, onSaveCheckpoint, onBackHome, onUpdateState, readOnly }) => {
   const report = checkpoint ? progress.checkpointReports[checkpoint.id] : null;
   const [checked, setChecked] = useState<string[]>(report?.checkedItems || []);
   if (readOnly) return <StageShell eyebrow="Revisit" title={`Day ${day.day}`} subtitle="Read-only review complete." primaryLabel="Return Home" onPrimary={onBackHome} />;
@@ -937,6 +948,10 @@ const DoneStage: React.FC<React.ComponentProps<typeof LessonRunner> & { checkpoi
         <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Day complete</span>
         <h2 className="text-3xl font-black text-zinc-950 mt-2">Day {day.day} complete</h2>
         <p className="mt-2 text-sm font-bold text-zinc-500">Next unlock: Day {Math.min(30, day.day + 1)}</p>
+        <div className="mt-4 flex items-center justify-center gap-4 text-xs font-black text-zinc-600">
+          <span className="flex items-center gap-1.5"><Flame className="h-4 w-4 text-amber-500" /> {predictedStreak(progress)} day streak</span>
+          <span className="flex items-center gap-1.5"><BookOpen className="h-4 w-4 text-indigo-500" /> ~{upcomingReviewCount(cards)} reviews tomorrow</span>
+        </div>
       </div>
       <button onClick={onCompleteDay} className="w-full sm:w-auto px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
         Return Home
@@ -997,6 +1012,59 @@ function reviewContent(card: N5SRSCard): { front: React.ReactNode; back: React.R
 function maskWord(example: string, word: string): string {
   if (!example || !word) return "";
   return example.includes(word) ? example.replace(word, "____") : example;
+}
+
+/** Streak as it will be after completing today (mirrors completeN5Day). */
+function predictedStreak(progress: N5CourseProgress): number {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  if (progress.streak.lastCompletedDate === todayKey) return progress.streak.current;
+  if (progress.streak.lastCompletedDate === yesterdayKey) return progress.streak.current + 1;
+  return 1;
+}
+
+/** Rough count of reviews that will be due within the next 36 hours. */
+function upcomingReviewCount(cards: N5SRSCard[]): number {
+  const horizon = Date.now() + 36 * 60 * 60 * 1000;
+  return cards.filter((card) => new Date(card.due).getTime() <= horizon).length;
+}
+
+function lessonProgressFraction(day: N5DayPlan, state: N5DayProgress, dueCount: number): number {
+  const stages: N5Stage[] = ["review", "grammar", "vocab", "kanji", "produce"];
+  let done = 0;
+  let currentFraction = 0;
+  stages.forEach((stage) => {
+    if (state.stagesCompleted?.[stage]) done += 1;
+  });
+  if (!state.stagesCompleted?.[state.stage]) {
+    if (state.stage === "review") currentFraction = dueCount === 0 ? 0.9 : 0;
+    else if (state.stage === "grammar" && day.grammar.length) currentFraction = state.grammarIndex / day.grammar.length;
+    else if (state.stage === "vocab" && day.vocab.length) currentFraction = state.vocabIndex / day.vocab.length;
+    else if (state.stage === "kanji" && day.kanji.length) currentFraction = state.kanjiIndex / day.kanji.length;
+  }
+  if (state.stage === "done") return 1;
+  return Math.min(1, (done + currentFraction) / stages.length);
+}
+
+/** Enter advances learning stages (review already has Space/1-4). Skips when
+ * typing in a field or when a button has focus (native click handles it). */
+function useEnterAdvance(action: (() => void) | null) {
+  useEffect(() => {
+    if (!action) return;
+    function handleKey(event: KeyboardEvent) {
+      if (event.key !== "Enter" || event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return;
+      event.preventDefault();
+      action();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [action]);
 }
 
 function productionTasks(day: N5DayPlan): Array<{ id: string; text: string }> {
