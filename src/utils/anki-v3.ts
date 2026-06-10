@@ -24,7 +24,6 @@ export interface AnkiCollection {
   importReports: AnkiImportReport[];
   filteredDecks: AnkiFilteredDeck[];
   schedulerPresets: AnkiSchedulerPreset[];
-  vocabBuilder: VocabBuilderState;
 }
 
 export interface AnkiDeck {
@@ -185,60 +184,9 @@ export interface AnkiSchedulerPreset {
   rescheduleOnChange: boolean;
 }
 
-export type JLPTLevel = "N5" | "N4" | "N3" | "N2" | "N1";
-
-export interface KanjiComponent {
-  glyph: string;
-  displayName: string;
-  keyword: string;
-  strokeCount: number;
-  variantGroup: string;
-  source: "kanjivg" | "alias" | "kanji.js" | "fallback";
-}
-
-export interface KanjiDecomposition {
-  kanji: string;
-  components: string[];
-  radical?: string;
-  layout: KanjiComponentLayout[];
-  source: "kanjivg" | "fallback";
-}
-
-export interface KanjiComponentLayout {
-  component: string;
-  original?: string;
-  position?: string;
-  radical?: string;
-}
-
-export type KnownComponentStatus = "new" | "seen" | "familiar" | "hard" | "ignored";
-
-export interface KnownComponentState {
-  glyph: string;
-  status: KnownComponentStatus;
-  seenCount: number;
-  hardCount: number;
-  updatedAt: number;
-}
-
-export interface VocabBuilderDailySession {
-  date: string;
-  introduced: number;
-  reviewed: number;
-}
-
-export interface VocabBuilderState {
-  selectedGoal: JLPTLevel;
-  knownComponents: Record<string, KnownComponentState>;
-  completedCardIds: string[];
-  skippedCardIds: string[];
-  lastActiveCardId?: string;
-  dailySession: VocabBuilderDailySession;
-}
-
 interface ImportResponse {
   importId: string;
-  collection: Omit<AnkiCollection, "mediaManifest" | "importReports" | "filteredDecks" | "schedulerPresets" | "vocabBuilder">;
+  collection: Omit<AnkiCollection, "mediaManifest" | "importReports" | "filteredDecks" | "schedulerPresets">;
   mediaManifest: AnkiMediaRef[];
   report: Omit<AnkiImportReport, "importId" | "importedAt">;
 }
@@ -290,21 +238,6 @@ export function emptyCollection(): AnkiCollection {
     importReports: [],
     filteredDecks: [],
     schedulerPresets: [defaultSchedulerPreset()],
-    vocabBuilder: defaultVocabBuilderState(),
-  };
-}
-
-export function defaultVocabBuilderState(): VocabBuilderState {
-  return {
-    selectedGoal: "N5",
-    knownComponents: {},
-    completedCardIds: [],
-    skippedCardIds: [],
-    dailySession: {
-      date: new Date().toISOString().slice(0, 10),
-      introduced: 0,
-      reviewed: 0,
-    },
   };
 }
 
@@ -335,38 +268,6 @@ export function normalizeCollection(input?: Partial<AnkiCollection> | null): Ank
     schedulerPresets: Array.isArray(input.schedulerPresets) && input.schedulerPresets.length
       ? input.schedulerPresets
       : [defaultSchedulerPreset()],
-    vocabBuilder: normalizeVocabBuilderState(input.vocabBuilder),
-  };
-}
-
-function normalizeVocabBuilderState(input?: Partial<VocabBuilderState> | null): VocabBuilderState {
-  const fallback = defaultVocabBuilderState();
-  if (!input || typeof input !== "object") return fallback;
-  const selectedGoal = ["N5", "N4", "N3", "N2", "N1"].includes(String(input.selectedGoal))
-    ? input.selectedGoal as JLPTLevel
-    : fallback.selectedGoal;
-  const knownComponents = input.knownComponents && typeof input.knownComponents === "object"
-    ? Object.fromEntries(Object.entries(input.knownComponents).map(([glyph, state]) => {
-      const typed = state as Partial<KnownComponentState>;
-      return [glyph, {
-        glyph: String(typed.glyph || glyph),
-        status: ["new", "seen", "familiar", "hard", "ignored"].includes(String(typed.status)) ? typed.status as KnownComponentStatus : "new",
-        seenCount: Number(typed.seenCount || 0),
-        hardCount: Number(typed.hardCount || 0),
-        updatedAt: Number(typed.updatedAt || 0),
-      }];
-    }))
-    : {};
-  return {
-    selectedGoal,
-    knownComponents,
-    completedCardIds: Array.isArray(input.completedCardIds) ? input.completedCardIds.map(String) : [],
-    skippedCardIds: Array.isArray(input.skippedCardIds) ? input.skippedCardIds.map(String) : [],
-    lastActiveCardId: input.lastActiveCardId,
-    dailySession: {
-      ...fallback.dailySession,
-      ...(input.dailySession && typeof input.dailySession === "object" ? input.dailySession : {}),
-    },
   };
 }
 
