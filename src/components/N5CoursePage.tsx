@@ -18,19 +18,23 @@ import { n5Course } from "../content/n5/raw";
 import type { N5DayPlan, N5GrammarPoint, N5KanjiEntry, N5VocabEntry } from "../content/n5/parser";
 import {
   N5_STAGE_ORDER,
+  advanceKanjiPure,
+  advanceVocabPure,
   cardIdForKanji,
   cardIdForVocab,
   completeN5Day,
   completeN5Stage,
+  deferKanjiItem,
+  deferVocabItem,
   dueN5Cards,
+  effectiveKanjiQueue,
+  effectiveVocabQueue,
   formatN5Due,
   getN5CourseProgress,
   getN5DayState,
   getN5ReviewLogs,
   getN5SRSCards,
   gradeN5Card,
-  markN5KanjiLearned,
-  markN5VocabLearned,
   recordN5DueTrend,
   saveN5CheckpointReport,
   saveN5CourseProgress,
@@ -135,10 +139,10 @@ export const N5CoursePage: React.FC = () => {
     setSyncDirty(true);
   }
 
-  function startLesson(day: number, revisit = false) {
+  function startLesson(day: number, readOnlyOverride = false) {
     sound.playTick();
     setLessonDay(day);
-    setReadOnly(revisit);
+    setReadOnly(readOnlyOverride);
     setRevisitState(defaultRevisitState(day));
     setMode("lesson");
     setIsBackShown(false);
@@ -183,30 +187,44 @@ export const N5CoursePage: React.FC = () => {
 
   async function markVocabLearned(entry: N5VocabEntry) {
     if (!progress || readOnly) return;
-    const next = markN5VocabLearned(progress, cards, activeDayNumber, entry);
+    const next = advanceVocabPure(progress, cards, activeDayNumber, activeDay, entry);
     await persistCards(next.cards);
     await persistProgress(next.progress);
-    await advanceVocab();
   }
 
   async function markKanjiLearned(entry: N5KanjiEntry) {
     if (!progress || readOnly) return;
-    const next = markN5KanjiLearned(progress, cards, activeDayNumber, entry);
+    const next = advanceKanjiPure(progress, cards, activeDayNumber, activeDay, entry);
     await persistCards(next.cards);
     await persistProgress(next.progress);
-    await advanceKanji();
   }
 
   async function advanceVocab() {
+    if (!progress) return;
+    const queue = effectiveVocabQueue(activeDay, activeState);
     const nextIndex = activeState.vocabIndex + 1;
-    if (nextIndex >= activeDay.vocab.length) await completeStage("vocab");
+    if (nextIndex >= queue.length) await completeStage("vocab");
     else await updateActiveState({ vocabIndex: nextIndex });
   }
 
   async function advanceKanji() {
+    if (!progress) return;
+    const queue = effectiveKanjiQueue(activeDay, activeState);
     const nextIndex = activeState.kanjiIndex + 1;
-    if (nextIndex >= activeDay.kanji.length) await completeStage("kanji");
+    if (nextIndex >= queue.length) await completeStage("kanji");
     else await updateActiveState({ kanjiIndex: nextIndex });
+  }
+
+  async function deferVocab(entry: N5VocabEntry) {
+    if (!progress || readOnly) return;
+    const next = deferVocabItem(progress, activeDayNumber, entry.id);
+    await persistProgress(next);
+  }
+
+  async function deferKanji(entry: N5KanjiEntry) {
+    if (!progress || readOnly) return;
+    const next = deferKanjiItem(progress, activeDayNumber, entry.kanji);
+    await persistProgress(next);
   }
 
   async function updateProduction(promptId: string, text: string) {
@@ -225,8 +243,18 @@ export const N5CoursePage: React.FC = () => {
 
   if (isLoading || !progress) {
     return (
-      <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
-        <div className="text-xs font-black uppercase tracking-widest text-zinc-500">Loading N5 course...</div>
+      <div className="space-y-4 animate-pulse">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-8 bg-zinc-100 border-2 border-zinc-200 rounded-[28px] h-48" />
+          <div className="lg:col-span-4 space-y-3">
+            <div className="bg-zinc-100 border-2 border-zinc-200 rounded-[22px] h-20" />
+            <div className="bg-zinc-100 border-2 border-zinc-200 rounded-[22px] h-20" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-8 bg-zinc-100 border-2 border-zinc-200 rounded-[22px] h-16" />
+          <div className="lg:col-span-4 bg-zinc-100 border-2 border-zinc-200 rounded-[22px] h-16" />
+        </div>
       </div>
     );
   }
@@ -250,6 +278,7 @@ export const N5CoursePage: React.FC = () => {
         cards={cards}
         dueCards={dueCards}
         readOnly={readOnly}
+        isLocked={lessonDay !== null && progress && lessonDay > progress.unlockedDay}
         isBackShown={isBackShown}
         setIsBackShown={setIsBackShown}
         syncState={syncLabel(isOnline, syncDirty)}
@@ -260,15 +289,25 @@ export const N5CoursePage: React.FC = () => {
         }}
         onUpdateState={updateActiveState}
         onCompleteStage={completeStage}
+        onNavigateStage={async (stage) => {
+          await updateActiveState({ stage });
+        }}
         onGrade={gradeCurrentCard}
         onMarkVocabLearned={markVocabLearned}
         onMarkKanjiLearned={markKanjiLearned}
         onAdvanceVocab={advanceVocab}
         onAdvanceKanji={advanceKanji}
+        onDeferVocab={deferVocab}
+        onDeferKanji={deferKanji}
         onUpdateProduction={updateProduction}
         onCompleteDay={completeDay}
         onSaveCheckpoint={async (checkpointId, status, checkedItems) => {
           await persistProgress(saveN5CheckpointReport(progress, checkpointId, status, checkedItems));
+          if (status === "not-ready") {
+            setMode("map");
+            setLessonDay(null);
+            setReadOnly(false);
+          }
         }}
       />
     );
@@ -367,17 +406,21 @@ const LessonRunner: React.FC<{
   cards: N5SRSCard[];
   dueCards: N5SRSCard[];
   readOnly: boolean;
+  isLocked?: boolean;
   isBackShown: boolean;
   setIsBackShown: (value: boolean) => void;
   syncState: string;
   onBackHome: () => void;
   onUpdateState: (patch: Partial<N5DayProgress>) => Promise<void>;
   onCompleteStage: (stage: N5Stage) => Promise<void>;
+  onNavigateStage: (stage: N5Stage) => Promise<void>;
   onGrade: (grade: N5Grade) => Promise<void>;
   onMarkVocabLearned: (entry: N5VocabEntry) => Promise<void>;
   onMarkKanjiLearned: (entry: N5KanjiEntry) => Promise<void>;
   onAdvanceVocab: () => Promise<void>;
   onAdvanceKanji: () => Promise<void>;
+  onDeferVocab: (entry: N5VocabEntry) => Promise<void>;
+  onDeferKanji: (entry: N5KanjiEntry) => Promise<void>;
   onUpdateProduction: (promptId: string, text: string) => Promise<void>;
   onCompleteDay: () => Promise<void>;
   onSaveCheckpoint: (checkpointId: string, status: "ready" | "not-ready", checkedItems: string[]) => Promise<void>;
@@ -387,10 +430,14 @@ const LessonRunner: React.FC<{
   return (
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] min-h-[620px] flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-zinc-100 pb-4">
-        <button onClick={props.onBackHome} className="text-xs font-black uppercase text-zinc-500 hover:text-zinc-950 flex items-center gap-1">
-          <ChevronLeft className="h-4 w-4" /> Home
-        </button>
-        <StageRail current={stage} />
+        <div className="flex items-center gap-2">
+          <button onClick={props.onBackHome} className="text-xs font-black uppercase text-zinc-500 hover:text-zinc-950 flex items-center gap-1">
+            <ChevronLeft className="h-4 w-4" /> Home
+          </button>
+          {props.isLocked && <span className="text-[9px] font-black uppercase text-zinc-400 border border-zinc-200 rounded-full px-2 py-0.5">Preview</span>}
+          {props.readOnly && !props.isLocked && <span className="text-[9px] font-black uppercase text-zinc-400 border border-zinc-200 rounded-full px-2 py-0.5">Read-only</span>}
+        </div>
+        <StageRail current={stage} stagesCompleted={props.state.stagesCompleted} onNavigate={props.onNavigateStage} />
         <SyncPill label={props.syncState} />
       </div>
       <div className="pt-5 flex-1">
@@ -408,10 +455,25 @@ const LessonRunner: React.FC<{
 };
 
 const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ dueCards, readOnly, state, isBackShown, setIsBackShown, onGrade, onCompleteStage, onUpdateState }) => {
+  const card = dueCards[0];
+  useEffect(() => {
+    if (!card || readOnly) return;
+    function handleKey(event: KeyboardEvent) {
+      const tag = (event.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        if (!isBackShown) setIsBackShown(true);
+      } else if (isBackShown && ["1", "2", "3", "4"].includes(event.key)) {
+        onGrade(Number(event.key) as N5Grade);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [card, isBackShown, readOnly, setIsBackShown, onGrade]);
   if (readOnly) {
     return <StageShell eyebrow="Review" title="Read-only revisit" subtitle="Reviews are skipped while revisiting completed material." primaryLabel="Continue" onPrimary={() => onCompleteStage("review")} />;
   }
-  const card = dueCards[0];
   const content = card ? reviewContent(card) : null;
   if (!card || !content) {
     const returnToDone = Boolean(state.stagesCompleted.produce);
@@ -429,12 +491,12 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ dueC
           {!isBackShown ? content.front : content.back}
         </div>
         {!isBackShown ? (
-          <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Show Answer</button>
+          <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Show Answer <span className="opacity-50 font-normal normal-case">(Space)</span></button>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {([1, 2, 3, 4] as N5Grade[]).map((grade) => (
               <button key={grade} onClick={() => onGrade(grade)} className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}>
-                {gradeLabels[grade]}
+                {gradeLabels[grade]} <span className="opacity-40 font-normal normal-case">({grade})</span>
               </button>
             ))}
           </div>
@@ -449,6 +511,7 @@ const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
   const item = day.grammar[state.grammarIndex];
   if (!item) return <StageShell eyebrow="Grammar" title="No grammar listed" subtitle={day.grammarText || "Continue to the next stage."} primaryLabel="Continue" onPrimary={() => onCompleteStage("grammar")} />;
   const isLast = state.grammarIndex >= day.grammar.length - 1;
+  const hasPrev = state.grammarIndex > 0;
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Grammar" title={item.title} subtitle={`${state.grammarIndex + 1} of ${day.grammar.length}`} />
@@ -463,39 +526,52 @@ const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
           <div><span className="block text-[10px] font-black uppercase tracking-widest mb-1">Common mistake</span>{item.commonMistake}</div>
         </div>
       </div>
-      <PrimaryBar primaryLabel={isLast ? "Finish Grammar" : "Next Grammar"} onPrimary={() => isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })} />
+      <div className="flex gap-2">
+        {hasPrev && <button onClick={() => onUpdateState({ grammarIndex: state.grammarIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
+        <PrimaryBar primaryLabel={isLast ? "Finish Grammar" : "Next Grammar"} onPrimary={() => isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })} />
+      </div>
     </div>
   );
 };
 
-const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkVocabLearned, onAdvanceVocab, onCompleteStage }) => {
-  const item = day.vocab[state.vocabIndex];
+const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkVocabLearned, onAdvanceVocab, onDeferVocab, onCompleteStage, onUpdateState }) => {
+  const queue = effectiveVocabQueue(day, state);
+  const item = queue[state.vocabIndex];
   if (!item) return <StageShell eyebrow="Vocab" title="No vocab listed" subtitle={day.vocabText || "Continue to kanji."} primaryLabel="Continue" onPrimary={() => onCompleteStage("vocab")} />;
   const learned = cards.some((card) => card.id === cardIdForVocab(item));
+  const hasPrev = state.vocabIndex > 0;
+  const isDeferred = (state.deferredVocabIds || []).includes(item.id);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Vocab" title={`${state.vocabIndex + 1} of ${day.vocab.length} words`} subtitle={day.vocabText} />
+      <StageHeading eyebrow="Vocab" title={`${state.vocabIndex + 1} of ${queue.length} words`} subtitle={day.vocabText} />
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 text-center space-y-4">
-        <button onClick={() => speakJapanese(item.example || item.word)} className="ml-auto flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-950">
+        <button onClick={() => speakJapanese(item.example || item.word)} aria-label="Speak example" className="ml-auto flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-950">
           <Mic2 className="h-4 w-4" /> Speak
         </button>
         <div className="text-5xl sm:text-7xl font-black text-zinc-950">{item.word}</div>
         <div className="text-lg font-black text-indigo-700">{item.reading}{item.romaji ? ` · ${item.romaji}` : ""}</div>
         <div className="text-sm font-bold uppercase tracking-wide text-zinc-500">{item.type} · {item.meaning}</div>
         <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 text-xl font-black text-zinc-950">{item.example || item.raw}</div>
+        {isDeferred && <span className="text-[10px] font-black uppercase text-amber-600">Revisiting deferred item</span>}
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
+        {hasPrev && <button onClick={() => onUpdateState({ vocabIndex: state.vocabIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
           {readOnly ? "Next" : learned ? "Continue" : "Learned"}
         </button>
-        {!readOnly ? <button className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-500 text-xs font-black uppercase">I need more time</button> : null}
+        {!readOnly && !isDeferred ? (
+          <button onClick={() => onDeferVocab(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
+            More time
+          </button>
+        ) : null}
       </div>
     </div>
   );
 };
 
-const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkKanjiLearned, onAdvanceKanji, onCompleteStage }) => {
-  const item = day.kanji[state.kanjiIndex];
+const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkKanjiLearned, onAdvanceKanji, onDeferKanji, onCompleteStage, onUpdateState }) => {
+  const queue = effectiveKanjiQueue(day, state);
+  const item = queue[state.kanjiIndex];
   if (!item) return (
     <StageShell
       eyebrow="Kanji"
@@ -507,15 +583,18 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
     />
   );
   const learned = cards.some((card) => card.id === cardIdForKanji(item));
+  const hasPrev = state.kanjiIndex > 0;
+  const isDeferred = (state.deferredKanjiIds || []).includes(item.kanji);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Kanji" title={`${state.kanjiIndex + 1} of ${day.kanji.length} kanji`} subtitle={day.kanjiText} />
+      <StageHeading eyebrow="Kanji" title={`${state.kanjiIndex + 1} of ${queue.length} kanji`} subtitle={day.kanjiText} />
       {day.unresolvedKanjiChars.length ? <p className="text-xs font-bold text-zinc-500">From the day plan only: {day.unresolvedKanjiChars.join(" ")}</p> : null}
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 grid gap-4 md:grid-cols-[180px_1fr] items-center">
         <div className="text-center">
           <div className="text-8xl font-black text-zinc-950 leading-none">{item.kanji}</div>
           <div className="mt-3 text-sm font-black text-indigo-700">{item.readings}</div>
           <div className="mt-1 text-xs font-bold uppercase text-zinc-500">{item.meaning}</div>
+          {isDeferred && <span className="mt-2 block text-[10px] font-black uppercase text-amber-600">Revisiting deferred item</span>}
         </div>
         <div className="space-y-3">
           <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4">
@@ -527,10 +606,15 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
         </div>
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
+        {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: state.kanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
           {readOnly ? "Next" : learned ? "Continue" : "Learned"}
         </button>
-        {!readOnly ? <button className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-500 text-xs font-black uppercase">I need more time</button> : null}
+        {!readOnly && !isDeferred ? (
+          <button onClick={() => onDeferKanji(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
+            More time
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -613,27 +697,31 @@ const DoneStage: React.FC<React.ComponentProps<typeof LessonRunner> & { checkpoi
   );
 };
 
-const CourseMap: React.FC<{ progress: N5CourseProgress; onBack: () => void; onOpenDay: (day: number, revisit: boolean) => void }> = ({ progress, onBack, onOpenDay }) => (
+const CourseMap: React.FC<{ progress: N5CourseProgress; onBack: () => void; onOpenDay: (day: number, readOnly: boolean) => void }> = ({ progress, onBack, onOpenDay }) => (
   <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-4">
     <button onClick={onBack} className="text-xs font-black uppercase text-zinc-500 hover:text-zinc-950 flex items-center gap-1"><ChevronLeft className="h-4 w-4" /> Course Home</button>
     <div>
       <h2 className="text-2xl font-black text-zinc-950">30-day map</h2>
-      <p className="text-sm font-bold text-zinc-500 mt-1">Completed days reopen as read-only material review.</p>
+      <p className="text-sm font-bold text-zinc-500 mt-1">Completed days open as read-only review. Locked days open as preview.</p>
     </div>
-    <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-2">
+    <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
       {n5Course.days.map((day) => {
         const completed = progress.completedDays.includes(day.day);
-        const current = day.day === progress.unlockedDay && !completed;
+        const current = day.day === progress.currentDay && !completed;
         const locked = day.day > progress.unlockedDay;
         return (
           <button
             key={day.day}
-            disabled={locked}
-            onClick={() => onOpenDay(day.day, completed)}
-            className={`aspect-square rounded-2xl border-2 p-2 text-left flex flex-col justify-between ${completed ? "bg-emerald-200 border-zinc-900" : current ? "bg-indigo-600 text-white border-zinc-900" : locked ? "bg-zinc-100 text-zinc-400 border-zinc-200" : "bg-white border-zinc-300"}`}
+            onClick={() => onOpenDay(day.day, completed || locked)}
+            className={`rounded-2xl border-2 p-3 text-left flex flex-col gap-1 transition-colors ${completed ? "bg-emerald-200 border-zinc-900 hover:bg-emerald-300" : current ? "bg-indigo-600 text-white border-zinc-900 hover:bg-indigo-700" : locked ? "bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
           >
-            <span className="text-lg font-black">{day.day}</span>
-            <span className="text-[9px] font-black uppercase">{locked ? <Lock className="h-4 w-4" /> : completed ? "Done" : "Current"}</span>
+            <div className="flex items-center justify-between">
+              <span className="text-base font-black">{day.day}</span>
+              {locked && <Lock className="h-3 w-3" />}
+              {completed && <CheckCircle2 className="h-3 w-3" />}
+            </div>
+            <span className="text-[9px] font-black uppercase leading-tight line-clamp-2">{day.title}</span>
+            <span className="text-[9px] font-black uppercase opacity-60">{locked ? "Preview" : completed ? "Done" : current ? "Current" : "Available"}</span>
           </button>
         );
       })}
@@ -729,11 +817,22 @@ const SourceExamples: React.FC<{ day: N5DayPlan }> = ({ day }) => (
   </div>
 );
 
-const StageRail: React.FC<{ current: N5Stage }> = ({ current }) => (
+const StageRail: React.FC<{ current: N5Stage; stagesCompleted?: Partial<Record<N5Stage, boolean>>; onNavigate?: (stage: N5Stage) => void }> = ({ current, stagesCompleted = {}, onNavigate }) => (
   <div className="flex items-center gap-1 overflow-x-auto">
     {N5_STAGE_ORDER.map((stage) => {
       const active = stage === current;
-      return <span key={stage} className={`px-2 py-1 rounded-full border text-[9px] font-black uppercase ${active ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-400 border-zinc-200"}`}>{stage}</span>;
+      const done = stagesCompleted[stage] && stage !== current;
+      const clickable = onNavigate && (done || stage === current);
+      return (
+        <button
+          key={stage}
+          disabled={!clickable}
+          onClick={() => clickable && onNavigate(stage)}
+          className={`px-2 py-1 rounded-full border text-[9px] font-black uppercase transition-colors ${active ? "bg-zinc-900 text-white border-zinc-900" : done ? "bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200" : "bg-white text-zinc-400 border-zinc-200 cursor-default"}`}
+        >
+          {stage}
+        </button>
+      );
     })}
   </div>
 );
@@ -754,7 +853,7 @@ const MetricInline: React.FC<{ icon: React.ReactNode; label: string; value: stri
 const DaySegments: React.FC<{ progress: N5CourseProgress }> = ({ progress }) => (
   <div className="mt-4 grid grid-cols-10 gap-1">
     {Array.from({ length: 30 }, (_, index) => index + 1).map((day) => (
-      <div key={day} className={`h-2 rounded-full ${progress.completedDays.includes(day) ? "bg-emerald-500" : day === progress.unlockedDay ? "bg-indigo-600" : "bg-zinc-200"}`} />
+      <div key={day} className={`h-2 rounded-full ${progress.completedDays.includes(day) ? "bg-emerald-500" : day === progress.currentDay ? "bg-indigo-600" : day <= progress.unlockedDay ? "bg-indigo-200" : "bg-zinc-200"}`} />
     ))}
   </div>
 );
