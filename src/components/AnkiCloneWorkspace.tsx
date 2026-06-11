@@ -128,6 +128,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
 
   const dueCards = useMemo(() => deckCards.filter((card) => isV3CardDue(card)), [deckCards]);
   const currentReviewCard = dueCards[0] || deckCards[0];
+  // No cards are due but the deck still has cards: we fall back to studying ahead of schedule.
+  // Surface that explicitly rather than silently handing out not-yet-due cards.
+  const studyingAhead = dueCards.length === 0 && !!currentReviewCard;
   const selectedCard = collection.cards.find((card) => card.id === selectedCardId) || filteredCards[0] || currentReviewCard;
   const renderedReview = currentReviewCard ? renderAnkiCard(collection, currentReviewCard, mediaUrls) : null;
   const renderedSelected = selectedCard ? renderAnkiCard(collection, selectedCard, mediaUrls) : null;
@@ -309,6 +312,10 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         </div>
       )}
 
+      {collection.cards.length === 0 ? (
+        <FirstRunImport isImporting={isImporting} onImport={handleImport} />
+      ) : (
+      <>
       <div className="grid grid-cols-2 min-[560px]:grid-cols-4 lg:grid-cols-9 gap-2">
         {[
           ["decks", Layers, "Decks"],
@@ -371,10 +378,15 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
             <EmptyState text="Import an Anki package or choose a deck with cards to start review." />
           ) : (
             <div className="space-y-4">
+              {studyingAhead && (
+                <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+                  All due cards are cleared — you're now studying ahead of schedule. Reviewing early can pull future cards forward.
+                </div>
+              )}
               <div className="bg-white border-2 border-zinc-900 rounded-[24px] min-h-[340px] p-4 sm:p-6 flex flex-col justify-between">
                 <div className="flex justify-between gap-2 text-[10px] font-black uppercase text-zinc-400">
                   <span>{collection.decks.find((deck) => deck.id === currentReviewCard.deckId)?.name || "Deck"}</span>
-                  <span>{dueCards.length} due</span>
+                  <span>{studyingAhead ? "ahead" : `${dueCards.length} due`}</span>
                 </div>
                 <div className="anki-card-render text-center my-6" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(isBackShown ? renderedReview.backHTML : renderedReview.frontHTML) }} />
                 <style dangerouslySetInnerHTML={{ __html: renderedReview.css.replace(/^<style>|<\/style>$/g, "") }} />
@@ -520,6 +532,8 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
           <Metric label="Imports" value={collection.importReports.length} />
         </div>
       )}
+      </>
+      )}
     </div>
   );
 };
@@ -527,6 +541,25 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
 const EmptyState: React.FC<{ text: string }> = ({ text }) => (
   <div className="bg-zinc-50 border-2 border-dashed border-zinc-300 rounded-2xl p-6 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
     {text}
+  </div>
+);
+
+// Focused first-run state: with no deck imported, the eight tabs + zeroed stat cards are just
+// noise. Show one clear call to action instead.
+const FirstRunImport: React.FC<{ isImporting: boolean; onImport: (event: React.ChangeEvent<HTMLInputElement>) => void }> = ({ isImporting, onImport }) => (
+  <div className="border-2 border-dashed border-zinc-300 rounded-[24px] p-8 sm:p-12 text-center space-y-4">
+    <div className="mx-auto w-14 h-14 rounded-2xl border-2 border-zinc-900 bg-indigo-50 flex items-center justify-center">
+      <Upload className="h-6 w-6 text-indigo-600" />
+    </div>
+    <div>
+      <h4 className="text-lg font-black text-zinc-950">Import a deck to get started</h4>
+      <p className="mt-1 text-xs font-bold text-zinc-500 max-w-md mx-auto">Bring in any Anki <code>.apkg</code> / <code>.colpkg</code> package. Media and scheduling are kept — your reviews, browser, and stats appear once it's loaded.</p>
+    </div>
+    <label className={`inline-flex px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase items-center justify-center gap-2 cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
+      <Upload className="h-4 w-4" />
+      {isImporting ? "Importing..." : "Import .apkg/.colpkg"}
+      <input type="file" accept=".apkg,.colpkg" className="hidden" onChange={onImport} disabled={isImporting} />
+    </label>
   </div>
 );
 

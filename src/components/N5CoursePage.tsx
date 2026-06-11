@@ -189,6 +189,14 @@ export const N5CoursePage: React.FC = () => {
       const newKanjiIdx = firstUnlearnedIndex(kanjiQueue, (e) => e.kanji, learnedKanji);
       const newGrammarIdx = firstUnlearnedIndex(dayPlan.grammar, (g) => g.id, learnedGrammar);
       const patch: Partial<typeof state> = {};
+      // First-ever lesson: with nothing learned there are no reviews to clear, so don't open on
+      // the empty "All caught up" Review screen — start the beginner on Grammar instead. Later
+      // days keep Review first (clearing due cards before new material).
+      const totalLearned = learnedVocab.size + learnedKanji.size + learnedGrammar.size;
+      if (state.stage === "review" && !state.stagesCompleted.review && totalLearned === 0) {
+        patch.stage = "grammar";
+        patch.stagesCompleted = { ...state.stagesCompleted, review: true };
+      }
       if (newVocabIdx !== state.vocabIndex) patch.vocabIndex = newVocabIdx;
       if (newKanjiIdx !== state.kanjiIndex) patch.kanjiIndex = newKanjiIdx;
       if (newGrammarIdx !== state.grammarIndex) patch.grammarIndex = newGrammarIdx;
@@ -352,9 +360,18 @@ export const N5CoursePage: React.FC = () => {
     else sound.playCorrect();
   }
 
+  // Persist day-completion as soon as the final "Day complete" screen is reached, so closing
+  // or refreshing before tapping "Return home" still credits the streak and unlocks the next
+  // day. Idempotent: re-running on an already-completed day is a no-op.
+  async function commitDayComplete() {
+    if (!progress || readOnly) return;
+    if (progress.completedDays.includes(activeDayNumber)) return;
+    await persistProgress(completeN5Day(progress, activeDayNumber));
+  }
+
   async function completeDay() {
     if (!progress || dueCards.length > 0 || readOnly) return;
-    await persistProgress(completeN5Day(progress, activeDayNumber));
+    await commitDayComplete();
     setMode("home");
     setLessonDay(null);
     setReadOnly(false);
@@ -447,6 +464,7 @@ export const N5CoursePage: React.FC = () => {
         onDeferKanji={deferKanji}
         onUpdateProduction={updateProduction}
         onCompleteDay={completeDay}
+        onReachDayComplete={commitDayComplete}
         onStartDayPractice={() => startCumulativeReview(activeDayNumber)}
         onRedoDay={() => redoDay(activeDayNumber)}
         onSaveCheckpoint={async (checkpointId, status, checkedItems) => {
@@ -533,7 +551,7 @@ const ReviewSessionView: React.FC<{
             <div>
               <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Session complete</span>
               <h2 className="text-3xl font-black text-zinc-950 mt-2">{total} card{total !== 1 ? "s" : ""} reviewed</h2>
-              <p className="mt-2 text-sm font-bold text-zinc-500">Hardest material came first — FSRS reschedules everything you just graded.</p>
+              <p className="mt-2 text-sm font-bold text-zinc-500">Hardest material came first — everything you just graded is rescheduled automatically.</p>
             </div>
             <button onClick={onExit} className="w-full sm:w-auto px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
               Return Home
@@ -593,7 +611,7 @@ const CourseHome: React.FC<{
           </button>
           {learnedCardCount > 0 && (
             <button onClick={onCumulativeReview} className="w-full sm:w-auto px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-white text-zinc-900 text-sm font-black uppercase flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:bg-indigo-50">
-              <History className="h-4 w-4" /> Review All ({learnedCardCount})
+              <History className="h-4 w-4" /> {dueCount > 0 ? `Review (${dueCount} due)` : `Practice all (${learnedCardCount})`}
             </button>
           )}
         </div>
@@ -604,14 +622,14 @@ const CourseHome: React.FC<{
           <div className="flex items-center justify-between gap-3">
             <div>
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">N5 Reviews</span>
-              <p className="text-xl font-black text-zinc-950 mt-1">{dueCount > 0 ? `${dueCount} reviews due` : "All caught up"}</p>
+              <p className="text-xl font-black text-zinc-950 mt-1">{dueCount > 0 ? `${dueCount} review${dueCount === 1 ? "" : "s"} due` : "All caught up"}</p>
             </div>
             <BookOpen className="h-6 w-6 text-indigo-600" />
           </div>
           {dueCount > 0 ? (
             <button onClick={onCumulativeReview} className="mt-3 w-full px-3 py-2 rounded-xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Review now</button>
           ) : learnedCardCount > 0 ? (
-            <button onClick={onCumulativeReview} className="mt-3 w-full px-3 py-2 rounded-xl border-2 border-zinc-900 bg-white text-zinc-900 text-xs font-black uppercase hover:bg-indigo-50">Practice all learned</button>
+            <button onClick={onCumulativeReview} className="mt-3 w-full px-3 py-2 rounded-xl border-2 border-zinc-900 bg-white text-zinc-900 text-xs font-black uppercase hover:bg-indigo-50">Practice all ({learnedCardCount})</button>
           ) : (
             <p className="mt-3 text-xs font-bold text-zinc-500">New material is ready when you are.</p>
           )}
@@ -752,6 +770,7 @@ const LessonRunner: React.FC<{
   onDeferKanji: (entry: N5KanjiEntry) => Promise<void>;
   onUpdateProduction: (promptId: string, text: string) => Promise<void>;
   onCompleteDay: () => Promise<void>;
+  onReachDayComplete: () => void;
   onSaveCheckpoint: (checkpointId: string, status: "ready" | "not-ready", checkedItems: string[]) => Promise<void>;
   onStartDayPractice: () => void;
   onRedoDay: () => void;
@@ -1050,7 +1069,7 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day,
       <StageShell
         eyebrow="Review"
         title="All caught up"
-        subtitle="No N5 reviews are due right now. You can still redo today's material as an early FSRS review."
+        subtitle="No reviews are due right now. You can still practice today's material early."
         primaryLabel="Continue"
         onPrimary={() => returnToDone ? onUpdateState({ stage: "done", stagesCompleted: { ...state.stagesCompleted, review: true } }) : onCompleteStage("review")}
         secondaryLabel={dayCardCount > 0 ? `Redo Day ${day.day} reviews (${dayCardCount})` : undefined}
@@ -1125,7 +1144,7 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const tailAllSkipped = skippedCount > 0 && queue.slice(state.vocabIndex).every((e) => deferredSet.has(e.id));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Vocab" title={`${displayPos} of ${queue.length} words`} subtitle={day.vocabText} />
+      <StageHeading eyebrow="Vocab" title={`${displayPos} of ${queue.length} words${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`} subtitle={day.vocabText} />
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 text-center space-y-4">
         <button onClick={() => speakJapanese(item.example || item.word)} aria-label="Speak example" className="ml-auto flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-950">
           <Mic2 className="h-4 w-4" /> Speak
@@ -1143,8 +1162,8 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
           {readOnly ? "Next" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
-          <button onClick={() => onDeferVocab(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
-            Skip for now
+          <button onClick={() => onDeferVocab(item)} title="Moves this word to the end of the section to revisit shortly." className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
+            Skip · revisit later
           </button>
         ) : null}
       </div>
@@ -1181,7 +1200,7 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const tailAllSkipped = skippedCount > 0 && queue.slice(state.kanjiIndex).every((e) => deferredSet.has(e.kanji));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Kanji" title={`${displayPos} of ${queue.length} kanji`} subtitle={day.kanjiText} />
+      <StageHeading eyebrow="Kanji" title={`${displayPos} of ${queue.length} kanji${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`} subtitle={day.kanjiText} />
       {day.unresolvedKanjiChars.length ? <p className="text-xs font-bold text-zinc-500">From the day plan only: {day.unresolvedKanjiChars.join(" ")}</p> : null}
       <div className="border-2 border-zinc-900 rounded-[24px] p-5 grid gap-4 md:grid-cols-[180px_1fr] items-center">
         <div className="text-center">
@@ -1224,8 +1243,8 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
           {readOnly ? "Next" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
-          <button onClick={() => onDeferKanji(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
-            Skip for now
+          <button onClick={() => onDeferKanji(item)} title="Moves this kanji to the end of the section to revisit shortly." className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
+            Skip · revisit later
           </button>
         ) : null}
       </div>
@@ -1241,16 +1260,15 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
 const ProduceStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, progress, readOnly, onUpdateProduction, onCompleteStage }) => {
   const tasks = productionTasks(day);
   const answers: Record<string, N5ProductionAnswer> = progress.productionAnswers[String(day.day)] || {};
-  const hasText = Object.values(answers).some((answer) => answer.text.trim());
   const complete = tasks.length === 0 || tasks.every((task) => (answers[task.id]?.text || "").trim().length > 0);
   const [showExamples, setShowExamples] = useState(false);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Produce" title="Write your own Japanese" subtitle={day.produceText || "Record the self-practice work for this day."} />
+      <StageHeading eyebrow="Produce" title="Write your own Japanese" subtitle={day.produceText || "Use today's patterns in your own sentences. This is for your practice — it isn't graded."} />
       <div className="space-y-3">
         {tasks.map((task) => (
           <label key={task.id} className="block">
-            <span className="block text-sm font-black text-zinc-900 mb-2">{task.text}</span>
+            <span className="block text-sm font-black text-zinc-900 mb-2">{cleanProducePrompt(task.text)}</span>
             <textarea
               disabled={readOnly}
               value={answers[task.id]?.text || ""}
@@ -1261,20 +1279,26 @@ const ProduceStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
           </label>
         ))}
       </div>
-      {hasText ? (
-        <button onClick={() => setShowExamples((value) => !value)} className="text-xs font-black uppercase text-indigo-700 hover:text-indigo-950">
-          {showExamples ? "Hide source examples" : "Show source examples"}
-        </button>
-      ) : null}
+      <button onClick={() => setShowExamples((value) => !value)} className="text-xs font-black uppercase text-indigo-700 hover:text-indigo-950">
+        {showExamples ? "Hide example sentences" : "Show example sentences"}
+      </button>
       {showExamples ? <SourceExamples day={day} /> : null}
+      {!complete && !readOnly ? <p className="text-xs font-bold text-zinc-400 text-center">Write in each box to continue.</p> : null}
       <PrimaryBar primaryLabel="Submit Practice" disabled={!complete || readOnly} onPrimary={() => onCompleteStage("produce")} />
     </div>
   );
 };
 
-const DoneStage: React.FC<React.ComponentProps<typeof LessonRunner> & { checkpoint?: (typeof n5Course.checkpoints)[number] }> = ({ day, progress, cards, dueCards, checkpoint, onCompleteDay, onSaveCheckpoint, onBackHome, onUpdateState, readOnly }) => {
+const DoneStage: React.FC<React.ComponentProps<typeof LessonRunner> & { checkpoint?: (typeof n5Course.checkpoints)[number] }> = ({ day, progress, cards, dueCards, checkpoint, onCompleteDay, onReachDayComplete, onSaveCheckpoint, onBackHome, onUpdateState, readOnly }) => {
   const report = checkpoint ? progress.checkpointReports[checkpoint.id] : null;
   const [checked, setChecked] = useState<string[]>(report?.checkedItems || []);
+  // The final "Day complete" screen is shown once reviews are cleared and any checkpoint is
+  // resolved. Commit completion as soon as it appears, so the streak/unlock are durable even
+  // if the user closes the tab without tapping "Return home".
+  const reachedDayComplete = !readOnly && dueCards.length === 0 && (!checkpoint || !!report);
+  useEffect(() => {
+    if (reachedDayComplete) onReachDayComplete();
+  }, [reachedDayComplete]);
   if (readOnly) return <StageShell eyebrow="Revisit" title={`Day ${day.day}`} subtitle="Read-only review complete." primaryLabel="Return Home" onPrimary={onBackHome} />;
   if (dueCards.length > 0) {
     return <StageShell eyebrow="Done" title="Reviews remain" subtitle={`${dueCards.length} N5 reviews are due. You can study new material, but this day completes after reviews are cleared.`} primaryLabel="Back to Reviews" onPrimary={() => onUpdateState({ stage: "review" })} />;
@@ -1474,6 +1498,12 @@ function useEnterAdvance(action: (() => void) | null) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [action]);
+}
+
+// Strip a stray leading list-number (e.g. "5 " / "5. ") left over from the parsed day plan
+// when it sits directly in front of a Japanese quote — keeps numbers inside real instructions.
+function cleanProducePrompt(text: string): string {
+  return text.replace(/^\s*\d+[.)]?\s+(?=[「『])/, "");
 }
 
 function productionTasks(day: N5DayPlan): Array<{ id: string; text: string }> {

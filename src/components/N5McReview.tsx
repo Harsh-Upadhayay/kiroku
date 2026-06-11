@@ -40,6 +40,15 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
   // Combined revealed flag: true once the user picks or "show answer" is clicked.
   const revealed = isRevealed || pickedIndex !== null;
 
+  // When the user answered via multiple choice we already know if they were right, so we
+  // derive the grade instead of asking for a redundant second self-judgment: a correct pick
+  // defaults to Good, a wrong pick to Again. The user can still nudge it (Hard/Easy after a
+  // correct pick, Hard after a wrong one) but can't, e.g., mark a wrong answer "Easy".
+  // "Show answer" (no pick) leaves correctness unknown, so the full manual scale stays.
+  const pickedCorrect = pickedIndex !== null && question ? pickedIndex === question.correctIndex : null;
+  const defaultGrade: N5Grade = pickedCorrect ? 3 : 1;
+  const allowedGrades: N5Grade[] = pickedIndex === null ? [1, 2, 3, 4] : pickedCorrect ? [2, 3, 4] : [1, 2];
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -53,13 +62,21 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
           handleShowAnswer();
         }
       } else {
-        if (["1", "2", "3", "4"].includes(e.key)) { e.preventDefault(); onGrade(Number(e.key) as N5Grade); }
+        if ((e.key === "Enter" || e.key === " ") && pickedIndex !== null) {
+          e.preventDefault();
+          onGrade(defaultGrade);
+          return;
+        }
+        if (["1", "2", "3", "4"].includes(e.key)) {
+          const g = Number(e.key) as N5Grade;
+          if (allowedGrades.includes(g)) { e.preventDefault(); onGrade(g); }
+        }
       }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealed, question, onGrade]);
+  }, [revealed, question, onGrade, pickedIndex, defaultGrade, allowedGrades]);
 
   function handlePick(idx: number) {
     if (pickedIndex !== null || !question) return;
@@ -135,16 +152,31 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
             <div className="border-t-2 border-zinc-100 pt-4 text-center">
               {back}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {([1, 2, 3, 4] as N5Grade[]).map((grade) => (
-                <button
-                  key={grade}
-                  onClick={() => onGrade(grade)}
-                  className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}
-                >
-                  {gradeLabels[grade]} <span className="opacity-40 font-normal normal-case">({grade})</span>
-                </button>
-              ))}
+            {/* Sticky action bar so grading is always reachable without scrolling past the
+                explanation — the high-frequency action in a long review session. */}
+            <div className="sticky bottom-2 z-10 -mx-5 px-5 pt-3 pb-1 bg-white/95 backdrop-blur border-t-2 border-zinc-100">
+              {pickedIndex !== null && (
+                <div className={`mb-2 text-center text-[11px] font-black uppercase ${pickedCorrect ? "text-emerald-600" : "text-red-500"}`}>
+                  {pickedCorrect ? "Correct" : "Not quite"}
+                  <span className="ml-2 text-zinc-400 normal-case font-normal">
+                    Enter = {gradeLabels[defaultGrade]}{allowedGrades.length > 1 ? ", or adjust" : ""}
+                  </span>
+                </div>
+              )}
+              <div className={`grid gap-2 ${allowedGrades.length === 2 ? "grid-cols-2" : allowedGrades.length === 3 ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4"}`}>
+                {allowedGrades.map((grade) => {
+                  const isDefault = pickedIndex !== null && grade === defaultGrade;
+                  return (
+                    <button
+                      key={grade}
+                      onClick={() => onGrade(grade)}
+                      className={`py-3 rounded-2xl border-2 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"} ${isDefault ? "border-zinc-900 ring-2 ring-zinc-900 ring-offset-1" : "border-zinc-900"}`}
+                    >
+                      {gradeLabels[grade]} <span className="opacity-40 font-normal normal-case">({grade})</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}

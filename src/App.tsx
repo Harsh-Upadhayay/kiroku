@@ -792,7 +792,7 @@ export default function App() {
                   }`}
                 >
                   {tab.icon}
-                  <span className="hidden sm:block text-center leading-tight">{tab.label}</span>
+                  <span className="block text-center leading-tight">{tab.label}</span>
                 </button>
               );
             })}

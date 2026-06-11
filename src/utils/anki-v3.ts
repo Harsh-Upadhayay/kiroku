@@ -349,9 +349,14 @@ export async function importAnkiPackage(file: File): Promise<AnkiCollection> {
 
   const imported = payload.data as ImportResponse;
   const current = await getAnkiCollection();
-  await cacheImportedMedia(imported.importId, imported.mediaManifest);
   const merged = mergeImportedCollection(current, imported);
+  // Persist the parsed collection BEFORE caching media. Media is best-effort: a single
+  // failed media fetch must never roll back an otherwise-successful deck import.
   await saveAnkiCollection(merged);
+  const mediaResult = await cacheImportedMedia(imported.importId, imported.mediaManifest);
+  if (mediaResult.failed > 0) {
+    console.warn(`Anki import: ${mediaResult.failed}/${imported.mediaManifest.length} media files could not be cached.`);
+  }
   return merged;
 }
 
@@ -380,15 +385,35 @@ function mergeById<T extends Record<string, any>>(a: T[], b: T[], key = "id"): T
   return Array.from(map.values());
 }
 
-async function cacheImportedMedia(importId: string, manifest: AnkiMediaRef[]): Promise<void> {
-  await Promise.all(manifest.map(async (media) => {
-    const existing = await getMediaBlob(media.hash);
-    if (existing) return;
-    const response = await fetch(`/api/import-anki-package/${encodeURIComponent(importId)}/media/${media.hash}`);
-    if (!response.ok) return;
-    const blob = await response.blob();
-    await saveMediaBlob(media, blob);
-  }));
+async function cacheImportedMedia(
+  importId: string,
+  manifest: AnkiMediaRef[]
+): Promise<{ cached: number; failed: number }> {
+  let cached = 0;
+  let failed = 0;
+  // Best-effort, concurrency-limited. Firing every media GET at once (Promise.all over the
+  // full manifest) exhausts browser connections on large decks and any single rejection
+  // (net::ERR_FAILED) used to abort the whole import. Each item now fails independently.
+  const CONCURRENCY = 6;
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < manifest.length) {
+      const media = manifest[cursor++];
+      try {
+        const existing = await getMediaBlob(media.hash);
+        if (existing) { cached++; continue; }
+        const response = await fetch(`/api/import-anki-package/${encodeURIComponent(importId)}/media/${media.hash}`);
+        if (!response.ok) { failed++; continue; }
+        const blob = await response.blob();
+        await saveMediaBlob(media, blob);
+        cached++;
+      } catch {
+        failed++;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, manifest.length) }, worker));
+  return { cached, failed };
 }
 
 export async function saveMediaBlob(media: AnkiMediaRef, blob: Blob): Promise<void> {
