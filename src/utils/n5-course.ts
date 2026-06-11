@@ -440,7 +440,7 @@ export function firstUnlearnedIndex<T>(
 ): number {
   if (queue.length === 0) return 0;
   const idx = queue.findIndex((item) => !learned.has(idOf(item)));
-  return idx === -1 ? Math.max(0, queue.length - 1) : idx;
+  return idx === -1 ? queue.length : idx;
 }
 
 /**
