@@ -62,7 +62,7 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
           handleShowAnswer();
         }
       } else {
-        if ((e.key === "Enter" || e.key === " ") && pickedIndex !== null) {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onGrade(defaultGrade);
           return;
