@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -104,6 +104,10 @@ export const N5CoursePage: React.FC = () => {
   const currentDayNumber = progress ? Math.min(progress.currentDay || progress.unlockedDay, progress.unlockedDay) : 1;
   const focusDay = n5Course.days[currentDayNumber - 1] || n5Course.days[0];
   const activeDayNumber = lessonDay || currentDayNumber;
+  // BUG-03 fix: keep a ref so the reload closure always reads the CURRENT day,
+  // not the stale value captured at mount time.
+  const activeDayNumberRef = useRef(activeDayNumber);
+  activeDayNumberRef.current = activeDayNumber;
   const activeDay = n5Course.days[activeDayNumber - 1] || focusDay;
   const activeState = progress
     ? readOnly
@@ -147,10 +151,12 @@ export const N5CoursePage: React.FC = () => {
     if (silent) {
       setProgress((current) => {
         if (!current) return trended;
-        const memState = getN5DayState(current, activeDayNumber);
-        const diskState = getN5DayState(trended, activeDayNumber);
+        // BUG-03 fix: read the ref, not the stale closure value
+        const currentDay = activeDayNumberRef.current;
+        const memState = getN5DayState(current, currentDay);
+        const diskState = getN5DayState(trended, currentDay);
         if (memState.updatedAt && (!diskState.updatedAt || memState.updatedAt >= diskState.updatedAt)) {
-          finalProgress = updateN5DayState(trended, activeDayNumber, memState);
+          finalProgress = updateN5DayState(trended, currentDay, memState);
         }
         return finalProgress;
       });
@@ -268,20 +274,28 @@ export const N5CoursePage: React.FC = () => {
     await persistProgress(completeN5Stage(progress, activeDayNumber, stage));
   }
 
+  const isGradingRef = useRef(false);
+
   async function gradeCurrentCard(grade: N5Grade) {
+    if (isGradingRef.current) return; // BUG-08 fix: block double-tap
     const card = dueCards[0];
     if (!card) return;
-    const answerSeconds = Math.max(1, Math.round((Date.now() - reviewStartedAt) / 1000));
-    const { card: updatedCard, log } = gradeN5Card(card, grade, new Date(), answerSeconds);
-    const nextCards = cards.map((item) => item.id === card.id ? updatedCard : item);
-    const nextLogs = [log, ...logs];
-    await persistCards(nextCards);
-    await persistLogs(nextLogs);
-    if (progress) await persistProgress(recordN5DueTrend(progress, dueN5Cards(nextCards).length));
-    setIsBackShown(false);
-    setReviewStartedAt(Date.now());
-    if (grade === 1) sound.playIncorrect();
-    else sound.playCorrect();
+    isGradingRef.current = true;
+    try {
+      const answerSeconds = Math.max(1, Math.round((Date.now() - reviewStartedAt) / 1000));
+      const { card: updatedCard, log } = gradeN5Card(card, grade, new Date(), answerSeconds);
+      const nextCards = cards.map((item) => item.id === card.id ? updatedCard : item);
+      const nextLogs = [log, ...logs];
+      await persistCards(nextCards);
+      await persistLogs(nextLogs);
+      if (progress) await persistProgress(recordN5DueTrend(progress, dueN5Cards(nextCards).length));
+      setIsBackShown(false);
+      setReviewStartedAt(Date.now());
+      if (grade === 1) sound.playIncorrect();
+      else sound.playCorrect();
+    } finally {
+      isGradingRef.current = false;
+    }
   }
 
   async function markVocabLearned(entry: N5VocabEntry) {
@@ -361,21 +375,26 @@ export const N5CoursePage: React.FC = () => {
   const startCumulativeReview = (scopeDay?: number) => startDeckReview({ scopeDay });
 
   async function gradeSessionCard(grade: N5Grade) {
-    if (!session) return;
+    if (isGradingRef.current || !session) return; // BUG-08 fix: block double-tap
     const card = cards.find((item) => item.id === session.ids[session.index]);
     if (!card) {
       setSession({ ...session, index: session.index + 1 });
       return;
     }
-    const answerSeconds = Math.max(1, Math.round((Date.now() - reviewStartedAt) / 1000));
-    const { card: updatedCard, log } = gradeN5Card(card, grade, new Date(), answerSeconds);
-    await persistCards(cards.map((item) => item.id === card.id ? updatedCard : item));
-    await persistLogs([log, ...logs]);
-    setSession({ ...session, index: session.index + 1 });
-    setIsBackShown(false);
-    setReviewStartedAt(Date.now());
-    if (grade === 1) sound.playIncorrect();
-    else sound.playCorrect();
+    isGradingRef.current = true;
+    try {
+      const answerSeconds = Math.max(1, Math.round((Date.now() - reviewStartedAt) / 1000));
+      const { card: updatedCard, log } = gradeN5Card(card, grade, new Date(), answerSeconds);
+      await persistCards(cards.map((item) => item.id === card.id ? updatedCard : item));
+      await persistLogs([log, ...logs]);
+      setSession({ ...session, index: session.index + 1 });
+      setIsBackShown(false);
+      setReviewStartedAt(Date.now());
+      if (grade === 1) sound.playIncorrect();
+      else sound.playCorrect();
+    } finally {
+      isGradingRef.current = false;
+    }
   }
 
   // Persist day-completion as soon as the final "Day complete" screen is reached, so closing
@@ -798,6 +817,8 @@ const LessonRunner: React.FC<{
   const [showMinimap, setShowMinimap] = useState(false);
 
   async function handleMinimapNavigate(targetStage: N5Stage, index?: number) {
+    // BUG-02 fix: block direct navigation to "done" unless produce is complete.
+    if (targetStage === "done" && !props.state.stagesCompleted?.produce) return;
     const patch: Partial<N5DayProgress> = { stage: targetStage };
     if (index !== undefined) {
       if (targetStage === "grammar") patch.grammarIndex = index;
@@ -1089,7 +1110,7 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day,
         title="All caught up"
         subtitle="No reviews are due right now. You can still practice today's material early."
         primaryLabel="Continue"
-        onPrimary={() => returnToDone ? onUpdateState({ stage: "done", stagesCompleted: { ...state.stagesCompleted, review: true } }) : onCompleteStage("review")}
+        onPrimary={() => onCompleteStage("review")}
         secondaryLabel={dayCardCount > 0 ? `Redo Day ${day.day} reviews (${dayCardCount})` : undefined}
         onSecondary={dayCardCount > 0 ? onStartDayPractice : undefined}
       />
@@ -1156,10 +1177,12 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const learned = cards.some((card) => card.id === cardIdForVocab(item));
   const hasPrev = state.vocabIndex > 0;
   const isDeferred = (state.deferredVocabIds || []).includes(item.id);
-  const displayPos = Math.min(state.vocabIndex + (state.deferredVocabIds?.length || 0) + 1, queue.length);
+  const displayPos = Math.min(state.vocabIndex + 1, queue.length);
   const deferredSet = new Set(state.deferredVocabIds || []);
   const skippedCount = deferredSet.size;
-  const tailAllSkipped = skippedCount > 0 && queue.slice(state.vocabIndex).every((e) => deferredSet.has(e.id));
+  // BUG-14 fix: exclude current item from the tail check so the "Finish section"
+  // button doesn't appear while the user is viewing the last deferred item itself.
+  const tailAllSkipped = skippedCount > 0 && !deferredSet.has(item.id) && queue.slice(state.vocabIndex + 1).length > 0 && queue.slice(state.vocabIndex + 1).every((e) => deferredSet.has(e.id));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Vocab" title={`${displayPos} of ${queue.length} words${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`} subtitle={day.vocabText} />
@@ -1212,10 +1235,11 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const learned = cards.some((card) => card.id === cardIdForKanji(item));
   const hasPrev = state.kanjiIndex > 0;
   const isDeferred = (state.deferredKanjiIds || []).includes(item.kanji);
-  const displayPos = Math.min(state.kanjiIndex + (state.deferredKanjiIds?.length || 0) + 1, queue.length);
+  const displayPos = Math.min(state.kanjiIndex + 1, queue.length);
   const deferredSet = new Set(state.deferredKanjiIds || []);
   const skippedCount = deferredSet.size;
-  const tailAllSkipped = skippedCount > 0 && queue.slice(state.kanjiIndex).every((e) => deferredSet.has(e.kanji));
+  // BUG-14 fix: exclude current item and require non-empty tail
+  const tailAllSkipped = skippedCount > 0 && !deferredSet.has(item.kanji) && queue.slice(state.kanjiIndex + 1).length > 0 && queue.slice(state.kanjiIndex + 1).every((e) => deferredSet.has(e.kanji));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Kanji" title={`${displayPos} of ${queue.length} kanji${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`} subtitle={day.kanjiText} />
