@@ -416,8 +416,11 @@ func IsDestructive(existingRaw []byte, incoming models.SyncState) bool {
 		return false
 	}
 
-	existingSubstantial := len(existing.SRSCards) > 0 || len(existing.AnkiV3Collection) > 0 || len(existing.N5CourseProgress) > 0 || len(existing.N5SRSCards) > 0
-	incomingEmpty := len(incoming.SRSCards) == 0 && len(incoming.AnkiV3Collection) == 0 && len(incoming.N5CourseProgress) == 0 && len(incoming.N5SRSCards) == 0
+	// Only guard kana SRS cards and Anki data — N5 progress has its own merge
+	// logic (resetAt + per-field merging) that safely handles an empty incoming
+	// push (e.g. first login on a new device before N5 data is uploaded).
+	existingSubstantial := len(existing.SRSCards) > 0 || len(existing.AnkiV3Collection) > 0
+	incomingEmpty := len(incoming.SRSCards) == 0 && len(incoming.AnkiV3Collection) == 0
 
 	return existingSubstantial && incomingEmpty
 }
