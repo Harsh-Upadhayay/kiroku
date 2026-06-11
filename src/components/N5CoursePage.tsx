@@ -1177,18 +1177,24 @@ const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
 
 const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkVocabLearned, onAdvanceVocab, onDeferVocab, onCompleteStage, onUpdateState }) => {
   const queue = effectiveVocabQueue(day, state);
-  const item = queue[state.vocabIndex];
+  // startLesson sets vocabIndex to queue.length (out of bounds) when all items are
+  // already learned. Clamp to 0 so the stage shows real content instead of the empty state.
+  const effectiveVocabIndex = queue.length > 0 && state.vocabIndex >= queue.length ? 0 : state.vocabIndex;
+  useEffect(() => {
+    if (effectiveVocabIndex !== state.vocabIndex) onUpdateState({ vocabIndex: effectiveVocabIndex });
+  }, [effectiveVocabIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  const item = queue[effectiveVocabIndex];
   useEnterAdvance(item ? () => (readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)) : null);
   if (!item) return <StageShell eyebrow="Vocab" title="No vocab listed" subtitle={day.vocabText || "Continue to kanji."} primaryLabel="Continue" onPrimary={() => onCompleteStage("vocab")} />;
   const learned = cards.some((card) => card.id === cardIdForVocab(item));
-  const hasPrev = state.vocabIndex > 0;
+  const hasPrev = effectiveVocabIndex > 0;
   const isDeferred = (state.deferredVocabIds || []).includes(item.id);
-  const displayPos = Math.min(state.vocabIndex + 1, queue.length);
+  const displayPos = Math.min(effectiveVocabIndex + 1, queue.length);
   const deferredSet = new Set(state.deferredVocabIds || []);
   const skippedCount = deferredSet.size;
   // BUG-14 fix: exclude current item from the tail check so the "Finish section"
   // button doesn't appear while the user is viewing the last deferred item itself.
-  const tailAllSkipped = skippedCount > 0 && !deferredSet.has(item.id) && queue.slice(state.vocabIndex + 1).length > 0 && queue.slice(state.vocabIndex + 1).every((e) => deferredSet.has(e.id));
+  const tailAllSkipped = skippedCount > 0 && !deferredSet.has(item.id) && queue.slice(effectiveVocabIndex + 1).length > 0 && queue.slice(effectiveVocabIndex + 1).every((e) => deferredSet.has(e.id));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Vocab" title={`${displayPos} of ${queue.length} words${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`} subtitle={day.vocabText} />
@@ -1204,7 +1210,7 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
         {isDeferred && <span className="text-[10px] font-black uppercase text-amber-600">Skipped item — revisiting</span>}
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
-        {hasPrev && <button onClick={() => onUpdateState({ vocabIndex: state.vocabIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
+        {hasPrev && <button onClick={() => onUpdateState({ vocabIndex: effectiveVocabIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
           {readOnly ? "Next" : isDeferred ? "Learnt ✓" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
@@ -1225,7 +1231,13 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
 
 const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkKanjiLearned, onAdvanceKanji, onDeferKanji, onCompleteStage, onUpdateState }) => {
   const queue = effectiveKanjiQueue(day, state);
-  const item = queue[state.kanjiIndex];
+  // startLesson sets kanjiIndex to queue.length (out of bounds) when all items are
+  // already learned. Clamp to 0 so the stage shows real content instead of the empty state.
+  const effectiveKanjiIndex = queue.length > 0 && state.kanjiIndex >= queue.length ? 0 : state.kanjiIndex;
+  useEffect(() => {
+    if (effectiveKanjiIndex !== state.kanjiIndex) onUpdateState({ kanjiIndex: effectiveKanjiIndex });
+  }, [effectiveKanjiIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  const item = queue[effectiveKanjiIndex];
   const [breakdownChar, setBreakdownChar] = useState<string | null>(null);
   useEnterAdvance(item && !breakdownChar ? () => (readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)) : null);
   if (!item) return (
@@ -1239,13 +1251,13 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
     />
   );
   const learned = cards.some((card) => card.id === cardIdForKanji(item));
-  const hasPrev = state.kanjiIndex > 0;
+  const hasPrev = effectiveKanjiIndex > 0;
   const isDeferred = (state.deferredKanjiIds || []).includes(item.kanji);
-  const displayPos = Math.min(state.kanjiIndex + 1, queue.length);
+  const displayPos = Math.min(effectiveKanjiIndex + 1, queue.length);
   const deferredSet = new Set(state.deferredKanjiIds || []);
   const skippedCount = deferredSet.size;
   // BUG-14 fix: exclude current item and require non-empty tail
-  const tailAllSkipped = skippedCount > 0 && !deferredSet.has(item.kanji) && queue.slice(state.kanjiIndex + 1).length > 0 && queue.slice(state.kanjiIndex + 1).every((e) => deferredSet.has(e.kanji));
+  const tailAllSkipped = skippedCount > 0 && !deferredSet.has(item.kanji) && queue.slice(effectiveKanjiIndex + 1).length > 0 && queue.slice(effectiveKanjiIndex + 1).every((e) => deferredSet.has(e.kanji));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Kanji" title={`${displayPos} of ${queue.length} kanji${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`} subtitle={day.kanjiText} />
@@ -1286,7 +1298,7 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       </div>
       {breakdownChar && <KanjiBreakdownModal char={breakdownChar} onClose={() => setBreakdownChar(null)} />}
       <div className="flex flex-col sm:flex-row gap-2">
-        {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: state.kanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
+        {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: effectiveKanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
           {readOnly ? "Next" : isDeferred ? "Learnt ✓" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
