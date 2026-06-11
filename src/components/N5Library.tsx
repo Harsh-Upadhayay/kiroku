@@ -74,7 +74,7 @@ const LibraryShell: React.FC<{
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <StatTile label="Learned" value={`${learned} / ${total}`} accent="text-indigo-700" />
-        <StatTile label="Due now" value={String(counts.due)} accent="text-amber-700" />
+        <StatTile label="Due now" value={String(counts.due)} accent={counts.due > 0 ? "text-amber-700" : "text-zinc-400"} />
         <StatTile label="Learning" value={String(counts.learning)} accent="text-zinc-800" />
         <StatTile label="Mastered" value={String(counts.mastered)} accent="text-emerald-700" />
       </div>
