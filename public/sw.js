@@ -1,4 +1,4 @@
-const CACHE_NAME = "kiroku-pwa-v1.0.0";
+const CACHE_NAME = "kiroku-pwa-v1.1.0";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -38,8 +38,31 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Skip caching for API requests to avoid stale responses on data sync
-  if (event.request.url.includes("/api/")) {
+  // Bypass the SW entirely for API calls (avoid stale data) and for explicit
+  // cache-busting probes (the "Check for updates" button uses `nocache=`).
+  if (event.request.url.includes("/api/") || event.request.url.includes("nocache=")) {
+    return;
+  }
+
+  // App shell (navigations + index.html) is network-first so a fresh deploy is
+  // picked up on the next load. Falls back to cache when offline.
+  const requestUrl = new URL(event.request.url);
+  const isAppShell =
+    event.request.mode === "navigate" ||
+    requestUrl.pathname === "/" ||
+    requestUrl.pathname === "/index.html";
+  if (isAppShell) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match("/index.html").then((cached) => cached || caches.match("/")))
+    );
     return;
   }
 

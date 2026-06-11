@@ -1,4 +1,4 @@
-<svg width="120" height="118" viewBox="0 0 120 118" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#5A4BFF"/>
@@ -6,15 +6,15 @@
     </linearGradient>
   </defs>
 
-  <rect x="14" y="13" width="92" height="92" rx="24"
-        fill="url(#bg)"
-        stroke="#111111"
-        stroke-width="4"/>
+  <!-- Full-bleed opaque square: iOS/Android apply their own rounded mask, so
+       no transparent padding or corners (those caused the broken home-screen
+       icon). Matches the indigo カ logo shown on the homepage header. -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
 
-  <text x="60" y="72"
+  <text x="256" y="356"
         text-anchor="middle"
-        font-size="54"
-        font-family="Arial, Helvetica, sans-serif"
+        font-size="300"
+        font-family="'Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', Meiryo, 'Noto Sans JP', Arial, Helvetica, sans-serif"
         font-weight="700"
-        fill="#FFFFFF">力</text>
+        fill="#FFFFFF">カ</text>
 </svg>

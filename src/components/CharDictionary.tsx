@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { KANA_DATA, KANA_GROUPS, KANA_SCRIPTS, KanaScript, SRSCard, getScriptLabel } from "../types";
-import { normalizeActiveRows, saveActiveRows, resetAllData } from "../utils/srs";
+import { normalizeActiveRows, saveActiveRows } from "../utils/srs";
 import { sound } from "../utils/audio";
-import { Check, Activity, Grid, AlertTriangle } from "lucide-react";
+import { Check, Activity, Grid } from "lucide-react";
 
 interface CharDictionaryProps {
   cards: SRSCard[];
   activeRows: string[];
   onActiveRowsUpdate: (rows: string[]) => void;
-  onResetDatabase: () => void;
 }
 
 export const CharDictionary: React.FC<CharDictionaryProps> = ({
   cards,
   activeRows,
   onActiveRowsUpdate,
-  onResetDatabase,
 }) => {
-  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   // Online/Offline status listeners
@@ -70,13 +67,6 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
     const rows = groupId ? [groupId] : activeGroupIds;
     onActiveRowsUpdate(rows);
     saveActiveRows(rows);
-  };
-
-  const executeFullReset = () => {
-    sound.playIncorrect();
-    resetAllData();
-    onResetDatabase();
-    setShowResetConfirm(false);
   };
 
   // Helper: map character to box score
@@ -270,50 +260,6 @@ export const CharDictionary: React.FC<CharDictionaryProps> = ({
               })}
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* 4. DANGER ZONE RESET CONTROLS */}
-      <div className="bg-red-50 border-2 border-zinc-900 rounded-[24px] p-5 mt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <div>
-          <h4 className="text-sm font-black text-red-855 text-red-800 flex items-center gap-1.5 uppercase">
-            <AlertTriangle className="h-4 w-4" /> Reset Learning State
-          </h4>
-          <p className="text-xs text-red-700 font-bold uppercase tracking-wide mt-1 max-w-sm">
-            This wipes out all of your Spaced Repetition boxes, study streaks, and restores defaults.
-          </p>
-        </div>
-
-        <div>
-          {!showResetConfirm ? (
-            <button
-              onClick={() => {
-                sound.playTick();
-                setShowResetConfirm(true);
-              }}
-              className="py-2 px-4 bg-white hover:bg-red-100 text-red-650 text-red-650 text-red-600 rounded-xl border-2 border-zinc-900 text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
-            >
-              Reset All Progress
-            </button>
-          ) : (
-            <div className="flex flex-col min-[420px]:flex-row items-stretch min-[420px]:items-center gap-2">
-              <button
-                onClick={executeFullReset}
-                className="py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] border-2 border-zinc-900 block"
-              >
-                Yes, Clear All
-              </button>
-              <button
-                onClick={() => {
-                  sound.playTick();
-                  setShowResetConfirm(false);
-                }}
-                className="py-2.5 px-4 bg-white border-2 border-zinc-900 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-zinc-100 transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

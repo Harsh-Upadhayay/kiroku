@@ -131,7 +131,6 @@ function KanaHub({
             cards={cards}
             activeRows={activeRows}
             onActiveRowsUpdate={onActiveRowsUpdate}
-            onResetDatabase={onResetDatabase}
           />
         )}
       </motion.div>
@@ -144,11 +143,26 @@ function KanaHub({
 type UpdateStatus = "idle" | "checking" | "current" | "updating" | "error";
 
 /**
- * Compare the cached app shell against a fresh copy from the server. Vite
- * fingerprints asset filenames, so a changed index.html reliably signals a
- * new build. On update: refresh the SW registration, drop all CacheStorage
- * caches, and reload so every asset is re-pulled. Study data is untouched.
+ * Compare the running app's entry bundle against the one the server is
+ * currently serving. Vite fingerprints the entry script (e.g.
+ * `index-Cc61nYwd.js`), so a changed filename reliably signals a new build.
+ *
+ * The fetch must bypass the service worker — the old logic fetched
+ * `/index.html` straight through the SW, which answered from its cache and so
+ * always reported "up to date". The `nocache=` query both misses the SW cache
+ * lookup and is explicitly skipped by the SW fetch handler, guaranteeing a
+ * real round-trip to the server.
+ *
+ * On update: refresh the SW registration, drop all CacheStorage caches, and
+ * reload so every asset is re-pulled. Study data (localStorage/IndexedDB) is
+ * untouched.
  */
+function entryBundleSrc(html: string): string | null {
+  // Match the module entry script regardless of attribute order.
+  const tag = html.match(/<script\b[^>]*\btype=["']module["'][^>]*>/i)?.[0];
+  return tag?.match(/\bsrc=["']([^"']+)["']/i)?.[1] ?? null;
+}
+
 async function checkAndPullAppUpdates(setStatus: (status: UpdateStatus) => void): Promise<void> {
   if (!navigator.onLine) {
     setStatus("error");
@@ -156,10 +170,12 @@ async function checkAndPullAppUpdates(setStatus: (status: UpdateStatus) => void)
   }
   setStatus("checking");
   try {
-    const networkShell = await (await fetch("/index.html", { cache: "no-store" })).text();
-    const cachedResponse = (await caches.match("/index.html")) || (await caches.match("/"));
-    const cachedShell = cachedResponse ? await cachedResponse.text() : null;
-    if (cachedShell !== null && cachedShell === networkShell) {
+    const networkShell = await (await fetch(`/index.html?nocache=${Date.now()}`, { cache: "no-store" })).text();
+    const networkSrc = entryBundleSrc(networkShell);
+    const runningSrc = document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.getAttribute("src") ?? null;
+    // Equal (including both null in dev, where the entry is the unhashed
+    // /src/main.tsx) means we're already on the latest build.
+    if (networkSrc === runningSrc) {
       setStatus("current");
       return;
     }
@@ -223,7 +239,7 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
   ];
 
   return (
-    <div className="space-y-6 max-w-xl">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-5xl items-start">
       {/* Appearance */}
       <div className="bg-white rounded-[28px] border-2 border-zinc-900 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <h3 className="text-sm font-black uppercase tracking-wider text-zinc-800 mb-4 flex items-center gap-2">
@@ -327,7 +343,7 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
       </div>
 
       {/* Danger zone */}
-      <div className="bg-red-50 border-2 border-zinc-900 rounded-[24px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-5">
+      <div className="lg:col-span-2 bg-red-50 border-2 border-zinc-900 rounded-[24px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-5">
         <h3 className="text-sm font-black uppercase tracking-wider text-red-800 flex items-center gap-2">
           ⚠ Danger Zone
         </h3>
