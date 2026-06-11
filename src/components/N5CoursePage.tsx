@@ -1137,15 +1137,21 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day,
 };
 
 const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkGrammarLearned, onUpdateState, onCompleteStage }) => {
-  const item = day.grammar[state.grammarIndex];
-  const isLast = state.grammarIndex >= day.grammar.length - 1;
-  useEnterAdvance(item ? () => (readOnly ? (isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })) : onMarkGrammarLearned(item)) : null);
+  // startLesson sets grammarIndex to queue.length (out of bounds) when all items are
+  // already learned. Clamp to 0 so the stage shows real content instead of the empty state.
+  const effectiveIndex = day.grammar.length > 0 && state.grammarIndex >= day.grammar.length ? 0 : state.grammarIndex;
+  useEffect(() => {
+    if (effectiveIndex !== state.grammarIndex) onUpdateState({ grammarIndex: effectiveIndex });
+  }, [effectiveIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  const item = day.grammar[effectiveIndex];
+  const isLast = effectiveIndex >= day.grammar.length - 1;
+  useEnterAdvance(item ? () => (readOnly ? (isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: effectiveIndex + 1 })) : onMarkGrammarLearned(item)) : null);
   if (!item) return <StageShell eyebrow="Grammar" title="No grammar listed" subtitle={day.grammarText || "Continue to the next stage."} primaryLabel="Continue" onPrimary={() => onCompleteStage("grammar")} />;
-  const hasPrev = state.grammarIndex > 0;
+  const hasPrev = effectiveIndex > 0;
   const learned = cards.some((card) => card.id === `n5:grammar:${item.id}`);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <StageHeading eyebrow="Grammar" title={item.title} subtitle={`${state.grammarIndex + 1} of ${day.grammar.length}`} />
+      <StageHeading eyebrow="Grammar" title={item.title} subtitle={`${effectiveIndex + 1} of ${day.grammar.length}`} />
       <div className="space-y-4">
         <InfoBlock label="Structure" text={item.structure} large />
         <InfoBlock label="Explanation" text={item.explanation} />
@@ -1158,9 +1164,9 @@ const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
         </div>
       </div>
       <div className="flex gap-2">
-        {hasPrev && <button onClick={() => onUpdateState({ grammarIndex: state.grammarIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
+        {hasPrev && <button onClick={() => onUpdateState({ grammarIndex: effectiveIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         {readOnly ? (
-          <PrimaryBar primaryLabel={isLast ? "Finish Grammar" : "Next Grammar"} onPrimary={() => isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })} />
+          <PrimaryBar primaryLabel={isLast ? "Finish Grammar" : "Next Grammar"} onPrimary={() => isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: effectiveIndex + 1 })} />
         ) : (
           <PrimaryBar primaryLabel={learned ? "Continue" : "Learnt (move on)"} onPrimary={() => onMarkGrammarLearned(item)} />
         )}
