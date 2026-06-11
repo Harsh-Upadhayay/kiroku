@@ -97,7 +97,7 @@ function buildVocabQuestion(
   );
 
   const options: McOption[] = [{ text: entry.word }, ...distractors.map((v) => ({ text: v.word }))];
-  return shuffleWithCorrect(options, 0, rng, masked ? "vocab" : "vocab");
+  return shuffleWithCorrect(options, 0, rng, "vocab", promptMain, promptSub);
 }
 
 // ---------------------------------------------------------------------------

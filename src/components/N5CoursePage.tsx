@@ -836,18 +836,16 @@ const LessonRunner: React.FC<{
             {stage === "done" && <DoneStage {...props} checkpoint={checkpoint} />}
           </motion.div>
         )}
-        {/* Desktop: always-visible sidebar minimap */}
-        <aside className="hidden lg:block w-64 shrink-0">
-          <div className="sticky top-4 border-2 border-zinc-900 rounded-[22px] bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-3 max-h-[560px] overflow-y-auto">
-            <LessonMinimapGrid
-              day={props.day}
-              state={props.state}
-              cards={props.cards}
-              progress={props.progress}
-              dueCardCount={props.dueCards.length}
-              onNavigate={handleMinimapNavigate}
-            />
-          </div>
+        {/* Desktop: always-visible sidebar minimap — flush inside the lesson card */}
+        <aside className="hidden lg:flex flex-col self-stretch w-52 shrink-0 border-l-2 border-zinc-100 pl-4 overflow-y-auto">
+          <LessonMinimapGrid
+            day={props.day}
+            state={props.state}
+            cards={props.cards}
+            progress={props.progress}
+            dueCardCount={props.dueCards.length}
+            onNavigate={handleMinimapNavigate}
+          />
         </aside>
       </div>
     </div>
