@@ -11,6 +11,15 @@ import {
   type N5SRSCard,
   type N5Stage,
 } from "../utils/n5-course";
+import {
+  doneCellState,
+  grammarCellState,
+  kanjiCellState,
+  produceCellState,
+  reviewCellState,
+  vocabCellState,
+  type CellState,
+} from "../utils/n5-minimap";
 
 interface MinimapProps {
   day: N5DayPlan;
@@ -22,8 +31,6 @@ interface MinimapProps {
   /** Only used in mobile toggle mode */
   onClose?: () => void;
 }
-
-type CellState = "current" | "learnt" | "skipped" | "none";
 
 function cellClass(cs: CellState): string {
   const base = "aspect-square rounded-md border-2 cursor-pointer transition-colors ";
@@ -46,47 +53,15 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
   const learnedVocab = new Set<string>(progress.learnedVocabIds);
   const learnedKanji = new Set<string>(progress.learnedKanjiIds);
 
-  function grammarCellState(point: N5GrammarPoint, i: number): CellState {
-    if (state.stage === "grammar" && state.grammarIndex === i) return "current";
-    if (learnedGrammar.has(point.id)) return "learnt";
-    if (state.stagesCompleted?.grammar) return "learnt";
-    if (state.stage !== "grammar" && !state.stagesCompleted?.grammar) return "none";
-    return state.grammarIndex > i ? "learnt" : "none";
-  }
-
-  function vocabCellState(entry: { id: string }, i: number): CellState {
-    if (state.stage === "vocab" && state.vocabIndex === i) return "current";
-    if (learnedVocab.has(entry.id)) return "learnt";
-    if (deferredVocab.has(entry.id)) return "skipped";
-    if (state.stagesCompleted?.vocab) return "learnt";
-    return "none";
-  }
-
-  function kanjiCellState(entry: { kanji: string; id: string }, i: number): CellState {
-    if (state.stage === "kanji" && state.kanjiIndex === i) return "current";
-    if (learnedKanji.has(entry.kanji)) return "learnt";
-    if (deferredKanji.has(entry.kanji)) return "skipped";
-    if (state.stagesCompleted?.kanji) return "learnt";
-    return "none";
-  }
-
-  function reviewCellState(): CellState {
-    if (state.stage === "review") return "current";
-    if (state.stagesCompleted?.review) return "learnt";
-    return dueCardCount === 0 ? "learnt" : "none";
-  }
-
-  function produceCellState(): CellState {
-    if (state.stage === "produce") return "current";
-    if (state.stagesCompleted?.produce) return "learnt";
-    return "none";
-  }
-
-  function doneCellState(): CellState {
-    if (state.stage === "done") return "current";
-    if (state.stagesCompleted?.done) return "learnt";
-    return "none";
-  }
+  const _grammarCellState = (point: N5GrammarPoint, i: number) =>
+    grammarCellState(point, i, state, learnedGrammar);
+  const _vocabCellState = (entry: { id: string }, i: number) =>
+    vocabCellState(entry, i, state, learnedVocab, deferredVocab);
+  const _kanjiCellState = (entry: { kanji: string; id: string }, i: number) =>
+    kanjiCellState(entry, i, state, learnedKanji, deferredKanji);
+  const _reviewCellState = () => reviewCellState(state, dueCardCount);
+  const _produceCellState = () => produceCellState(state);
+  const _doneCellState = () => doneCellState(state);
 
   return (
     <div className="space-y-3">
@@ -123,7 +98,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
           <button
             onClick={() => onNavigate("review")}
             title={dueCardCount > 0 ? `${dueCardCount} due` : "All caught up"}
-            className={`col-span-8 h-5 rounded-md border-2 cursor-pointer transition-colors ${reviewCellState() === "current" ? "bg-indigo-600 border-zinc-900" : reviewCellState() === "learnt" ? "bg-emerald-400 border-zinc-900" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
+            className={`col-span-8 h-5 rounded-md border-2 cursor-pointer transition-colors ${_reviewCellState() === "current" ? "bg-indigo-600 border-zinc-900" : _reviewCellState() === "learnt" ? "bg-emerald-400 border-zinc-900" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
           />
         </div>
       </section>
@@ -141,7 +116,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
                 onClick={() => onNavigate("grammar", i)}
                 title={point.title}
                 aria-label={point.title}
-                className={cellClass(grammarCellState(point, i))}
+                className={cellClass(_grammarCellState(point, i))}
               />
             ))}
           </div>
@@ -161,7 +136,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
                 onClick={() => onNavigate("vocab", i)}
                 title={`${entry.word} · ${entry.meaning}`}
                 aria-label={entry.word}
-                className={cellClass(vocabCellState(entry, i))}
+                className={cellClass(_vocabCellState(entry, i))}
               />
             ))}
           </div>
@@ -181,7 +156,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
                 onClick={() => onNavigate("kanji", i)}
                 title={`${entry.kanji} · ${entry.meaning}`}
                 aria-label={`${entry.kanji} ${entry.meaning}`}
-                className={cellClass(kanjiCellState(entry as { kanji: string; id: string }, i))}
+                className={cellClass(_kanjiCellState(entry as { kanji: string; id: string }, i))}
               />
             ))}
           </div>
@@ -195,7 +170,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
           <button
             onClick={() => onNavigate("produce")}
             title="Production practice"
-            className={`col-span-8 h-5 rounded-md border-2 cursor-pointer transition-colors ${produceCellState() === "current" ? "bg-indigo-600 border-zinc-900" : produceCellState() === "learnt" ? "bg-emerald-400 border-zinc-900" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
+            className={`col-span-8 h-5 rounded-md border-2 cursor-pointer transition-colors ${_produceCellState() === "current" ? "bg-indigo-600 border-zinc-900" : _produceCellState() === "learnt" ? "bg-emerald-400 border-zinc-900" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
           />
         </div>
       </section>
@@ -207,7 +182,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
           <button
             onClick={() => onNavigate("done")}
             title="Day completion"
-            className={`col-span-8 h-5 rounded-md border-2 cursor-pointer transition-colors ${doneCellState() === "current" ? "bg-indigo-600 border-zinc-900" : doneCellState() === "learnt" ? "bg-emerald-400 border-zinc-900" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
+            className={`col-span-8 h-5 rounded-md border-2 cursor-pointer transition-colors ${_doneCellState() === "current" ? "bg-indigo-600 border-zinc-900" : _doneCellState() === "learnt" ? "bg-emerald-400 border-zinc-900" : "bg-white border-zinc-300 hover:bg-zinc-50"}`}
           />
         </div>
       </section>
