@@ -225,6 +225,87 @@ func TestIsDestructiveConsidersN5State(t *testing.T) {
 	}
 }
 
+// Regression: previously panicked with "assignment to entry in nil map" when
+// server-side productionAnswers was empty and incoming had entries for a day
+// that didn't exist on the server.
+func TestMergeProductionAnswersIntoEmptyExisting(t *testing.T) {
+	existing := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"updatedAt":         float64(100),
+			"productionAnswers": map[string]any{},
+		},
+	}
+	incoming := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"updatedAt": float64(200),
+			"productionAnswers": map[string]any{
+				"1": map[string]any{
+					"produce-0": map[string]any{"text": "私は学生です。", "updatedAt": float64(200)},
+				},
+			},
+		},
+	}
+	// Should not panic
+	merged := mergeForTest(t, existing, incoming)
+	answers, ok := merged.N5CourseProgress["productionAnswers"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected productionAnswers map, got %T", merged.N5CourseProgress["productionAnswers"])
+	}
+	day1, ok := answers["1"].(map[string]any)
+	if !ok || day1["produce-0"] == nil {
+		t.Fatalf("expected merged day-1 production answer, got %#v", answers)
+	}
+}
+
+func TestMergeProductionAnswersNilExisting(t *testing.T) {
+	existing := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"updatedAt": float64(100),
+			// productionAnswers key entirely absent
+		},
+	}
+	incoming := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"updatedAt": float64(200),
+			"productionAnswers": map[string]any{
+				"1": map[string]any{
+					"produce-0": map[string]any{"text": "テスト", "updatedAt": float64(200)},
+				},
+			},
+		},
+	}
+	merged := mergeForTest(t, existing, incoming)
+	answers, ok := merged.N5CourseProgress["productionAnswers"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected productionAnswers map, got %T", merged.N5CourseProgress["productionAnswers"])
+	}
+	if len(answers) == 0 {
+		t.Fatal("expected day-1 answer to be merged in")
+	}
+}
+
+func TestMergeDayStatesIntoNilExisting(t *testing.T) {
+	existing := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"updatedAt": float64(100),
+			// dayStates absent
+		},
+	}
+	incoming := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"updatedAt": float64(200),
+			"dayStates": map[string]any{
+				"1": map[string]any{"stage": "vocab", "updatedAt": float64(200)},
+			},
+		},
+	}
+	merged := mergeForTest(t, existing, incoming)
+	ds, ok := merged.N5CourseProgress["dayStates"].(map[string]any)
+	if !ok || ds["1"] == nil {
+		t.Fatalf("expected dayStates to be merged in, got %#v", merged.N5CourseProgress["dayStates"])
+	}
+}
+
 func mergeForTest(t *testing.T, existing, incoming models.SyncState) models.SyncState {
 	t.Helper()
 	existingRaw, _ := json.Marshal(existing)

@@ -27,7 +27,7 @@ import {
   Sun, Moon, Monitor, RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB } from "./utils/db";
+import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB, setSyncRequestSuppressed } from "./utils/db";
 import { getCurrentUser, setCurrentUser, getRegisteredProfiles, saveRegisteredProfiles, User as AppUser } from "./utils/auth";
 import { reconcileOnStartup, triggerPushSync, syncEvents } from "./utils/sync";
 import { getN5CourseProgress, resetN5CourseData } from "./utils/n5-course";
@@ -643,8 +643,9 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
+        let pulled = false;
         if (currentUser && navigator.onLine) {
-          await reconcileOnStartup(currentUser.email);
+          pulled = await reconcileOnStartup(currentUser.email);
         }
 
         let dbCards = await getAllCardsFromDB();
@@ -652,8 +653,15 @@ export default function App() {
 
         if (!dbCards || dbCards.length === 0) {
           const localCards = getStoredSRSCards();
-          await saveAllCardsToDB(localCards);
-          dbCards = localCards;
+          if (!pulled && currentUser) {
+            // Don't push defaults over remote data; keep them in memory only.
+            dbCards = localCards;
+          } else {
+            setSyncRequestSuppressed(true);
+            await saveAllCardsToDB(localCards);
+            setSyncRequestSuppressed(false);
+            dbCards = localCards;
+          }
         } else {
           const normalized = normalizeSRSCards(dbCards);
           if (JSON.stringify(normalized) !== JSON.stringify(dbCards)) await saveAllCardsToDB(normalized);
@@ -662,8 +670,15 @@ export default function App() {
 
         if (!dbRows || dbRows.length === 0) {
           const localRows = getStoredActiveRows();
-          await saveSettingToDB("active_rows", localRows);
-          dbRows = localRows;
+          if (!pulled && currentUser) {
+            // Don't push a default kana selection over the server's real state.
+            dbRows = localRows;
+          } else {
+            setSyncRequestSuppressed(true);
+            await saveSettingToDB("active_rows", localRows);
+            setSyncRequestSuppressed(false);
+            dbRows = localRows;
+          }
         } else {
           const normalized = normalizeActiveRows(dbRows);
           if (JSON.stringify(normalized) !== JSON.stringify(dbRows)) await saveSettingToDB("active_rows", normalized);

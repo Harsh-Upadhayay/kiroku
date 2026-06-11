@@ -108,8 +108,14 @@ async function collectSyncState(): Promise<SyncState> {
   const streak_info = await getSettingFromDB<{ current: number; highest: number; updatedAt?: number }>("streak_info", { current: 0, highest: 0 });
   const anki_v3_collection = await getSettingFromDB<any>("anki_v3_collection", null);
   const deleted_deck_ids = await getSettingFromDB<string[]>("deleted_deck_ids", []);
-  const n5_course_progress = normalizeN5Progress(await getSettingFromDB<Partial<N5CourseProgress> | null>("n5_course_progress", null), n5Course);
-  const n5_srs_cards = normalizeN5Cards(await getSettingFromDB<N5SRSCard[]>("n5_srs_cards", []));
+
+  // Only include n5 progress when something is actually stored locally.
+  // Sending a freshly-normalised default would stamp updatedAt: now and clobber
+  // the server's real progress via last-write-wins.
+  const rawN5Progress = await getSettingFromDB<Partial<N5CourseProgress> | null>("n5_course_progress", null);
+  const n5_course_progress = rawN5Progress ? normalizeN5Progress(rawN5Progress, n5Course) : undefined;
+  const rawN5Cards = await getSettingFromDB<N5SRSCard[]>("n5_srs_cards", []);
+  const n5_srs_cards = rawN5Cards?.length ? normalizeN5Cards(rawN5Cards) : [];
 
   return {
     _meta: {
@@ -132,6 +138,8 @@ async function collectSyncState(): Promise<SyncState> {
   };
 }
 
+let reconcileInFlight = false;
+
 type SyncListener = () => void;
 const listeners = new Set<SyncListener>();
 
@@ -153,8 +161,43 @@ export const syncEvents = {
   }
 };
 
+/** Write a remote SyncState into local IndexedDB (suppresses auto-push during writes). */
+async function applyRemoteState(state: SyncState): Promise<void> {
+  setSyncRequestSuppressed(true);
+  try {
+    if (Array.isArray(state.srs_cards_list)) {
+      await saveAllCardsToDB(normalizeSRSCards(state.srs_cards_list));
+    }
+    if (Array.isArray(state.active_rows)) {
+      await saveSettingToDB("active_rows", normalizeActiveRows(state.active_rows));
+    }
+    if (state.active_rows_info) {
+      await saveSettingToDB("active_rows_info", state.active_rows_info);
+    }
+    if (state.streak_info) {
+      await saveSettingToDB("streak_info", state.streak_info);
+    }
+    if (state.anki_v3_collection) {
+      await saveSettingToDB("anki_v3_collection", state.anki_v3_collection);
+    }
+    if (Array.isArray(state.deleted_deck_ids)) {
+      await saveSettingToDB("deleted_deck_ids", state.deleted_deck_ids);
+    }
+    if (state.n5_course_progress) {
+      await saveSettingToDB("n5_course_progress", normalizeN5Progress(state.n5_course_progress, n5Course));
+    }
+    if (Array.isArray(state.n5_srs_cards)) {
+      await saveSettingToDB("n5_srs_cards", normalizeN5Cards(state.n5_srs_cards));
+    }
+  } finally {
+    setSyncRequestSuppressed(false);
+  }
+}
+
 /**
- * Gather all user scoped tables and push them to backend
+ * Gather all user scoped tables and push them to backend.
+ * The server returns the merged state; we apply it locally so this session
+ * converges immediately without a separate pull.
  */
 export async function triggerPushSync(email: string): Promise<boolean> {
   if (!navigator.onLine) {
@@ -176,9 +219,15 @@ export async function triggerPushSync(email: string): Promise<boolean> {
       if (!data.success) {
         throw new Error(data.error || "Push failed");
       }
-      console.log("Backend synchronization push complete.", data.data);
       clearSyncDirty();
       localStorage.setItem(SYNC_LAST_PUSH_KEY, String(Date.now()));
+      // Apply the server-merged state so we pick up any changes from other sessions.
+      const merged = data.data as SyncState | null;
+      if (merged && typeof merged === "object" && !("ignored" in merged)) {
+        await applyRemoteState(merged);
+        syncEvents.emit();
+      }
+      console.log("Backend synchronization push complete.");
       return true;
     }
     return false;
@@ -219,40 +268,11 @@ export async function triggerPullSync(email: string): Promise<boolean> {
       return false;
     }
 
-    setSyncRequestSuppressed(true);
-    try {
-      // Save fetched state to IndexedDB scoped for user prefix
-      if (Array.isArray(state.srs_cards_list)) {
-        await saveAllCardsToDB(normalizeSRSCards(state.srs_cards_list));
-      }
-      if (Array.isArray(state.active_rows)) {
-        await saveSettingToDB("active_rows", normalizeActiveRows(state.active_rows));
-      }
-      if (state.active_rows_info) {
-        await saveSettingToDB("active_rows_info", state.active_rows_info);
-      }
-      if (state.streak_info) {
-        await saveSettingToDB("streak_info", state.streak_info);
-      }
-      if (state.anki_v3_collection) {
-        await saveSettingToDB("anki_v3_collection", state.anki_v3_collection);
-      }
-      if (Array.isArray(state.deleted_deck_ids)) {
-        await saveSettingToDB("deleted_deck_ids", state.deleted_deck_ids);
-      }
-      if (state.n5_course_progress) {
-        await saveSettingToDB("n5_course_progress", normalizeN5Progress(state.n5_course_progress, n5Course));
-      }
-      if (Array.isArray(state.n5_srs_cards)) {
-        await saveSettingToDB("n5_srs_cards", normalizeN5Cards(state.n5_srs_cards));
-      }
-    } finally {
-      setSyncRequestSuppressed(false);
-    }
+    await applyRemoteState(state);
 
     console.log("Sync pull complete, database cached with remote state.");
     localStorage.setItem(SYNC_LAST_PULL_KEY, String(Date.now()));
-    
+
     // Emit sync event so active views can pull updated state
     syncEvents.emit();
     return true;
@@ -262,13 +282,24 @@ export async function triggerPullSync(email: string): Promise<boolean> {
   }
 }
 
-export async function reconcileOnStartup(email: string): Promise<void> {
-  if (!navigator.onLine) return;
+/**
+ * Push dirty local state then pull the latest server state.
+ * A module-level guard prevents concurrent interleaved calls (e.g. from
+ * AuthCenter + App effect + 15s interval firing simultaneously).
+ */
+export async function reconcileOnStartup(email: string): Promise<boolean> {
+  if (!navigator.onLine) return false;
+  if (reconcileInFlight) return false;
 
-  if (hasSyncDirtyState()) {
-    const pushed = await triggerPushSync(email);
-    if (!pushed) return;
+  reconcileInFlight = true;
+  try {
+    if (hasSyncDirtyState()) {
+      // Push includes applying the merged response, so dirty sessions converge
+      // even if the subsequent pull is redundant.
+      await triggerPushSync(email);
+    }
+    return await triggerPullSync(email);
+  } finally {
+    reconcileInFlight = false;
   }
-
-  await triggerPullSync(email);
 }

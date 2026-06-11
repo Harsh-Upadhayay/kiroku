@@ -55,6 +55,7 @@ func main() {
 	handler := middleware.WithRequestID(mux)
 	handler = middleware.Logging(handler)
 	handler = middleware.CommonHeaders(handler)
+	handler = middleware.Recover(handler)
 
 	slog.Info("Kiroku API listening", "port", cfg.Port)
 	if err := http.ListenAndServe("0.0.0.0:"+cfg.Port, handler); err != nil {
