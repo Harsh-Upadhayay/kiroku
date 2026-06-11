@@ -276,12 +276,17 @@ export function advanceVocabPure(
   entry: N5VocabEntry,
 ): { progress: N5CourseProgress; cards: N5SRSCard[] } {
   const withLearned = markN5VocabLearned(progress, cards, day, entry);
-  const state = getN5DayState(withLearned.progress, day);
+  // Remove from deferred list so the "skipped" counter decrements when the user processes it.
+  const stateAfterLearn = getN5DayState(withLearned.progress, day);
+  const withoutDeferred = updateN5DayState(withLearned.progress, day, {
+    deferredVocabIds: (stateAfterLearn.deferredVocabIds || []).filter((id) => id !== entry.id),
+  });
+  const state = getN5DayState(withoutDeferred, day);
   const queue = effectiveVocabQueue(dayPlan, state);
   const nextIndex = state.vocabIndex + 1;
   const nextProgress = nextIndex >= queue.length
-    ? completeN5Stage(withLearned.progress, day, "vocab")
-    : updateN5DayState(withLearned.progress, day, { vocabIndex: nextIndex });
+    ? completeN5Stage(withoutDeferred, day, "vocab")
+    : updateN5DayState(withoutDeferred, day, { vocabIndex: nextIndex });
   return { progress: nextProgress, cards: withLearned.cards };
 }
 
@@ -293,12 +298,17 @@ export function advanceKanjiPure(
   entry: N5KanjiEntry,
 ): { progress: N5CourseProgress; cards: N5SRSCard[] } {
   const withLearned = markN5KanjiLearned(progress, cards, day, entry);
-  const state = getN5DayState(withLearned.progress, day);
+  // Remove from deferred list so the "skipped" counter decrements when the user processes it.
+  const stateAfterLearn = getN5DayState(withLearned.progress, day);
+  const withoutDeferred = updateN5DayState(withLearned.progress, day, {
+    deferredKanjiIds: (stateAfterLearn.deferredKanjiIds || []).filter((id) => id !== entry.kanji),
+  });
+  const state = getN5DayState(withoutDeferred, day);
   const queue = effectiveKanjiQueue(dayPlan, state);
   const nextIndex = state.kanjiIndex + 1;
   const nextProgress = nextIndex >= queue.length
-    ? completeN5Stage(withLearned.progress, day, "kanji")
-    : updateN5DayState(withLearned.progress, day, { kanjiIndex: nextIndex });
+    ? completeN5Stage(withoutDeferred, day, "kanji")
+    : updateN5DayState(withoutDeferred, day, { kanjiIndex: nextIndex });
   return { progress: nextProgress, cards: withLearned.cards };
 }
 

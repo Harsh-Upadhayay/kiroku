@@ -139,7 +139,25 @@ export const N5CoursePage: React.FC = () => {
     // Ensure SRS cards exist for all learned items (including grammar).
     const backfilledCards = ensureN5CardsForLearned(backfilledProgress, loadedCards, n5Course);
     const trended = recordN5DueTrend(backfilledProgress, dueN5Cards(backfilledCards).length);
-    setProgress(trended);
+    // When a sync pull triggers a silent reload, don't let a stale server snapshot
+    // reset the user's in-progress lesson position. Keep the in-memory dayState for
+    // the active day when it's newer (the user has been advancing cards since the
+    // last save that reached the server).
+    let finalProgress = trended;
+    if (silent) {
+      setProgress((current) => {
+        if (!current) return trended;
+        const memState = getN5DayState(current, activeDayNumber);
+        const diskState = getN5DayState(trended, activeDayNumber);
+        if (memState.updatedAt && (!diskState.updatedAt || memState.updatedAt >= diskState.updatedAt)) {
+          finalProgress = updateN5DayState(trended, activeDayNumber, memState);
+        }
+        return finalProgress;
+      });
+    } else {
+      finalProgress = trended;
+      setProgress(trended);
+    }
     setCards(backfilledCards);
     setLogs(loadedLogs);
     setSyncDirty(hasSyncDirtyState());
@@ -1159,7 +1177,7 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ vocabIndex: state.vocabIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
-          {readOnly ? "Next" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
+          {readOnly ? "Next" : isDeferred ? "Learnt ✓" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
           <button onClick={() => onDeferVocab(item)} title="Moves this word to the end of the section to revisit shortly." className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
@@ -1240,7 +1258,7 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: state.kanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
-          {readOnly ? "Next" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
+          {readOnly ? "Next" : isDeferred ? "Learnt ✓" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
           <button onClick={() => onDeferKanji(item)} title="Moves this kanji to the end of the section to revisit shortly." className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
