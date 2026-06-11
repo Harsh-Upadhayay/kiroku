@@ -24,8 +24,10 @@ import { n5Course } from "../content/n5/raw";
 import type { N5DayPlan, N5GrammarPoint, N5KanjiEntry, N5VocabEntry } from "../content/n5/parser";
 import {
   N5_STAGE_ORDER,
+  advanceGrammarPure,
   advanceKanjiPure,
   advanceVocabPure,
+  backfillLearnedGrammarForCompletedDays,
   buildCumulativeReviewQueue,
   ensureN5CardsForLearned,
   cardIdForKanji,
@@ -37,6 +39,7 @@ import {
   dueN5Cards,
   effectiveKanjiQueue,
   effectiveVocabQueue,
+  firstUnlearnedIndex,
   formatN5Due,
   getN5CourseProgress,
   getN5DayState,
@@ -63,6 +66,8 @@ import { sound } from "../utils/audio";
 import { hasKanjiInsight } from "../utils/kanji-insights";
 import { KanjiBreakdownModal, KanjiComponentsInline, KanjiText, WordKanjiStrip } from "./KanjiBreakdown";
 import { KanjiLibrary, VocabLibrary } from "./N5Library";
+import { McReviewPanel } from "./N5McReview";
+import { LessonMinimapGrid } from "./N5LessonMinimap";
 
 type ViewMode = "home" | "lesson" | "map" | "kanji-library" | "vocab-library" | "review-session";
 
@@ -70,6 +75,7 @@ interface ReviewSessionState {
   ids: string[];
   index: number;
   scopeDay?: number;
+  deck?: "vocab" | "kanji" | "grammar" | "all";
 }
 
 const gradeLabels: Record<N5Grade, string> = {
@@ -128,15 +134,19 @@ export const N5CoursePage: React.FC = () => {
       getN5SRSCards(),
       getN5ReviewLogs(),
     ]);
-    const trended = recordN5DueTrend(loadedProgress, dueN5Cards(loadedCards).length);
+    // Backfill grammar learned ids for days completed before grammar tracking was added.
+    const backfilledProgress = backfillLearnedGrammarForCompletedDays(loadedProgress, n5Course);
+    // Ensure SRS cards exist for all learned items (including grammar).
+    const backfilledCards = ensureN5CardsForLearned(backfilledProgress, loadedCards, n5Course);
+    const trended = recordN5DueTrend(backfilledProgress, dueN5Cards(backfilledCards).length);
     setProgress(trended);
-    setCards(loadedCards);
+    setCards(backfilledCards);
     setLogs(loadedLogs);
     setSyncDirty(hasSyncDirtyState());
     if (!silent) setIsLoading(false);
-    if (JSON.stringify(trended.dueCountTrend) !== JSON.stringify(loadedProgress.dueCountTrend)) {
-      await saveN5CourseProgress(trended);
-    }
+    const progressChanged = backfilledProgress !== loadedProgress || JSON.stringify(trended.dueCountTrend) !== JSON.stringify(loadedProgress.dueCountTrend);
+    if (progressChanged) await saveN5CourseProgress(trended);
+    if (backfilledCards !== loadedCards) await saveN5SRSCards(backfilledCards);
   }
 
   async function persistProgress(next: N5CourseProgress) {
@@ -165,6 +175,29 @@ export const N5CoursePage: React.FC = () => {
     setMode("lesson");
     setIsBackShown(false);
     setReviewStartedAt(Date.now());
+    // Resume at the first not-yet-learnt item for the current stage.
+    if (!readOnlyOverride && progress) {
+      const dayPlan = n5Course.days[day - 1];
+      if (!dayPlan) return;
+      const state = getN5DayState(progress, day);
+      const learnedVocab = new Set<string>(progress.learnedVocabIds);
+      const learnedKanji = new Set<string>(progress.learnedKanjiIds);
+      const learnedGrammar = new Set<string>(progress.learnedGrammarIds || []);
+      const vocabQueue = effectiveVocabQueue(dayPlan, state);
+      const kanjiQueue = effectiveKanjiQueue(dayPlan, state);
+      const newVocabIdx = firstUnlearnedIndex(vocabQueue, (e) => e.id, learnedVocab);
+      const newKanjiIdx = firstUnlearnedIndex(kanjiQueue, (e) => e.kanji, learnedKanji);
+      const newGrammarIdx = firstUnlearnedIndex(dayPlan.grammar, (g) => g.id, learnedGrammar);
+      const patch: Partial<typeof state> = {};
+      if (newVocabIdx !== state.vocabIndex) patch.vocabIndex = newVocabIdx;
+      if (newKanjiIdx !== state.kanjiIndex) patch.kanjiIndex = newKanjiIdx;
+      if (newGrammarIdx !== state.grammarIndex) patch.grammarIndex = newGrammarIdx;
+      if (Object.keys(patch).length > 0) {
+        saveN5CourseProgress(updateN5DayState(progress, day, patch)).then(() => {
+          setProgress((prev) => prev ? updateN5DayState(prev, day, patch) : prev);
+        });
+      }
+    }
   }
 
   /** Repeat a completed day's coursework from scratch. Resets only that
@@ -239,6 +272,13 @@ export const N5CoursePage: React.FC = () => {
     await persistProgress(next.progress);
   }
 
+  async function markGrammarLearned(point: N5GrammarPoint) {
+    if (!progress || readOnly) return;
+    const next = advanceGrammarPure(progress, cards, activeDayNumber, activeDay, point);
+    await persistCards(next.cards);
+    await persistProgress(next.progress);
+  }
+
   async function advanceVocab() {
     if (!progress) return;
     const queue = effectiveVocabQueue(activeDay, activeState);
@@ -272,24 +312,27 @@ export const N5CoursePage: React.FC = () => {
     await persistProgress(updateN5ProductionAnswer(progress, activeDayNumber, promptId, text));
   }
 
-  async function startCumulativeReview(scopeDay?: number) {
+  async function startDeckReview(opts: { scopeDay?: number; deck?: ReviewSessionState["deck"] } = {}) {
     if (!progress) return;
-    // Backfill SRS cards for anything learned that never got one
     let allCards = cards;
     const ensured = ensureN5CardsForLearned(progress, cards, n5Course);
     if (ensured !== cards) {
       allCards = ensured;
       await persistCards(ensured);
     }
-    const source = scopeDay ? allCards.filter((card) => card.day === scopeDay) : allCards;
+    let source = opts.scopeDay ? allCards.filter((c) => c.day === opts.scopeDay) : allCards;
+    if (opts.deck && opts.deck !== "all") source = source.filter((c) => c.kind === opts.deck);
     const queue = buildCumulativeReviewQueue(source);
     if (queue.length === 0) return;
     sound.playTick();
-    setSession({ ids: queue.map((card) => card.id), index: 0, scopeDay });
+    setSession({ ids: queue.map((c) => c.id), index: 0, scopeDay: opts.scopeDay, deck: opts.deck });
     setIsBackShown(false);
     setReviewStartedAt(Date.now());
     setMode("review-session");
   }
+
+  // Keep old name as alias for call sites.
+  const startCumulativeReview = (scopeDay?: number) => startDeckReview({ scopeDay });
 
   async function gradeSessionCard(grade: N5Grade) {
     if (!session) return;
@@ -359,6 +402,7 @@ export const N5CoursePage: React.FC = () => {
       <ReviewSessionView
         session={session}
         cards={cards}
+        progress={progress}
         isBackShown={isBackShown}
         setIsBackShown={setIsBackShown}
         onGrade={gradeSessionCard}
@@ -396,6 +440,7 @@ export const N5CoursePage: React.FC = () => {
         onGrade={gradeCurrentCard}
         onMarkVocabLearned={markVocabLearned}
         onMarkKanjiLearned={markKanjiLearned}
+        onMarkGrammarLearned={markGrammarLearned}
         onAdvanceVocab={advanceVocab}
         onAdvanceKanji={advanceKanji}
         onDeferVocab={deferVocab}
@@ -423,10 +468,12 @@ export const N5CoursePage: React.FC = () => {
       dueCount={dueCards.length}
       kanjiDueCount={dueCards.filter((card) => card.kind === "kanji").length}
       vocabDueCount={dueCards.filter((card) => card.kind === "vocab").length}
-      learnedCardCount={Math.max(cards.length, progress.learnedVocabIds.length + progress.learnedKanjiIds.length)}
+      learnedCardCount={Math.max(cards.length, progress.learnedVocabIds.length + progress.learnedKanjiIds.length + (progress.learnedGrammarIds?.length || 0))}
+      grammarDueCount={dueCards.filter((card) => card.kind === "grammar").length}
       syncState={syncLabel(isOnline, syncDirty)}
       onStart={() => startLesson(currentDayNumber)}
       onCumulativeReview={() => startCumulativeReview()}
+      onDeckReview={(deck) => startDeckReview({ deck })}
       onMap={() => setMode("map")}
       onOpenKanjiLibrary={() => { sound.playTick(); setMode("kanji-library"); }}
       onOpenVocabLibrary={() => { sound.playTick(); setMode("vocab-library"); }}
@@ -437,11 +484,12 @@ export const N5CoursePage: React.FC = () => {
 const ReviewSessionView: React.FC<{
   session: ReviewSessionState;
   cards: N5SRSCard[];
+  progress: N5CourseProgress;
   isBackShown: boolean;
   setIsBackShown: (value: boolean) => void;
   onGrade: (grade: N5Grade) => Promise<void>;
   onExit: () => void;
-}> = ({ session, cards, isBackShown, setIsBackShown, onGrade, onExit }) => {
+}> = ({ session, cards, progress, isBackShown, setIsBackShown, onGrade, onExit }) => {
   const total = session.ids.length;
   const finished = session.index >= total;
   const card = finished ? null : cards.find((item) => item.id === session.ids[session.index]) || null;
@@ -449,22 +497,19 @@ const ReviewSessionView: React.FC<{
   const isEarly = card ? new Date(card.due).getTime() > Date.now() : false;
 
   useEffect(() => {
-    if (!card) return;
     function handleKey(event: KeyboardEvent) {
-      const tag = (event.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (event.key === " " || event.key === "Enter") {
-        event.preventDefault();
-        if (!isBackShown) setIsBackShown(true);
-      } else if (isBackShown && ["1", "2", "3", "4"].includes(event.key)) {
-        onGrade(Number(event.key) as N5Grade);
-      } else if (event.key === "Escape") {
-        onExit();
-      }
+      if (event.key === "Escape") onExit();
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [card, isBackShown, setIsBackShown, onGrade, onExit]);
+  }, [onExit]);
+
+  const sessionLabel = session.deck
+    ? session.deck === "all" ? "Cumulative review"
+      : session.deck === "vocab" ? "Vocab deck practice"
+      : session.deck === "kanji" ? "Kanji deck practice"
+      : "Grammar deck practice"
+    : session.scopeDay ? `Day ${session.scopeDay} practice` : "Cumulative review";
 
   return (
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] min-h-[620px] flex flex-col">
@@ -472,9 +517,7 @@ const ReviewSessionView: React.FC<{
         <button onClick={onExit} className="text-xs font-black uppercase text-zinc-500 hover:text-zinc-950 flex items-center gap-1">
           <ChevronLeft className="h-4 w-4" /> Exit
         </button>
-        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-          {session.scopeDay ? `Day ${session.scopeDay} practice` : "Cumulative review"}
-        </span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{sessionLabel}</span>
         <span className="text-[10px] font-black text-zinc-400 tabular-nums">{Math.min(session.index + 1, total)} / {total}</span>
       </div>
       <div className="mt-3 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
@@ -498,26 +541,17 @@ const ReviewSessionView: React.FC<{
           </div>
         ) : (
           <div className="max-w-3xl mx-auto space-y-4">
-            <div className="border-2 border-zinc-900 rounded-[24px] min-h-[320px] p-5 flex flex-col justify-between">
-              <div className="flex justify-between text-[10px] font-black uppercase text-zinc-400">
-                <span>{card.kind === "vocab" ? "Vocab in context" : "Kanji recall"} · learned day {card.day}</span>
-                <span>{isEarly ? `early · due ${formatN5Due(card.due)}` : `due ${formatN5Due(card.due)}`}</span>
-              </div>
-              <div className="text-center my-8">
-                {!isBackShown ? content.front : content.back}
-              </div>
-              {!isBackShown ? (
-                <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Show Answer <span className="opacity-50 font-normal normal-case">(Space)</span></button>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {([1, 2, 3, 4] as N5Grade[]).map((grade) => (
-                    <button key={grade} onClick={() => onGrade(grade)} className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}>
-                      {gradeLabels[grade]} <span className="opacity-40 font-normal normal-case">({grade})</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <McReviewPanel
+              key={`${card.id}:${card.reps}`}
+              card={card}
+              isRevealed={isBackShown}
+              onReveal={() => setIsBackShown(true)}
+              onGrade={onGrade}
+              progress={progress}
+              back={content.back}
+              cardLabel={`${card.kind === "vocab" ? "Vocab in context" : card.kind === "grammar" ? "Grammar pattern" : "Kanji recall"} · day ${card.day}`}
+              dueLabel={isEarly ? `early · due ${formatN5Due(card.due)}` : `due ${formatN5Due(card.due)}`}
+            />
             <p className="text-center text-[10px] font-bold text-zinc-400">Forgotten-first ordering: overdue cards, then lowest predicted retention. Esc exits — progress is saved per card.</p>
           </div>
         )}
@@ -532,14 +566,16 @@ const CourseHome: React.FC<{
   dueCount: number;
   kanjiDueCount: number;
   vocabDueCount: number;
+  grammarDueCount: number;
   learnedCardCount: number;
   syncState: string;
   onStart: () => void;
   onCumulativeReview: () => void;
+  onDeckReview: (deck: ReviewSessionState["deck"]) => void;
   onMap: () => void;
   onOpenKanjiLibrary: () => void;
   onOpenVocabLibrary: () => void;
-}> = ({ progress, focusDay, dueCount, kanjiDueCount, vocabDueCount, learnedCardCount, syncState, onStart, onCumulativeReview, onMap, onOpenKanjiLibrary, onOpenVocabLibrary }) => (
+}> = ({ progress, focusDay, dueCount, kanjiDueCount, vocabDueCount, grammarDueCount, learnedCardCount, syncState, onStart, onCumulativeReview, onDeckReview, onMap, onOpenKanjiLibrary, onOpenVocabLibrary }) => (
   <div className="space-y-4">
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <section className="lg:col-span-8 bg-white border-2 border-zinc-900 rounded-[28px] p-5 sm:p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
@@ -608,6 +644,37 @@ const CourseHome: React.FC<{
         onOpen={onOpenVocabLibrary}
       />
     </div>
+
+    {learnedCardCount > 0 && (
+      <div className="bg-white border-2 border-zinc-900 rounded-[22px] p-4 space-y-3">
+        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Practice decks</span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {([
+            { deck: "kanji" as const, glyph: "字", label: "Kanji", learned: progress.learnedKanjiIds.length, due: kanjiDueCount },
+            { deck: "vocab" as const, glyph: "語", label: "Vocab", learned: progress.learnedVocabIds.length, due: vocabDueCount },
+            { deck: "grammar" as const, glyph: "文", label: "Grammar", learned: (progress.learnedGrammarIds || []).length, due: grammarDueCount },
+            { deck: "all" as const, glyph: "∞", label: "All", learned: learnedCardCount, due: dueCount },
+          ] as const).map(({ deck, glyph, label, learned, due }) => (
+            <div key={deck} className="border-2 border-zinc-900 rounded-[18px] p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 shrink-0 rounded-xl border-2 border-zinc-900 bg-indigo-50 flex items-center justify-center text-lg font-black text-zinc-950">{glyph}</div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-zinc-950 leading-tight">{label}</p>
+                  <p className="text-[10px] font-bold text-zinc-500">{learned} learnt{due > 0 ? ` · ${due} due` : ""}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => onDeckReview(deck)}
+                disabled={learned === 0}
+                className="w-full py-1.5 rounded-xl border-2 border-zinc-900 bg-indigo-600 text-white text-[10px] font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:bg-indigo-700"
+              >
+                Practice
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
 
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <section className="lg:col-span-8 bg-white border-2 border-zinc-900 rounded-[22px] p-4">
@@ -678,6 +745,7 @@ const LessonRunner: React.FC<{
   onGrade: (grade: N5Grade) => Promise<void>;
   onMarkVocabLearned: (entry: N5VocabEntry) => Promise<void>;
   onMarkKanjiLearned: (entry: N5KanjiEntry) => Promise<void>;
+  onMarkGrammarLearned: (point: N5GrammarPoint) => Promise<void>;
   onAdvanceVocab: () => Promise<void>;
   onAdvanceKanji: () => Promise<void>;
   onDeferVocab: (entry: N5VocabEntry) => Promise<void>;
@@ -728,9 +796,10 @@ const LessonRunner: React.FC<{
         </div>
         <StageRail current={stage} stagesCompleted={props.state.stagesCompleted} onNavigate={props.onNavigateStage} />
         <div className="flex items-center gap-2">
+          {/* Outline toggle — only shown on mobile (hidden on lg+) */}
           <button
             onClick={() => setShowMinimap((v) => !v)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-[10px] font-black uppercase transition-colors ${showMinimap ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400"}`}
+            className={`lg:hidden flex items-center gap-1 px-2 py-1 rounded-xl border text-[10px] font-black uppercase transition-colors ${showMinimap ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400"}`}
           >
             <LayoutList className="h-3.5 w-3.5" /> Outline
           </button>
@@ -743,19 +812,22 @@ const LessonRunner: React.FC<{
         </div>
         <span className="text-[9px] font-black text-zinc-400 tabular-nums shrink-0">{Math.round(dayProgress * 100)}%</span>
       </div>
-      <div className="pt-5 flex-1">
+      <div className="pt-5 flex-1 lg:flex lg:gap-5">
+        {/* Mobile: toggled minimap replaces stage content */}
         {showMinimap ? (
-          <LessonMinimap
-            day={props.day}
-            state={props.state}
-            cards={props.cards}
-            dueCards={props.dueCards}
-            progress={props.progress}
-            onNavigate={handleMinimapNavigate}
-            onClose={() => setShowMinimap(false)}
-          />
+          <div className="lg:hidden">
+            <LessonMinimapGrid
+              day={props.day}
+              state={props.state}
+              cards={props.cards}
+              progress={props.progress}
+              dueCardCount={props.dueCards.length}
+              onNavigate={handleMinimapNavigate}
+              onClose={() => setShowMinimap(false)}
+            />
+          </div>
         ) : (
-          <motion.div key={`${props.day.day}-${stage}-${props.state.grammarIndex}-${props.state.vocabIndex}-${props.state.kanjiIndex}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 }}>
+          <motion.div key={`${props.day.day}-${stage}-${props.state.grammarIndex}-${props.state.vocabIndex}-${props.state.kanjiIndex}`} className="flex-1 min-w-0 lg:block" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 }}>
             {stage === "review" && <ReviewStage {...props} />}
             {stage === "grammar" && <GrammarStage {...props} />}
             {stage === "vocab" && <VocabStage {...props} />}
@@ -764,6 +836,19 @@ const LessonRunner: React.FC<{
             {stage === "done" && <DoneStage {...props} checkpoint={checkpoint} />}
           </motion.div>
         )}
+        {/* Desktop: always-visible sidebar minimap */}
+        <aside className="hidden lg:block w-64 shrink-0">
+          <div className="sticky top-4 border-2 border-zinc-900 rounded-[22px] bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-3 max-h-[560px] overflow-y-auto">
+            <LessonMinimapGrid
+              day={props.day}
+              state={props.state}
+              cards={props.cards}
+              progress={props.progress}
+              dueCardCount={props.dueCards.length}
+              onNavigate={handleMinimapNavigate}
+            />
+          </div>
+        </aside>
       </div>
     </div>
   );
@@ -954,23 +1039,8 @@ const LessonMinimap: React.FC<{
   );
 };
 
-const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, cards, dueCards, readOnly, state, isBackShown, setIsBackShown, onGrade, onCompleteStage, onUpdateState, onStartDayPractice }) => {
+const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, cards, progress, dueCards, readOnly, state, isBackShown, setIsBackShown, onGrade, onCompleteStage, onUpdateState, onStartDayPractice }) => {
   const card = dueCards[0];
-  useEffect(() => {
-    if (!card || readOnly) return;
-    function handleKey(event: KeyboardEvent) {
-      const tag = (event.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (event.key === " " || event.key === "Enter") {
-        event.preventDefault();
-        if (!isBackShown) setIsBackShown(true);
-      } else if (isBackShown && ["1", "2", "3", "4"].includes(event.key)) {
-        onGrade(Number(event.key) as N5Grade);
-      }
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [card, isBackShown, readOnly, setIsBackShown, onGrade]);
   if (readOnly) {
     return <StageShell eyebrow="Review" title="Read-only revisit" subtitle="Reviews are skipped while revisiting completed material." primaryLabel="Continue" onPrimary={() => onCompleteStage("review")} />;
   }
@@ -982,7 +1052,7 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day,
       <StageShell
         eyebrow="Review"
         title="All caught up"
-        subtitle="No N5 vocab or kanji reviews are due right now. You can still redo today's material as an early FSRS review."
+        subtitle="No N5 reviews are due right now. You can still redo today's material as an early FSRS review."
         primaryLabel="Continue"
         onPrimary={() => returnToDone ? onUpdateState({ stage: "done", stagesCompleted: { ...state.stagesCompleted, review: true } }) : onCompleteStage("review")}
         secondaryLabel={dayCardCount > 0 ? `Redo Day ${day.day} reviews (${dayCardCount})` : undefined}
@@ -990,40 +1060,33 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day,
       />
     );
   }
+  const kindLabel = card.kind === "vocab" ? "Vocab in context" : card.kind === "grammar" ? "Grammar pattern" : "Kanji recall";
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Review" title="Clearing today's reviews" subtitle={`${dueCards.length} due. Reviews come first, and you can defer if today needs to start with new material.`} />
-      <div className="border-2 border-zinc-900 rounded-[24px] min-h-[320px] p-5 flex flex-col justify-between">
-        <div className="flex justify-between text-[10px] font-black uppercase text-zinc-400">
-          <span>{card.kind === "vocab" ? "Vocab in context" : "Kanji recall"}</span>
-          <span>Due {formatN5Due(card.due)}</span>
-        </div>
-        <div className="text-center my-8">
-          {!isBackShown ? content.front : content.back}
-        </div>
-        {!isBackShown ? (
-          <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Show Answer <span className="opacity-50 font-normal normal-case">(Space)</span></button>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {([1, 2, 3, 4] as N5Grade[]).map((grade) => (
-              <button key={grade} onClick={() => onGrade(grade)} className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}>
-                {gradeLabels[grade]} <span className="opacity-40 font-normal normal-case">({grade})</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <McReviewPanel
+        key={`${card.id}:${card.reps}`}
+        card={card}
+        isRevealed={isBackShown}
+        onReveal={() => setIsBackShown(true)}
+        onGrade={onGrade}
+        progress={progress}
+        back={content.back}
+        cardLabel={kindLabel}
+        dueLabel={`Due ${formatN5Due(card.due)}`}
+      />
       <button onClick={() => onUpdateState({ stage: "grammar", reviewDeferred: true })} className="mx-auto block text-[11px] font-black uppercase text-zinc-400 hover:text-zinc-900">Defer reviews and start lesson</button>
     </div>
   );
 };
 
-const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, readOnly, onUpdateState, onCompleteStage }) => {
+const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, state, cards, readOnly, onMarkGrammarLearned, onUpdateState, onCompleteStage }) => {
   const item = day.grammar[state.grammarIndex];
   const isLast = state.grammarIndex >= day.grammar.length - 1;
-  useEnterAdvance(item && !readOnly ? () => (isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })) : null);
+  useEnterAdvance(item ? () => (readOnly ? (isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })) : onMarkGrammarLearned(item)) : null);
   if (!item) return <StageShell eyebrow="Grammar" title="No grammar listed" subtitle={day.grammarText || "Continue to the next stage."} primaryLabel="Continue" onPrimary={() => onCompleteStage("grammar")} />;
   const hasPrev = state.grammarIndex > 0;
+  const learned = cards.some((card) => card.id === `n5:grammar:${item.id}`);
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Grammar" title={item.title} subtitle={`${state.grammarIndex + 1} of ${day.grammar.length}`} />
@@ -1040,7 +1103,11 @@ const GrammarStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day
       </div>
       <div className="flex gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ grammarIndex: state.grammarIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
-        <PrimaryBar primaryLabel={isLast ? "Finish Grammar" : "Next Grammar"} onPrimary={() => isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })} />
+        {readOnly ? (
+          <PrimaryBar primaryLabel={isLast ? "Finish Grammar" : "Next Grammar"} onPrimary={() => isLast ? onCompleteStage("grammar") : onUpdateState({ grammarIndex: state.grammarIndex + 1 })} />
+        ) : (
+          <PrimaryBar primaryLabel={learned ? "Continue" : "Learnt (move on)"} onPrimary={() => onMarkGrammarLearned(item)} />
+        )}
       </div>
     </div>
   );
@@ -1055,6 +1122,9 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const hasPrev = state.vocabIndex > 0;
   const isDeferred = (state.deferredVocabIds || []).includes(item.id);
   const displayPos = Math.min(state.vocabIndex + (state.deferredVocabIds?.length || 0) + 1, queue.length);
+  const deferredSet = new Set(state.deferredVocabIds || []);
+  const skippedCount = deferredSet.size;
+  const tailAllSkipped = skippedCount > 0 && queue.slice(state.vocabIndex).every((e) => deferredSet.has(e.id));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Vocab" title={`${displayPos} of ${queue.length} words`} subtitle={day.vocabText} />
@@ -1067,19 +1137,24 @@ const VocabStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
         <div className="text-sm font-bold uppercase tracking-wide text-zinc-500">{item.type} · {item.meaning}</div>
         <WordKanjiStrip word={item.word} />
         <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 text-xl font-black text-zinc-950"><KanjiText text={item.example || item.raw} /></div>
-        {isDeferred && <span className="text-[10px] font-black uppercase text-amber-600">Revisiting deferred item</span>}
+        {isDeferred && <span className="text-[10px] font-black uppercase text-amber-600">Skipped item — revisiting</span>}
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ vocabIndex: state.vocabIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceVocab() : onMarkVocabLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
-          {readOnly ? "Next" : learned ? "Continue" : "Learned"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
+          {readOnly ? "Next" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
           <button onClick={() => onDeferVocab(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
-            More time
+            Skip for now
           </button>
         ) : null}
       </div>
+      {!readOnly && tailAllSkipped && (
+        <button onClick={() => onCompleteStage("vocab")} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-100 text-zinc-700 text-xs font-black uppercase hover:bg-zinc-200">
+          Finish section ({skippedCount} skipped)
+        </button>
+      )}
     </div>
   );
 };
@@ -1103,6 +1178,9 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
   const hasPrev = state.kanjiIndex > 0;
   const isDeferred = (state.deferredKanjiIds || []).includes(item.kanji);
   const displayPos = Math.min(state.kanjiIndex + (state.deferredKanjiIds?.length || 0) + 1, queue.length);
+  const deferredSet = new Set(state.deferredKanjiIds || []);
+  const skippedCount = deferredSet.size;
+  const tailAllSkipped = skippedCount > 0 && queue.slice(state.kanjiIndex).every((e) => deferredSet.has(e.kanji));
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <StageHeading eyebrow="Kanji" title={`${displayPos} of ${queue.length} kanji`} subtitle={day.kanjiText} />
@@ -1130,7 +1208,7 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
               <Puzzle className="h-3.5 w-3.5" /> Break it down
             </button>
           )}
-          {isDeferred && <span className="mt-2 block text-[10px] font-black uppercase text-amber-600">Revisiting deferred item</span>}
+          {isDeferred && <span className="mt-2 block text-[10px] font-black uppercase text-amber-600">Skipped item — revisiting</span>}
         </div>
         <div className="space-y-3">
           <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4">
@@ -1145,14 +1223,19 @@ const KanjiStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day, 
       <div className="flex flex-col sm:flex-row gap-2">
         {hasPrev && <button onClick={() => onUpdateState({ kanjiIndex: state.kanjiIndex - 1 })} className="px-4 py-3 rounded-2xl border-2 border-zinc-300 bg-white text-zinc-600 text-xs font-black uppercase">← Prev</button>}
         <button onClick={() => readOnly ? onAdvanceKanji() : onMarkKanjiLearned(item)} className="flex-1 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase">
-          {readOnly ? "Next" : learned ? "Continue" : "Learned"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
+          {readOnly ? "Next" : learned ? "Continue" : "Learnt (move on)"} <span className="opacity-50 font-normal normal-case">(Enter)</span>
         </button>
         {!readOnly && !isDeferred ? (
           <button onClick={() => onDeferKanji(item)} className="px-4 py-3 rounded-2xl border-2 border-zinc-900 bg-amber-100 text-zinc-800 text-xs font-black uppercase hover:bg-amber-200">
-            More time
+            Skip for now
           </button>
         ) : null}
       </div>
+      {!readOnly && tailAllSkipped && (
+        <button onClick={() => onCompleteStage("kanji")} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-100 text-zinc-700 text-xs font-black uppercase hover:bg-zinc-200">
+          Finish section ({skippedCount} skipped)
+        </button>
+      )}
     </div>
   );
 };
@@ -1270,7 +1353,41 @@ const CourseMap: React.FC<{ progress: N5CourseProgress; onBack: () => void; onOp
   </div>
 );
 
-function reviewContent(card: N5SRSCard): { front: React.ReactNode; back: React.ReactNode } | null {
+export function reviewContent(card: N5SRSCard): { front: React.ReactNode; back: React.ReactNode } | null {
+  if (card.kind === "grammar") {
+    const point = n5Course.grammar[card.contentId];
+    if (!point) return null;
+    const exIdx = card.reps % Math.max(1, point.examples.length);
+    const example = point.examples[exIdx];
+    return {
+      front: (
+        <div>
+          <div className="text-2xl font-black text-zinc-950">{point.title}</div>
+          <div className="mt-3 text-base font-bold text-zinc-600 whitespace-pre-wrap">{point.structure}</div>
+          <div className="mt-4 text-xs font-black uppercase text-zinc-400">Recall this grammar pattern</div>
+        </div>
+      ),
+      back: (
+        <div className="space-y-3 text-left">
+          <div className="text-xl font-black text-indigo-700">{point.title}</div>
+          {point.structure && <div className="text-base font-bold text-zinc-900 bg-zinc-50 border-2 border-zinc-200 rounded-2xl p-3">{point.structure}</div>}
+          <div className="text-sm font-bold text-zinc-600">{point.explanation}</div>
+          {example && (
+            <div className="bg-white border-2 border-zinc-200 rounded-2xl p-3">
+              <div className="text-lg font-black text-zinc-950"><KanjiText text={example.japanese} /></div>
+              <div className="text-sm font-bold text-zinc-500 mt-1">{example.translation}</div>
+            </div>
+          )}
+          {point.commonMistake && (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 text-xs font-bold text-amber-900">
+              <span className="block text-[10px] font-black uppercase tracking-widest mb-1">Common mistake</span>
+              {point.commonMistake}
+            </div>
+          )}
+        </div>
+      ),
+    };
+  }
   if (card.kind === "vocab") {
     const entry = n5Course.vocab[card.contentId];
     if (!entry) return null;

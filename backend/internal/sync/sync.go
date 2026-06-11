@@ -198,6 +198,7 @@ func mergeN5CourseProgress(existing, incoming map[string]any) map[string]any {
 	result["completedDays"] = unionNumberValues(getSlice(existing, "completedDays"), getSlice(incoming, "completedDays"))
 	result["learnedVocabIds"] = unionStringValues(getSlice(existing, "learnedVocabIds"), getSlice(incoming, "learnedVocabIds"))
 	result["learnedKanjiIds"] = unionStringValues(getSlice(existing, "learnedKanjiIds"), getSlice(incoming, "learnedKanjiIds"))
+	result["learnedGrammarIds"] = unionStringValues(getSlice(existing, "learnedGrammarIds"), getSlice(incoming, "learnedGrammarIds"))
 	result["dayStates"] = mergeObjectMapByUpdatedAt(getMap(existing, "dayStates"), getMap(incoming, "dayStates"))
 	result["checkpointReports"] = mergeObjectMapByUpdatedAt(getMap(existing, "checkpointReports"), getMap(incoming, "checkpointReports"))
 	result["productionAnswers"] = mergeProductionAnswers(getMap(existing, "productionAnswers"), getMap(incoming, "productionAnswers"))

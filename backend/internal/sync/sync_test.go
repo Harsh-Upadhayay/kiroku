@@ -161,6 +161,29 @@ func TestMergeStateN5CourseProgress(t *testing.T) {
 	}
 }
 
+func TestMergeN5CourseProgressGrammarIds(t *testing.T) {
+	existing := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"learnedGrammarIds": []any{"G01", "G02"},
+			"updatedAt":         float64(100),
+		},
+	}
+	incoming := models.SyncState{
+		N5CourseProgress: map[string]any{
+			"learnedGrammarIds": []any{"G02", "G03"},
+			"updatedAt":         float64(200),
+		},
+	}
+	merged := mergeForTest(t, existing, incoming)
+	ids, ok := merged.N5CourseProgress["learnedGrammarIds"].([]any)
+	if !ok {
+		t.Fatalf("learnedGrammarIds not a slice: %#v", merged.N5CourseProgress["learnedGrammarIds"])
+	}
+	if len(ids) != 3 {
+		t.Fatalf("expected union of 3 grammar ids, got %#v", ids)
+	}
+}
+
 func TestMergeStateN5SRSCards(t *testing.T) {
 	existing := models.SyncState{
 		N5SRSCards: []map[string]any{

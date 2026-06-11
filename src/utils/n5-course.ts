@@ -8,11 +8,11 @@ import {
   type FSRSParameters,
   type Grade,
 } from "ts-fsrs";
-import type { N5CourseData, N5KanjiEntry, N5VocabEntry } from "../content/n5/parser";
+import type { N5CourseData, N5GrammarPoint, N5KanjiEntry, N5VocabEntry } from "../content/n5/parser";
 import { getSettingFromDB, saveSettingToDB } from "./db";
 
 export type N5Stage = "review" | "grammar" | "vocab" | "kanji" | "produce" | "done";
-export type N5CardKind = "vocab" | "kanji";
+export type N5CardKind = "vocab" | "kanji" | "grammar";
 export type N5Grade = 1 | 2 | 3 | 4;
 
 export const N5_STAGE_ORDER: N5Stage[] = ["review", "grammar", "vocab", "kanji", "produce", "done"];
@@ -60,6 +60,7 @@ export interface N5CourseProgress {
   dayStates: Record<string, N5DayProgress>;
   learnedVocabIds: string[];
   learnedKanjiIds: string[];
+  learnedGrammarIds: string[];
   productionAnswers: Record<string, Record<string, N5ProductionAnswer>>;
   checkpointReports: Record<string, N5CheckpointReport>;
   dueCountTrend: N5DueTrendPoint[];
@@ -172,6 +173,7 @@ export function normalizeN5Progress(input?: Partial<N5CourseProgress> | null, co
     dayStates: {},
     learnedVocabIds: [],
     learnedKanjiIds: [],
+    learnedGrammarIds: [],
     productionAnswers: {},
     checkpointReports: {},
     dueCountTrend: [],
@@ -191,6 +193,7 @@ export function normalizeN5Progress(input?: Partial<N5CourseProgress> | null, co
     dayStates: normalizeDayStates(input?.dayStates || {}),
     learnedVocabIds: uniqueStrings(input?.learnedVocabIds || []),
     learnedKanjiIds: uniqueStrings(input?.learnedKanjiIds || []),
+    learnedGrammarIds: uniqueStrings(input?.learnedGrammarIds || []),
     productionAnswers: normalizeProductionAnswers(input?.productionAnswers || {}, clientId),
     checkpointReports: normalizeCheckpointReports(input?.checkpointReports || {}, clientId),
     dueCountTrend: normalizeDueTrend(input?.dueCountTrend || []),
@@ -213,7 +216,7 @@ export function normalizeN5Progress(input?: Partial<N5CourseProgress> | null, co
 export function normalizeN5Cards(cards: N5SRSCard[] | null | undefined): N5SRSCard[] {
   if (!Array.isArray(cards)) return [];
   return cards
-    .filter((card) => card && typeof card.id === "string" && (card.kind === "vocab" || card.kind === "kanji"))
+    .filter((card) => card && typeof card.id === "string" && (card.kind === "vocab" || card.kind === "kanji" || card.kind === "grammar"))
     .map((card) => ({
       ...card,
       contentId: String(card.contentId || card.id),
@@ -299,12 +302,42 @@ export function advanceKanjiPure(
   return { progress: nextProgress, cards: withLearned.cards };
 }
 
+export function markN5GrammarLearned(
+  progress: N5CourseProgress,
+  cards: N5SRSCard[],
+  day: number,
+  point: N5GrammarPoint
+): { progress: N5CourseProgress; cards: N5SRSCard[] } {
+  const cardId = cardIdForGrammar(point);
+  return markN5ItemLearned(progress, cards, day, "grammar", point.id, cardId);
+}
+
+export function advanceGrammarPure(
+  progress: N5CourseProgress,
+  cards: N5SRSCard[],
+  day: number,
+  dayPlan: { grammar: N5GrammarPoint[] },
+  point: N5GrammarPoint,
+): { progress: N5CourseProgress; cards: N5SRSCard[] } {
+  const withLearned = markN5GrammarLearned(progress, cards, day, point);
+  const state = getN5DayState(withLearned.progress, day);
+  const nextIndex = state.grammarIndex + 1;
+  const nextProgress = nextIndex >= dayPlan.grammar.length
+    ? completeN5Stage(withLearned.progress, day, "grammar")
+    : updateN5DayState(withLearned.progress, day, { grammarIndex: nextIndex });
+  return { progress: nextProgress, cards: withLearned.cards };
+}
+
 export function cardIdForVocab(entry: Pick<N5VocabEntry, "id">): string {
   return `n5:vocab:${entry.id}`;
 }
 
 export function cardIdForKanji(entry: Pick<N5KanjiEntry, "kanji">): string {
   return `n5:kanji:${entry.kanji}`;
+}
+
+export function cardIdForGrammar(point: Pick<N5GrammarPoint, "id">): string {
+  return `n5:grammar:${point.id}`;
 }
 
 export function isN5CardDue(card: N5SRSCard, now = Date.now()): boolean {
@@ -330,9 +363,11 @@ export function ensureN5CardsForLearned(
   const existing = new Set(cards.map((card) => card.id));
   const vocabDay = new Map<string, number>();
   const kanjiDay = new Map<string, number>();
+  const grammarDay = new Map<string, number>();
   course.days.forEach((day) => {
     day.vocab.forEach((entry) => { if (!vocabDay.has(entry.id)) vocabDay.set(entry.id, day.day); });
     day.kanji.forEach((entry) => { if (!kanjiDay.has(entry.kanji)) kanjiDay.set(entry.kanji, day.day); });
+    day.grammar.forEach((point) => { if (!grammarDay.has(point.id)) grammarDay.set(point.id, day.day); });
   });
 
   const additions: N5SRSCard[] = [];
@@ -348,8 +383,54 @@ export function ensureN5CardsForLearned(
       additions.push(createInitialN5Card(cardId, "kanji", kanjiChar, kanjiDay.get(kanjiChar) || 1));
     }
   });
+  (progress.learnedGrammarIds || []).forEach((pointId) => {
+    const cardId = cardIdForGrammar({ id: pointId });
+    if (!existing.has(cardId) && course.grammar[pointId]) {
+      additions.push(createInitialN5Card(cardId, "grammar", pointId, grammarDay.get(pointId) || 1));
+    }
+  });
 
   return additions.length ? [...normalizeN5Cards(cards), ...additions] : cards;
+}
+
+/**
+ * For existing users who completed days before grammar tracking was added,
+ * union all grammar ids from completed days into learnedGrammarIds.
+ * Returns a new progress object only if something changed.
+ */
+export function backfillLearnedGrammarForCompletedDays(
+  progress: N5CourseProgress,
+  course: N5CourseData
+): N5CourseProgress {
+  const existing = new Set(progress.learnedGrammarIds || []);
+  const toAdd: string[] = [];
+  progress.completedDays.forEach((day) => {
+    const plan = course.days.find((d) => d.day === day);
+    if (!plan) return;
+    plan.grammar.forEach((point) => {
+      if (!existing.has(point.id)) toAdd.push(point.id);
+    });
+  });
+  if (toAdd.length === 0) return progress;
+  return {
+    ...progress,
+    learnedGrammarIds: uniqueStrings([...(progress.learnedGrammarIds || []), ...toAdd]),
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Returns the index of the first queue item not in the learned set.
+ * If everything is learned, returns queue.length - 1 (last item, clamped ≥ 0).
+ */
+export function firstUnlearnedIndex<T>(
+  queue: T[],
+  idOf: (item: T) => string,
+  learned: Set<string>
+): number {
+  if (queue.length === 0) return 0;
+  const idx = queue.findIndex((item) => !learned.has(idOf(item)));
+  return idx === -1 ? Math.max(0, queue.length - 1) : idx;
 }
 
 /**
@@ -376,7 +457,9 @@ export function buildCumulativeReviewQueue(cards: N5SRSCard[], now = new Date())
     })
     .sort((a, b) => {
       if (a.due !== b.due) return a.due ? -1 : 1;
-      return a.retrievability - b.retrievability;
+      const rDiff = a.retrievability - b.retrievability;
+      if (rDiff !== 0) return rDiff;
+      return a.card.createdAt - b.card.createdAt;
     })
     .map((item) => item.card);
 }
@@ -624,7 +707,7 @@ function markN5ItemLearned(
   const hasCard = existingCards.some((card) => card.id === cardId);
   const nextCards = hasCard ? existingCards : [...existingCards, createInitialN5Card(cardId, kind, contentId, day)];
   const now = Date.now();
-  const learnedKey = kind === "vocab" ? "learnedVocabIds" : "learnedKanjiIds";
+  const learnedKey = kind === "vocab" ? "learnedVocabIds" : kind === "kanji" ? "learnedKanjiIds" : "learnedGrammarIds";
   return {
     cards: nextCards,
     progress: {
@@ -680,7 +763,7 @@ function firstDueDelayMs(id: string): number {
   return twentyHours + (stableHashNumber(id) % twentyFourHours);
 }
 
-function stableHashNumber(input: string): number {
+export function stableHashNumber(input: string): number {
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
