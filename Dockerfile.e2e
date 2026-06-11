@@ -1,0 +1,27 @@
+# E2E CI stage — runs Playwright browser tests against a running app instance.
+# Usage (in CI):
+#   1. docker build -f Dockerfile -t kiroku-app .  (or run dev server locally)
+#   2. docker build -f Dockerfile.e2e -t kiroku-e2e .
+#   3. docker run --network=host kiroku-e2e
+#
+# This stage is ONLY for CI test runs. It is not used in production.
+
+FROM mcr.microsoft.com/playwright:v1.60.0-noble AS e2e
+
+WORKDIR /app
+
+# Copy package files first for layer caching
+COPY package*.json ./
+RUN npm ci
+
+# Install Playwright browsers (uses Playwright's bundled Chromium)
+RUN npx playwright install chromium --with-deps
+
+COPY . .
+
+# Override playwright config to not start a web server — in CI the app
+# is expected to already be running at APP_URL (default: http://localhost:3333)
+ENV APP_URL=http://localhost:3333
+ENV CI=true
+
+CMD ["npx", "playwright", "test", "--project=desktop", "--reporter=list"]

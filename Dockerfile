@@ -8,6 +8,20 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
+# ── CI stage: unit tests only (vitest) ──────────────────────────────────────
+# Does NOT include Playwright; use Dockerfile.e2e for browser tests.
+FROM node:22-alpine AS ci
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npm test
+
+# ── Production runtime: no test deps ────────────────────────────────────────
 FROM node:22-alpine AS runtime
 
 WORKDIR /app
