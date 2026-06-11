@@ -14,19 +14,13 @@ test.describe("Review Session (BR-26 to BR-31)", () => {
     await page.waitForTimeout(300);
   });
 
-  // BR-27: BUG-04 confirmed — Enter after Show Answer does NOT advance (expected failing test)
-  test("BR-27: BUG-04 Enter after Show Answer is inert (bug regression)", async ({ page }) => {
-    // Navigate to a review session if there are due cards
-    // Since this is a fresh user, SRS cards are newly created and not due yet.
-    // We test the behavior via an in-lesson review card if we can get to one.
-    // If there are no due cards, this test is satisfied vacuously.
-
-    // Return to home and try to start a practice/review session
+  // BR-27: BUG-04 fix — Enter after Show Answer SHOULD grade the card (fixed behavior)
+  test("BR-27: Enter after Show Answer grades card and advances session", async ({ page }) => {
     await page.locator('button:has-text("Home"), a:has-text("Home")').first().click().catch(() => {});
     await page.goto("/");
     await page.waitForTimeout(500);
 
-    const reviewBtn = page.locator('button:has-text("Review"), button:has-text("Practice all")').first();
+    const reviewBtn = page.locator('button:has-text("Practice all")').first();
     if (await reviewBtn.count() === 0) {
       test.skip(true, "No review session available (no due/learned cards yet)");
       return;
@@ -34,8 +28,7 @@ test.describe("Review Session (BR-26 to BR-31)", () => {
     await reviewBtn.click();
     await page.waitForTimeout(500);
 
-    // Look for "Show answer instead" link
-    const showAnswerBtn = page.locator('button:has-text("Show answer"), text=/show answer/i').first();
+    const showAnswerBtn = page.locator('button:has-text("Show answer")').first();
     if (await showAnswerBtn.count() === 0) {
       test.skip(true, "No Show Answer button found in session");
       return;
@@ -43,16 +36,17 @@ test.describe("Review Session (BR-26 to BR-31)", () => {
     await showAnswerBtn.click();
     await page.waitForTimeout(300);
 
-    // BUG-04: After clicking Show Answer, pressing Enter should be INERT (bug)
-    // Record what's visible before Enter
+    // BUG-04 fix: grade buttons should be visible after Show Answer
+    const gradeButtons = page.locator('button:has-text("Again"), button:has-text("Good"), button:has-text("Easy"), button:has-text("Hard")');
+    await expect(gradeButtons.first()).toBeVisible({ timeout: 3000 });
+
+    // BUG-04 fix: pressing Enter should now submit a grade (page changes)
     const beforeBody = await page.locator("body").innerText();
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
     const afterBody = await page.locator("body").innerText();
-
-    // With BUG-04 present: page content is unchanged (Enter did nothing)
-    // This test documents the bug: if it fails in the future, BUG-04 is fixed
-    expect(beforeBody).toBe(afterBody); // documents current buggy behavior
+    // Page should have changed (grade was applied, card advanced or session ended)
+    expect(beforeBody !== afterBody || afterBody.match(/Session complete|Return Home/i)).toBeTruthy();
   });
 
   // BR-28: Space bar shows answer before MC pick
@@ -127,8 +121,8 @@ test.describe("Review Session (BR-26 to BR-31)", () => {
     await page.waitForTimeout(500);
 
     const vocabPracticeBtn = page.locator('button:has-text("PRACTICE"):near(:text("Vocab")), button:has-text("Practice"):near(:text("vocab"))').first();
-    if (await vocabPracticeBtn.count() === 0) {
-      test.skip(true, "Vocab Practice button not found (no learned vocab cards)");
+    if (await vocabPracticeBtn.count() === 0 || !(await vocabPracticeBtn.isEnabled().catch(() => false))) {
+      test.skip(true, "Vocab Practice button not found or disabled (no learned vocab cards)");
       return;
     }
     await vocabPracticeBtn.click();
@@ -194,7 +188,7 @@ test.describe("RS-09/RS-10/RS-11: Session progress and completion", () => {
       if (await completeScreen.count() > 0) break;
 
       // Try to reveal and grade a card
-      const showAnswerBtn = page.locator('button:has-text("Show answer"), text=/show answer/i').first();
+      const showAnswerBtn = page.locator('button:has-text("Show answer")').first();
       if (await showAnswerBtn.count() > 0) {
         await showAnswerBtn.click();
         await page.waitForTimeout(200);

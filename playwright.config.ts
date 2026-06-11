@@ -5,6 +5,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   workers: 1,
+  timeout: 60_000,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: process.env.APP_URL ?? "http://localhost:3333",

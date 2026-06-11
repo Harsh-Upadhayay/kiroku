@@ -13,6 +13,7 @@ import {
   completeN5Day,
   gradeN5Card,
   normalizeN5Progress,
+  normalizeN5Cards,
   buildCumulativeReviewQueue,
   formatN5Due,
   stableHashNumber,
@@ -27,7 +28,9 @@ import {
   ensureN5CardsForLearned,
   markN5VocabLearned,
   markN5KanjiLearned,
+  markN5GrammarLearned,
   updateN5ProductionAnswer,
+  recordN5DueTrend,
   type N5CourseProgress,
   type N5DayProgress,
   type N5SRSCard,
@@ -1340,6 +1343,110 @@ describe("E-01 / E-02 / E-03: stages with 0 items", () => {
     });
     const updated = completeN5Stage(p, 1, "vocab");
     expect(getN5DayState(updated, 1).stagesCompleted?.vocab).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeN5Cards
+// ---------------------------------------------------------------------------
+
+describe("normalizeN5Cards", () => {
+  it("returns [] for null input", () => {
+    expect(normalizeN5Cards(null)).toEqual([]);
+  });
+
+  it("returns [] for undefined input", () => {
+    expect(normalizeN5Cards(undefined)).toEqual([]);
+  });
+
+  it("filters out cards with missing id", () => {
+    const bad = [{ kind: "vocab" }] as any;
+    expect(normalizeN5Cards(bad)).toEqual([]);
+  });
+
+  it("filters out cards with unknown kind", () => {
+    const bad = [{ id: "x", kind: "unknown" }] as any;
+    expect(normalizeN5Cards(bad)).toEqual([]);
+  });
+
+  it("normalizes numeric-string fields and keeps valid card", () => {
+    const raw = [{ id: "v:1", kind: "vocab", contentId: null, day: null, createdAt: null, updatedAt: null, firstDueSeededAt: null, due: null, stability: null, difficulty: null, elapsed_days: null, scheduled_days: null }] as any;
+    const result = normalizeN5Cards(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("v:1");
+    expect(typeof result[0].day).toBe("number");
+    expect(typeof result[0].stability).toBe("number");
+  });
+
+  it("accepts all three valid kinds", () => {
+    const cards = [
+      { id: "v:1", kind: "vocab" },
+      { id: "k:日", kind: "kanji" },
+      { id: "g:N5-1", kind: "grammar" },
+    ] as any;
+    expect(normalizeN5Cards(cards)).toHaveLength(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// recordN5DueTrend
+// ---------------------------------------------------------------------------
+
+describe("recordN5DueTrend", () => {
+  it("adds today's due count to an empty trend", () => {
+    const p = makeProgress({ dueCountTrend: [] });
+    const result = recordN5DueTrend(p, 5);
+    expect(result.dueCountTrend).toHaveLength(1);
+    expect(result.dueCountTrend[0].dueCount).toBe(5);
+  });
+
+  it("updates today's entry when called twice on same day", () => {
+    const p = makeProgress({ dueCountTrend: [] });
+    const first = recordN5DueTrend(p, 3);
+    const second = recordN5DueTrend(first, 7);
+    const todayEntries = second.dueCountTrend.filter((e) => e.date === localDateKey());
+    expect(todayEntries).toHaveLength(1);
+    expect(todayEntries[0].dueCount).toBe(7);
+  });
+
+  it("keeps at most 10 trend entries", () => {
+    const old = Array.from({ length: 15 }, (_, i) => ({
+      date: `2025-01-${String(i + 1).padStart(2, "0")}`,
+      dueCount: i,
+      updatedAt: i,
+    }));
+    const p = makeProgress({ dueCountTrend: old });
+    const result = recordN5DueTrend(p, 0);
+    expect(result.dueCountTrend.length).toBeLessThanOrEqual(10);
+  });
+
+  it("entries are sorted chronologically", () => {
+    const existing = [{ date: "2025-01-05", dueCount: 2, updatedAt: 0 }];
+    const p = makeProgress({ dueCountTrend: existing });
+    const result = recordN5DueTrend(p, 0);
+    const dates = result.dueCountTrend.map((e) => e.date);
+    const sorted = [...dates].sort();
+    expect(dates).toEqual(sorted);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// markN5GrammarLearned
+// ---------------------------------------------------------------------------
+
+describe("markN5GrammarLearned", () => {
+  it("adds grammar point id to learnedGrammarIds", () => {
+    const p = makeProgress({ learnedGrammarIds: [] });
+    const point: N5GrammarPoint = { id: "N5-G-01", title: "は particle", structure: "N は", explanation: "", examples: [], commonMistake: "", raw: "" };
+    const { progress: updated } = markN5GrammarLearned(p, [], 1, point);
+    expect(updated.learnedGrammarIds).toContain("N5-G-01");
+  });
+
+  it("creates an SRS card for the grammar point", () => {
+    const p = makeProgress({ learnedGrammarIds: [] });
+    const point: N5GrammarPoint = { id: "N5-G-02", title: "も particle", structure: "N も", explanation: "", examples: [], commonMistake: "", raw: "" };
+    const { cards } = markN5GrammarLearned(p, [], 1, point);
+    expect(cards.some((c) => c.kind === "grammar" && c.contentId === "N5-G-02")).toBe(true);
   });
 });
 

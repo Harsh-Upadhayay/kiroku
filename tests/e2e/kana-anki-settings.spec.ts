@@ -104,16 +104,33 @@ test.describe("Kana Tab (BR-38 to BR-44)", () => {
     if (await srsTab.count() > 0) await srsTab.click();
     await page.waitForTimeout(300);
 
-    const showBtn = page.locator('button:has-text("Show"), button:has-text("Reveal")').first();
-    if (await showBtn.count() === 0) {
-      test.skip(true, "No kana cards to show");
+    // Need active kana pool — if no groups enabled, skip
+    const launchBtn = page.locator('button:has-text("Launch Kana Review"), button:has-text("Study Ahead")').first();
+    if (await launchBtn.count() === 0) {
+      test.skip(true, "No kana groups enabled — cannot start practice session");
       return;
     }
-    await showBtn.click();
+
+    // Switch to Flashcard Reveal mode before launching (so grade buttons appear after flip)
+    const flashcardModeBtn = page.locator('button:has-text("Flashcard Reveal")').first();
+    if (await flashcardModeBtn.count() > 0) await flashcardModeBtn.click();
+    await page.waitForTimeout(200);
+
+    // Launch session
+    await launchBtn.click();
+    await page.waitForTimeout(500);
+
+    // "Reveal Romaji" button appears in flashcard mode before flipping
+    const revealBtn = page.locator('button:has-text("Reveal Romaji")').first();
+    if (await revealBtn.count() === 0) {
+      test.skip(true, "Session did not start or Reveal Romaji not found");
+      return;
+    }
+    await revealBtn.click();
     await page.waitForTimeout(300);
 
-    // Grade buttons should appear
-    const gradeBtn = page.locator('button:has-text("Again"), button:has-text("Good"), button:has-text("Easy")').first();
+    // Kana SRS uses "Forgotten" / "Correct" grade buttons (not Again/Good/Easy)
+    const gradeBtn = page.locator('button:has-text("Forgotten"), button:has-text("Correct")').first();
     await expect(gradeBtn).toBeVisible({ timeout: 3000 });
   });
 });

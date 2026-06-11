@@ -105,10 +105,15 @@ test.describe("BUG-02: minimap Done navigation blocked when produce not complete
     await completeAllGrammar(page);
     await page.waitForTimeout(300);
 
-    // Try to find the "Done" row in the minimap and click it
-    const minimapDone = page.locator(
-      '[data-stage="done"], .minimap-done, text=/^Done$/i'
-    ).first();
+    // On mobile, toggle the minimap open; on desktop it's always in the aside sidebar
+    const outlineBtn = page.locator('button:has-text("Outline")').first();
+    if (await outlineBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await outlineBtn.click();
+      await page.waitForTimeout(300);
+    }
+
+    // Done minimap button: <button title="Day completion"> (no text content)
+    const minimapDone = page.locator('button[title="Day completion"]').first();
 
     if (await minimapDone.count() === 0) {
       test.skip(true, "Done minimap cell not found (may not be visible without completing prior stages)");
@@ -161,7 +166,7 @@ test.describe("BUG-04 fix: Enter/Space grades after Show Answer", () => {
     await practiceBtn.click();
     await page.waitForTimeout(500);
 
-    const showAnswerBtn = page.locator('button:has-text("Show answer"), text=/show answer instead/i').first();
+    const showAnswerBtn = page.locator('button:has-text("Show answer")').first();
     if (await showAnswerBtn.count() === 0) {
       test.skip(true, "No Show Answer button found in session");
       return;
@@ -346,28 +351,36 @@ test.describe("BUG-17: Grammar section shows real content when re-opened after c
       return;
     }
 
-    // Open minimap and click a grammar item
-    const outlineBtn = page.locator('button[aria-label*="outline"], button[aria-label*="Outline"], button:has-text("Outline")').first();
-    if (await outlineBtn.count() === 0) {
-      test.skip(true, "Outline/minimap toggle not found");
+    // On mobile, toggle the minimap open; on desktop it's always visible in the aside sidebar
+    const outlineBtn = page.locator('button:has-text("Outline")').first();
+    if (await outlineBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await outlineBtn.click();
+      await page.waitForTimeout(300);
+    }
+
+    // Grammar minimap buttons are small colored squares with title/aria-label = grammar point title.
+    // Find the Grammar section by its header text, then click the first button inside it.
+    // The aside sidebar (desktop) or the toggled div (mobile) both use section > div + grid structure.
+    const minimapSections = page.locator('aside section, div.space-y-3 section');
+    let clicked = false;
+    const sectionCount = await minimapSections.count();
+    for (let i = 0; i < sectionCount; i++) {
+      const sec = minimapSections.nth(i);
+      const headerText = await sec.locator('div').first().textContent().catch(() => '');
+      if ((headerText ?? '').toLowerCase().startsWith('grammar')) {
+        const btn = sec.locator('button').first();
+        if (await btn.count() > 0) {
+          await btn.click();
+          clicked = true;
+          break;
+        }
+      }
+    }
+    if (!clicked) {
+      test.skip(true, "Grammar minimap section not found");
       return;
     }
-    await outlineBtn.click();
-    await page.waitForTimeout(300);
-
-    // Click the Grammar section header to expand it
-    const grammarHeader = page.locator('button').filter({ hasText: /^Grammar/ }).first();
-    if (await grammarHeader.count() > 0) {
-      await grammarHeader.click();
-      await page.waitForTimeout(200);
-    }
-
-    // Click the first grammar item in the minimap
-    const grammarItems = page.locator('button').filter({ hasText: /Grammar|〜|は|が|を|に|の/ });
-    if (await grammarItems.count() > 0) {
-      await grammarItems.first().click();
-      await page.waitForTimeout(400);
-    }
+    await page.waitForTimeout(400);
 
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toContain("No grammar listed");

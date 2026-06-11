@@ -2,22 +2,14 @@
  * TC-BROWSER: Mobile Viewport (BR-62 to BR-64)
  */
 import { test, expect } from "@playwright/test";
+import { freshStart } from "./helpers";
 
 // These tests target the "mobile" project config (375px viewport)
 test.describe("Mobile Viewport (BR-62 to BR-64)", () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase("localforage");
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-      });
-    });
-    await page.reload();
-    await page.waitForTimeout(1000);
+    await freshStart(page);
   });
 
   // BR-62: Outline button appears INSIDE a lesson, not on course home
@@ -66,6 +58,30 @@ test.describe("Mobile Viewport (BR-62 to BR-64)", () => {
     expect(!!hasLegend).toBe(true);
   });
 
+  // BR-65: Desktop sidebar (lg:block) is hidden at mobile viewport
+  test("BR-65: Desktop sidebar minimap is hidden on mobile viewport", async ({ page }) => {
+    const startBtn = page.locator('button:has-text("Start"), button:has-text("Begin Day 1")').first();
+    if (await startBtn.count() === 0) {
+      test.skip(true, "Start button not found");
+      return;
+    }
+    await startBtn.click();
+    await page.waitForTimeout(600);
+
+    // The Outline toggle button (lg:hidden) should be visible on mobile
+    const outlineBtn = page.locator('button:has-text("Outline"), button:has-text("OUTLINE")').first();
+    await expect(outlineBtn).toBeVisible({ timeout: 5000 });
+
+    // The desktop sidebar div has class "hidden lg:block" — at 375px it is display:none
+    const desktopSidebar = page.locator('div[class*="lg:block"][class*="w-72"]').first();
+    if (await desktopSidebar.count() > 0) {
+      await expect(desktopSidebar).toBeHidden();
+    }
+    // Mobile minimap overlay is closed by default — "Not yet" legend text absent from visible DOM
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toMatch(/Not yet/i);
+  });
+
   // BR-64: Outline toggle again closes the minimap
   test("BR-64: Pressing Outline again closes minimap and returns to stage content", async ({ page }) => {
     const startBtn = page.locator('button:has-text("Start"), button:has-text("Begin Day 1")').first();
@@ -90,17 +106,16 @@ test.describe("Mobile Viewport (BR-62 to BR-64)", () => {
     const legend = page.locator("text=/Current|Learnt|Not yet/i").first();
     await expect(legend).toBeVisible({ timeout: 3000 });
 
-    // Close minimap — look for close button or toggle Outline again
-    const closeBtn = page.locator('button[aria-label="Close"], button:has-text("✕"), button:has-text("×")').first();
-    if (await closeBtn.count() > 0) {
-      await closeBtn.click();
-    } else {
-      await outlineBtn.click(); // toggle off
-    }
+    // Close minimap via Outline toggle (the same button opens and closes it)
+    // outlineBtn is in the lesson header — always visible, not inside the minimap overlay
+    await outlineBtn.click();
     await page.waitForTimeout(400);
 
-    // Minimap/legend should be gone; stage content visible again
-    const isLegendGone = await legend.isHidden().catch(() => true);
-    expect(isLegendGone).toBe(true);
+    // After minimap closes, the mobile minimap overlay is unmounted.
+    // The desktop sidebar minimap is always in the DOM but display:none.
+    // Use innerText() which excludes display:none elements, to verify the
+    // visible "Not yet" legend text (unique to the minimap) is gone.
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toMatch(/Not yet/i);
   });
 });

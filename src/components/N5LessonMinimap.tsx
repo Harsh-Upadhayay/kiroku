@@ -68,7 +68,7 @@ export const LessonMinimapGrid: React.FC<MinimapProps> = ({
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Day {day.day} · Outline</span>
         {onClose && (
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-900">
+          <button aria-label="Close" onClick={onClose} className="text-zinc-400 hover:text-zinc-900">
             <X className="h-4 w-4" />
           </button>
         )}

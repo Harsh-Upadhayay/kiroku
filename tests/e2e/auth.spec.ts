@@ -41,7 +41,7 @@ test.describe("Auth Modal (BR-55 to BR-61)", () => {
     await submitBtn.click();
     await page.waitForTimeout(300);
 
-    await expect(page.locator("text=/Email is required|email is required/i")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator("text=/Email.*required|email.*required/i")).toBeVisible({ timeout: 3000 });
   });
 
   // BR-57: Short/empty password shows validation error

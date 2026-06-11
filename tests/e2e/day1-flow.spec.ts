@@ -18,20 +18,21 @@ test.describe("Day 1 Full Flow", () => {
     // Should show grammar content
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toMatch(/Show answer/i);
-    // Grammar stage shows structure / "Learnt" button
-    await expect(page.locator('button:has-text("Learnt"), text=Grammar')).toBeVisible({ timeout: 5000 });
+    // Grammar stage shows "Learnt (move on)" button
+    await expect(page.locator('button:has-text("Learnt")')).toBeVisible({ timeout: 5000 });
   });
 
   // BR-02: Grammar progress bar at ~20% when just opened
   test("BR-02: Grammar progress bar shows around 20%", async ({ page }) => {
     await page.locator('button:has-text("Start"), button:has-text("Begin Day 1")').first().click();
     await page.waitForTimeout(500);
-    const progressBar = page.locator('[role="progressbar"], .progress-bar, [aria-label*="progress"]').first();
+    // Progress bar: outer div has aria-label="Day progress N%"; parse N from it
+    const progressBar = page.locator('[aria-label^="Day progress"]').first();
     if (await progressBar.count() > 0) {
-      const ariaVal = await progressBar.getAttribute("aria-valuenow");
-      const widthStyle = await progressBar.evaluate((el) => (el as HTMLElement).style.width);
-      // Progress should be low (grammar is first stage, ~16–25%)
-      const val = parseInt(ariaVal || widthStyle || "0");
+      const label = await progressBar.getAttribute("aria-label");
+      const match = label?.match(/(\d+)%/);
+      const val = match ? parseInt(match[1]) : 0;
+      // Grammar is first stage, progress should be low (~16–25%)
       expect(val).toBeGreaterThan(0);
       expect(val).toBeLessThan(50);
     }
@@ -98,6 +99,13 @@ test.describe("Day 1 Full Flow", () => {
 
     await page.locator('button:has-text("Skip")').first().click();
     await page.waitForTimeout(300);
+
+    // On mobile the minimap is behind the Outline toggle; open it first
+    const outlineBtn = page.locator('button:has-text("Outline")').first();
+    if (await outlineBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await outlineBtn.click();
+      await page.waitForTimeout(300);
+    }
 
     // Minimap cell for skipped item should have amber styling
     const amberCell = page.locator('.bg-amber-400, .border-amber-400, [class*="amber"]').first();
@@ -196,6 +204,14 @@ test.describe("Day 1 Full Flow", () => {
     if (await skipBtn.count() > 0) {
       await skipBtn.first().click();
       await page.waitForTimeout(300);
+
+      // On mobile the minimap is behind the Outline toggle; open it first
+      const outlineBtn = page.locator('button:has-text("Outline")').first();
+      if (await outlineBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+        await outlineBtn.click();
+        await page.waitForTimeout(300);
+      }
+
       const amberCell = page.locator('.bg-amber-400, .border-amber-400, [class*="amber"]').first();
       await expect(amberCell).toBeVisible({ timeout: 3000 });
     }
@@ -269,7 +285,7 @@ test.describe("Day 1 Full Flow", () => {
       await page.waitForTimeout(150);
     }
 
-    const toggleBtn = page.locator('button:has-text("Show example"), button:has-text("example sentences"), text=/show example/i').first();
+    const toggleBtn = page.locator('button:has-text("Show example"), button:has-text("example sentences")').first();
     if (await toggleBtn.count() > 0) {
       await toggleBtn.click();
       await page.waitForTimeout(300);

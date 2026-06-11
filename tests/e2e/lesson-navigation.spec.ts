@@ -255,7 +255,7 @@ test.describe("D-10/D-11/N-12: Redo Day functionality", () => {
 
     // Should show Redo Day button in read-only mode
     await expect(
-      page.locator('button:has-text("Redo"), text=/Redo Day/i')
+      page.locator('button:has-text("Redo"), button:has-text("Redo Day")')
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -332,7 +332,7 @@ test.describe("D-10/D-11/N-12: Redo Day functionality", () => {
     await day1Cell.click();
     await page.waitForTimeout(500);
 
-    const redoBtn = page.locator('button:has-text("Redo"), text=/Redo Day/i').first();
+    const redoBtn = page.locator('button:has-text("Redo"), button:has-text("Redo Day")').first();
     if (await redoBtn.count() === 0) {
       test.skip(true, "Redo Day button not found");
       return;
@@ -367,11 +367,11 @@ test.describe("N-10 / N-11: Lesson progress bar", () => {
 
     // Read initial progress
     const getProgress = async () => {
-      const bar = page.locator('[role="progressbar"], [aria-label*="progress"], .progress-bar').first();
+      const bar = page.locator('[aria-label^="Day progress"]').first();
       if (await bar.count() === 0) return -1;
-      const val = await bar.getAttribute("aria-valuenow");
-      const style = await bar.evaluate((el) => (el as HTMLElement).style.width);
-      return parseInt(val || style || "-1");
+      const label = await bar.getAttribute("aria-label");
+      const match = label?.match(/(\d+)%/);
+      return match ? parseInt(match[1]) : -1;
     };
 
     const before = await getProgress();
