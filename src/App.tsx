@@ -239,7 +239,7 @@ function SettingsTab({ onResetDatabase }: { onResetDatabase: () => void }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-5xl items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-5xl mx-auto items-start">
       {/* Appearance */}
       <div className="bg-white rounded-[28px] border-2 border-zinc-900 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <h3 className="text-sm font-black uppercase tracking-wider text-zinc-800 mb-4 flex items-center gap-2">
