@@ -28,11 +28,17 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check writability
-	_, err := h.DB.Exec(`CREATE TABLE IF NOT EXISTS health_check (id INTEGER PRIMARY KEY, ts INTEGER);
-	INSERT INTO health_check (ts) VALUES (?);
-	DELETE FROM health_check WHERE ts = ?`, auth.NowMillis(), auth.NowMillis())
-	if err != nil {
+	// Check writability: use a single timestamp so INSERT and DELETE match.
+	if _, err := h.DB.Exec(`CREATE TABLE IF NOT EXISTS health_check (id INTEGER PRIMARY KEY, ts INTEGER)`); err != nil {
+		h.WriteError(w, http.StatusServiceUnavailable, "database not writable", err)
+		return
+	}
+	ts := auth.NowMillis()
+	if _, err := h.DB.Exec(`INSERT INTO health_check (ts) VALUES (?)`, ts); err != nil {
+		h.WriteError(w, http.StatusServiceUnavailable, "database not writable", err)
+		return
+	}
+	if _, err := h.DB.Exec(`DELETE FROM health_check WHERE ts = ?`, ts); err != nil {
 		h.WriteError(w, http.StatusServiceUnavailable, "database not writable", err)
 		return
 	}
