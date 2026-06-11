@@ -69,8 +69,7 @@ test.describe("Review Session (BR-26 to BR-31)", () => {
     await reviewBtn.click();
     await page.waitForTimeout(500);
 
-    // Before pressing Space, should show MC options or "show answer" button
-    const mcOptions = page.locator('button[data-option], .mc-option, button:has-text("A)"), button:has-text("1)")').first();
+    // Before pressing Space: card is unrevealed; Space should trigger Show Answer
     await page.keyboard.press("Space");
     await page.waitForTimeout(300);
 
@@ -136,5 +135,91 @@ test.describe("Review Session (BR-26 to BR-31)", () => {
     await page.waitForTimeout(500);
 
     await expect(page.locator("text=/VOCAB DECK PRACTICE/i")).toBeVisible({ timeout: 3000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RS-09 / RS-10 / RS-11: Progress bar, counter, and session complete screen
+// ---------------------------------------------------------------------------
+
+test.describe("RS-09/RS-10/RS-11: Session progress and completion", () => {
+  test.beforeEach(async ({ page }) => {
+    await freshStart(page);
+    // Open Day 1, complete grammar to get SRS cards
+    await page.locator('button:has-text("Start"), button:has-text("Begin Day 1")').first().click();
+    await page.waitForTimeout(500);
+    await completeAllGrammar(page);
+    await page.waitForTimeout(300);
+  });
+
+  test("RS-09/RS-10: Session shows progress bar and X/N counter", async ({ page }) => {
+    await page.locator('button:has-text("Home"), a:has-text("Home")').first().click().catch(() => {});
+    await page.goto("/");
+    await page.waitForTimeout(500);
+
+    const practiceBtn = page.locator('button:has-text("Practice all"), button:has-text("PRACTICE ALL")').first();
+    if (await practiceBtn.count() === 0) {
+      test.skip(true, "Practice All not available");
+      return;
+    }
+    await practiceBtn.click();
+    await page.waitForTimeout(500);
+
+    // Should show either a progress bar or a counter
+    const bodyText = await page.locator("body").innerText();
+    const hasProgress =
+      bodyText.match(/\d+\s*\/\s*\d+/) ||      // "1 / 5" counter
+      bodyText.match(/\d+%/) ||                  // "20%" progress
+      (await page.locator('[role="progressbar"]').count()) > 0;
+    expect(!!hasProgress).toBe(true);
+  });
+
+  test("RS-11: Session complete screen shown after grading all cards", async ({ page }) => {
+    await page.locator('button:has-text("Home"), a:has-text("Home")').first().click().catch(() => {});
+    await page.goto("/");
+    await page.waitForTimeout(500);
+
+    const practiceBtn = page.locator('button:has-text("Practice all"), button:has-text("PRACTICE ALL")').first();
+    if (await practiceBtn.count() === 0) {
+      test.skip(true, "Practice All not available");
+      return;
+    }
+    await practiceBtn.click();
+    await page.waitForTimeout(500);
+
+    // Grade all cards in the session
+    let safety = 40;
+    while (safety-- > 0) {
+      const completeScreen = page.locator('text=/Session complete|Complete|Return Home/i').first();
+      if (await completeScreen.count() > 0) break;
+
+      // Try to reveal and grade a card
+      const showAnswerBtn = page.locator('button:has-text("Show answer"), text=/show answer/i').first();
+      if (await showAnswerBtn.count() > 0) {
+        await showAnswerBtn.click();
+        await page.waitForTimeout(200);
+      }
+
+      const goodBtn = page.locator('button:has-text("Good")').first();
+      const gradeBtn = page.locator(
+        'button:has-text("Again"), button:has-text("Hard"), button:has-text("Good"), button:has-text("Easy")'
+      ).first();
+
+      if (await goodBtn.count() > 0) {
+        await goodBtn.click();
+        await page.waitForTimeout(300);
+      } else if (await gradeBtn.count() > 0) {
+        await gradeBtn.click();
+        await page.waitForTimeout(300);
+      } else {
+        break;
+      }
+    }
+
+    // Should see session complete or return home button
+    const bodyText = await page.locator("body").innerText();
+    const isDone =
+      bodyText.match(/Session complete|All done|Return Home|complete/i);
+    expect(!!isDone).toBe(true);
   });
 });

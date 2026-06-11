@@ -130,4 +130,40 @@ test.describe("Auth Modal (BR-55 to BR-61)", () => {
     const isGone = await emailInput.isHidden().catch(() => true);
     expect(isGone).toBe(true);
   });
+
+  // BR-61: Successful login closes modal and shows user email
+  test("BR-61: Successful login closes modal and shows user email in header", async ({ page }) => {
+    // This test requires a live backend. Skip if env var is not set.
+    const testEmail = process.env.E2E_TEST_EMAIL;
+    const testPass = process.env.E2E_TEST_PASSWORD;
+    if (!testEmail || !testPass) {
+      test.skip(true, "E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set — skipping live auth test");
+      return;
+    }
+
+    const opened = await openAuthModal(page);
+    if (!opened) {
+      test.skip(true, "Sign In button not found");
+      return;
+    }
+
+    const emailInput = page.locator('input[type="email"], input[placeholder*="email"]').first();
+    const passInput = page.locator('input[type="password"], input[placeholder*="password"]').first();
+    await emailInput.fill(testEmail);
+    await passInput.fill(testPass);
+
+    const submitBtn = page.locator('button[type="submit"], button:has-text("Sign In")').last();
+    await submitBtn.click();
+    await page.waitForTimeout(2000);
+
+    // Modal should be closed after successful login
+    const emailField = page.locator('input[type="email"], input[placeholder*="email"]').first();
+    const isGone = await emailField.isHidden().catch(() => true);
+    expect(isGone).toBe(true);
+
+    // Header should show user email or a logged-in indicator
+    const bodyText = await page.locator("body").innerText();
+    const hasUser = bodyText.includes(testEmail) || bodyText.match(/log.?out|signed.?in|account/i);
+    expect(!!hasUser).toBe(true);
+  });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { State } from "ts-fsrs";
 import {
   effectiveVocabQueue,
@@ -26,11 +26,31 @@ import {
   backfillLearnedGrammarForCompletedDays,
   ensureN5CardsForLearned,
   markN5VocabLearned,
+  markN5KanjiLearned,
+  updateN5ProductionAnswer,
   type N5CourseProgress,
   type N5DayProgress,
   type N5SRSCard,
 } from "../utils/n5-course";
 import type { N5VocabEntry, N5KanjiEntry, N5GrammarPoint, N5CourseData } from "../content/n5/parser";
+
+// ---------------------------------------------------------------------------
+// Date helpers (mirror n5-course.ts private helpers for streak tests)
+// ---------------------------------------------------------------------------
+
+function localDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function previousDateKey(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() - 1);
+  return localDateKey(date);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -644,7 +664,6 @@ describe("advanceVocabPure", () => {
 
   it("removes entry from deferredVocabIds after advancing", () => {
     const p = deferVocabItem(makeProgress(), 1, "v1");
-    const state = getN5DayState(p, 1);
     const queue = [makeVocabEntry("v2"), makeVocabEntry("v3"), vocab[0]];
     const { progress } = advanceVocabPure(p, [], 1, { vocab: queue }, vocab[0]);
     expect(getN5DayState(progress, 1).deferredVocabIds ?? []).not.toContain("v1");
@@ -1170,3 +1189,158 @@ describe("E-13: gradeN5Card produces exactly one log per call", () => {
     expect(new Set(logs.map((l) => l.id)).size).toBe(10);
   });
 });
+
+// ---------------------------------------------------------------------------
+// ST-02 / ST-04: Streak consecutive-day increment and same-day idempotence
+// ---------------------------------------------------------------------------
+
+describe("ST-02 / ST-04: streak consecutive and same-day behaviour", () => {
+  it("ST-02: completes consecutive days — streak increments to 2", () => {
+    const today = localDateKey();
+    const yesterday = previousDateKey(today);
+    const p = makeProgress({
+      streak: { current: 1, highest: 1, lastCompletedDate: yesterday, updatedAt: 0 },
+    });
+    const updated = completeN5Day(p, 2);
+    expect(updated.streak.current).toBe(2);
+    expect(updated.streak.highest).toBe(2);
+  });
+
+  it("ST-02: three consecutive days — streak reaches 3", () => {
+    const today = localDateKey();
+    const yesterday = previousDateKey(today);
+    const p = makeProgress({
+      streak: { current: 2, highest: 2, lastCompletedDate: yesterday, updatedAt: 0 },
+    });
+    const updated = completeN5Day(p, 3);
+    expect(updated.streak.current).toBe(3);
+  });
+
+  it("ST-04: completing same day twice leaves streak unchanged", () => {
+    const today = localDateKey();
+    const p = makeProgress({
+      streak: { current: 5, highest: 5, lastCompletedDate: today, updatedAt: 0 },
+    });
+    const updated = completeN5Day(p, 2);
+    expect(updated.streak.current).toBe(5); // same day → no increment
+  });
+
+  it("ST-05: highest streak preserved after current streak breaks", () => {
+    const p = makeProgress({
+      streak: { current: 5, highest: 5, lastCompletedDate: "2020-01-01", updatedAt: 0 },
+    });
+    const updated = completeN5Day(p, 2);
+    expect(updated.streak.current).toBe(1);
+    expect(updated.streak.highest).toBe(5); // highest preserved
+  });
+});
+
+// ---------------------------------------------------------------------------
+// markN5KanjiLearned — parallel to markN5VocabLearned
+// ---------------------------------------------------------------------------
+
+describe("markN5KanjiLearned", () => {
+  it("adds kanji char to learnedKanjiIds", () => {
+    const p = makeProgress();
+    const entry = makeKanjiEntry("日");
+    const { progress } = markN5KanjiLearned(p, [], 1, entry);
+    expect(progress.learnedKanjiIds).toContain("日");
+  });
+
+  it("creates an SRS card with the correct id", () => {
+    const p = makeProgress();
+    const entry = makeKanjiEntry("日");
+    const { cards } = markN5KanjiLearned(p, [], 1, entry);
+    expect(cards.some((c) => c.id === "n5:kanji:日")).toBe(true);
+  });
+
+  it("does not duplicate card if already present", () => {
+    const p = makeProgress();
+    const entry = makeKanjiEntry("日");
+    const existing = makeCard("n5:kanji:日", "kanji");
+    const { cards } = markN5KanjiLearned(p, [existing], 1, entry);
+    expect(cards.filter((c) => c.id === "n5:kanji:日")).toHaveLength(1);
+  });
+
+  it("uses kanji char (not id) as contentId in the SRS card", () => {
+    const p = makeProgress();
+    const entry = makeKanjiEntry("月");
+    const { cards } = markN5KanjiLearned(p, [], 1, entry);
+    const card = cards.find((c) => c.id === "n5:kanji:月");
+    expect(card?.contentId).toBe("月");
+    expect(card?.kind).toBe("kanji");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateN5ProductionAnswer
+// ---------------------------------------------------------------------------
+
+describe("updateN5ProductionAnswer", () => {
+  it("stores answer for the given day and key", () => {
+    const p = makeProgress();
+    const updated = updateN5ProductionAnswer(p, 1, "produce-0", "私は学生です。");
+    expect(updated.productionAnswers?.["1"]?.["produce-0"]?.text).toBe("私は学生です。");
+  });
+
+  it("stores multiple answers for different keys in the same day", () => {
+    const p = makeProgress();
+    const p1 = updateN5ProductionAnswer(p, 1, "produce-0", "答えA");
+    const p2 = updateN5ProductionAnswer(p1, 1, "produce-1", "答えB");
+    expect(p2.productionAnswers?.["1"]?.["produce-0"]?.text).toBe("答えA");
+    expect(p2.productionAnswers?.["1"]?.["produce-1"]?.text).toBe("答えB");
+  });
+
+  it("overwrites an existing answer for the same key", () => {
+    const p = makeProgress();
+    const p1 = updateN5ProductionAnswer(p, 1, "produce-0", "first");
+    const p2 = updateN5ProductionAnswer(p1, 1, "produce-0", "second");
+    expect(p2.productionAnswers?.["1"]?.["produce-0"]?.text).toBe("second");
+  });
+
+  it("stores answers for different days independently", () => {
+    const p = makeProgress();
+    const p1 = updateN5ProductionAnswer(p, 1, "produce-0", "day1 answer");
+    const p2 = updateN5ProductionAnswer(p1, 2, "produce-0", "day2 answer");
+    expect(p2.productionAnswers?.["1"]?.["produce-0"]?.text).toBe("day1 answer");
+    expect(p2.productionAnswers?.["2"]?.["produce-0"]?.text).toBe("day2 answer");
+  });
+
+  it("each answer carries a non-zero updatedAt timestamp", () => {
+    const p = makeProgress();
+    const updated = updateN5ProductionAnswer(p, 1, "produce-0", "テスト");
+    const answer = updated.productionAnswers?.["1"]?.["produce-0"];
+    expect(answer?.updatedAt).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E-01 / E-02 / E-03: Empty-stage queue behaviour
+// ---------------------------------------------------------------------------
+
+describe("E-01 / E-02 / E-03: stages with 0 items", () => {
+  it("E-01: effectiveVocabQueue returns [] for a day with no vocab", () => {
+    const state = makeDayState({ deferredVocabIds: [] });
+    expect(effectiveVocabQueue({ vocab: [] }, state)).toEqual([]);
+  });
+
+  it("E-02: effectiveKanjiQueue returns [] for a day with no kanji", () => {
+    const state = makeDayState({ deferredKanjiIds: [] });
+    expect(effectiveKanjiQueue({ kanji: [] }, state)).toEqual([]);
+  });
+
+  it("E-03: firstUnlearnedIndex returns 0 for an empty grammar queue", () => {
+    expect(firstUnlearnedIndex([], (g: { id: string }) => g.id, new Set())).toBe(0);
+  });
+
+  it("E-01: completeN5Stage('vocab') on day with empty vocab advances correctly", () => {
+    // startLesson with an empty vocab queue should set vocabIndex = 0 = queue.length = 0 → stage completes
+    const p = makeProgress({
+      dayStates: { "1": { day: 1, stage: "vocab", vocabIndex: 0, grammarIndex: 0, kanjiIndex: 0, stagesCompleted: {}, updatedAt: 0 } },
+    });
+    const updated = completeN5Stage(p, 1, "vocab");
+    expect(getN5DayState(updated, 1).stagesCompleted?.vocab).toBe(true);
+  });
+});
+
+
