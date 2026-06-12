@@ -106,6 +106,10 @@ export const N5CoursePage: React.FC = () => {
   // not the stale value captured at mount time.
   const activeDayNumberRef = useRef(activeDayNumber);
   activeDayNumberRef.current = activeDayNumber;
+  const modeRef = useRef<ViewMode>("home");
+  modeRef.current = mode;
+  const progressRef = useRef<N5CourseProgress | null>(null);
+  progressRef.current = progress;
   const activeDay = n5Course.days[activeDayNumber - 1] || focusDay;
   const activeState = progress
     ? readOnly
@@ -141,33 +145,59 @@ export const N5CoursePage: React.FC = () => {
     // Ensure SRS cards exist for all learned items (including grammar).
     const backfilledCards = ensureN5CardsForLearned(backfilledProgress, loadedCards, n5Course);
     const trended = recordN5DueTrend(backfilledProgress, dueN5Cards(backfilledCards).length);
-    // When a sync pull triggers a silent reload, don't let a stale server snapshot
-    // reset the user's in-progress lesson position. Keep the in-memory dayState for
-    // the active day when it's newer (the user has been advancing cards since the
-    // last save that reached the server).
+    // During a silent (sync-triggered) reload, protect the user's current card
+    // position in the lesson. Outside lesson mode let the server state win so that
+    // a pull from another device is reflected immediately on the home screen.
     let finalProgress = trended;
-    if (silent) {
-      setProgress((current) => {
-        if (!current) return trended;
-        // BUG-03 fix: read the ref, not the stale closure value
-        const currentDay = activeDayNumberRef.current;
-        const memState = getN5DayState(current, currentDay);
-        const diskState = getN5DayState(trended, currentDay);
-        if (memState.updatedAt && (!diskState.updatedAt || memState.updatedAt >= diskState.updatedAt)) {
-          finalProgress = updateN5DayState(trended, currentDay, memState);
+    if (silent && modeRef.current === "lesson") {
+      const latestProgress = progressRef.current;
+      if (latestProgress) {
+        const memState = getN5DayState(latestProgress, activeDayNumberRef.current);
+        const diskState = getN5DayState(trended, activeDayNumberRef.current);
+        // Disk wins only when BOTH timestamps are present and disk is strictly newer.
+        // When either is 0/missing (data written before timestamps were added) we
+        // keep the in-memory state so the user's current card is never overwritten.
+        if (!diskState.updatedAt || !memState.updatedAt || memState.updatedAt >= diskState.updatedAt) {
+          finalProgress = updateN5DayState(trended, activeDayNumberRef.current, memState);
         }
-        return finalProgress;
+      }
+      // Functional update as a safety net for concurrent state changes since the ref was read.
+      setProgress((current) => {
+        if (!current) return finalProgress;
+        const day = activeDayNumberRef.current;
+        const actualMemState = getN5DayState(current, day);
+        const diskState = getN5DayState(trended, day);
+        if (!diskState.updatedAt || !actualMemState.updatedAt || actualMemState.updatedAt >= diskState.updatedAt) {
+          return updateN5DayState(trended, day, actualMemState);
+        }
+        return trended;
       });
     } else {
-      finalProgress = trended;
       setProgress(trended);
     }
     setCards(backfilledCards);
     setLogs(loadedLogs);
     setSyncDirty(hasSyncDirtyState());
     if (!silent) setIsLoading(false);
-    const progressChanged = backfilledProgress !== loadedProgress || JSON.stringify(trended.dueCountTrend) !== JSON.stringify(loadedProgress.dueCountTrend);
-    if (progressChanged) await saveN5CourseProgress(trended);
+    // Compare trend content only (ignore updatedAt timestamps) so a mere timestamp
+    // refresh from recordN5DueTrend does not trigger save → push → reload → save loop.
+    const trendContentChanged = trended.dueCountTrend.length !== loadedProgress.dueCountTrend.length ||
+      trended.dueCountTrend.some((pt, i) => {
+        const other = loadedProgress.dueCountTrend[i];
+        return !other || pt.date !== other.date || pt.dueCount !== other.dueCount;
+      });
+    // Also persist when the merged state corrected the lesson position vs the DB so
+    // subsequent pushes carry the right index rather than the server's stale value.
+    const mergedDayNeedsWrite = silent && modeRef.current === "lesson" && (() => {
+      const day = activeDayNumberRef.current;
+      const mergedDay = getN5DayState(finalProgress, day);
+      const diskDay = getN5DayState(loadedProgress, day);
+      return mergedDay.grammarIndex !== diskDay.grammarIndex ||
+        mergedDay.vocabIndex !== diskDay.vocabIndex ||
+        mergedDay.kanjiIndex !== diskDay.kanjiIndex;
+    })();
+    const progressChanged = backfilledProgress !== loadedProgress || trendContentChanged || mergedDayNeedsWrite;
+    if (progressChanged) await saveN5CourseProgress(finalProgress);
     if (backfilledCards !== loadedCards) await saveN5SRSCards(backfilledCards);
   }
 
