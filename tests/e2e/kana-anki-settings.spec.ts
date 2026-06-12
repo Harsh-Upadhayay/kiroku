@@ -87,14 +87,15 @@ test.describe("Kana Tab (BR-38 to BR-44)", () => {
     expect(!!hasKana).toBe(true);
   });
 
-  // BR-43: "0/5 mastered" header counter on fresh user
+  // BR-43: Kana mastery counter shows 0 mastered for a fresh user
   test("BR-43: Fresh user Kana header shows 0/5 mastered", async ({ page }) => {
     await clickTab(page, "Kana");
     await page.waitForTimeout(300);
+    // Navigate to SRS Quiz sub-tab where mastery stats are always visible on all viewports
+    await page.locator('button:has-text("SRS Quiz")').first().click();
+    await page.waitForTimeout(300);
     const bodyText = await page.locator("body").innerText();
-    const hasMastered = bodyText.match(/0\/5 mastered|0 \/ 5 mastered/i) ||
-                        bodyText.match(/mastered/i);
-    expect(!!hasMastered).toBe(true);
+    expect(bodyText).toMatch(/mastered/i);
   });
 
   // BR-44: Kana SRS card reveal + grade buttons

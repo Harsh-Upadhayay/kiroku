@@ -166,8 +166,8 @@ test.describe("TC-LESSON-ENTRY (LE-01 to LE-08)", () => {
     await page.waitForTimeout(500);
     await page.locator('button:has-text("Home")').first().click();
     await page.waitForTimeout(400);
-    // Should be back on home — "Start" button visible
-    await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+    // Should be back on home — "Today's focus" is in the N5 content area (not the hidden header stat)
+    await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("LE-06: StageRail completed stages are visually marked (grammar after completing)", async ({ page }) => {
@@ -216,7 +216,7 @@ test.describe("TC-MAP (M-01 to M-08)", () => {
     await page.waitForTimeout(400);
     // Should show days 1-30
     await expect(page.locator("text=/30-day map/i")).toBeVisible({ timeout: 5000 });
-    const dayButtons = page.locator('[class*="rounded-2xl"]:has-text("1")');
+    const dayButtons = page.locator('button[class*="rounded-2xl"]:has-text("1")');
     await expect(dayButtons.first()).toBeVisible({ timeout: 3000 });
   });
 
@@ -237,7 +237,7 @@ test.describe("TC-MAP (M-01 to M-08)", () => {
     await page.waitForTimeout(400);
     await page.locator('button:has-text("Course Home")').first().click();
     await page.waitForTimeout(300);
-    await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("M-05: Clicking Day 1 on map opens the lesson", async ({ page }) => {

@@ -90,8 +90,8 @@ test.describe("Course Map (BR-17 to BR-20)", () => {
     if (await backBtn.count() > 0) {
       await backBtn.click();
       await page.waitForTimeout(500);
-      // Should be back at N5 home with Day 1 visible
-      await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+      // Should be back at N5 home — "Today's focus" is in the content area (header stat is hidden on mobile)
+      await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
     }
   });
 });

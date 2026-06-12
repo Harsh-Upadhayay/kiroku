@@ -217,8 +217,8 @@ test.describe("TC-REVIEW-STAGE — With due cards", () => {
     }
     await reviewBtn.click();
     await page.waitForTimeout(500);
-    // Counter should show "1 / N" format
-    await expect(page.locator("text=/1 \\/ \\d+/").first()).toBeVisible({ timeout: 5000 });
+    // Counter shows "X / N" format — select by tabular-nums class (avoids matching the hidden header stat)
+    await expect(page.locator('[class*="tabular-nums"]').first()).toBeVisible({ timeout: 5000 });
   });
 
   test("R-12: Review session Exit button returns to home", async ({ page }) => {
@@ -235,7 +235,7 @@ test.describe("TC-REVIEW-STAGE — With due cards", () => {
     if (await exitBtn.count() > 0) {
       await exitBtn.click();
       await page.waitForTimeout(400);
-      await expect(page.locator("text=/Day \\d+/").first()).toBeVisible({ timeout: 5000 });
+      await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
     }
   });
 

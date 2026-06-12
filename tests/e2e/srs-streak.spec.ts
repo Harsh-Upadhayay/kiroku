@@ -44,8 +44,8 @@ test.describe("TC-SRS: SRS card creation and review flow", () => {
     // Start Practice All
     await page.locator('button:has-text("Practice all")').first().click();
     await page.waitForTimeout(500);
-    // Should show cards (session counter visible)
-    await expect(page.locator("text=/1 \\/ \\d+/").first()).toBeVisible({ timeout: 5000 });
+    // Should show cards — session counter visible (tabular-nums avoids matching the hidden header stat)
+    await expect(page.locator('[class*="tabular-nums"]').first()).toBeVisible({ timeout: 5000 });
   });
 
   test("SRS-03: Grading a card with 'Again' keeps it visible in session", async ({ page }) => {

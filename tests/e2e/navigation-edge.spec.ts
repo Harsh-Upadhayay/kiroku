@@ -26,7 +26,7 @@ test.describe("TC-NAVIGATION (N-01 to N-12)", () => {
     await page.waitForTimeout(500);
     await page.locator('button:has-text("Home")').first().click();
     await page.waitForTimeout(400);
-    await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("N-02: Stage progress preserved when returning to home mid-lesson", async ({ page }) => {
@@ -56,7 +56,7 @@ test.describe("TC-NAVIGATION (N-01 to N-12)", () => {
     await page.waitForTimeout(400);
     await page.locator('button:has-text("Course Home")').first().click();
     await page.waitForTimeout(300);
-    await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("N-05: Kanji Library → Course Home navigation works", async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe("TC-NAVIGATION (N-01 to N-12)", () => {
     await expect(courseHomeBtn).toBeVisible({ timeout: 5000 });
     await courseHomeBtn.first().click();
     await page.waitForTimeout(300);
-    await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("N-06: Lesson reopens at correct stage on second visit", async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe("TC-NAVIGATION (N-01 to N-12)", () => {
     if (await exitBtn.count() > 0) {
       await exitBtn.click();
       await page.waitForTimeout(400);
-      await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+      await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -139,7 +139,7 @@ test.describe("TC-NAVIGATION (N-01 to N-12)", () => {
     await page.waitForTimeout(500);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(500);
-    await expect(page.locator("text=/Day 1/").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=/Today's focus/i").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("N-10: Progress bar percentage is shown in lesson header", async ({ page }) => {

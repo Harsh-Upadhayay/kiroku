@@ -221,8 +221,8 @@ test.describe("TC-VOCAB-STAGE (V-01 to V-19)", () => {
   // V-16: Example sentence shown in the vocab card
   test("V-16: Example sentence is visible in the vocab card", async ({ page }) => {
     await goToVocabStage(page);
-    // The example sentence is in the bg-indigo-50 block
-    const exampleBlock = page.locator('[class*="bg-indigo-50"]').first();
+    // bg-indigo-50 (trailing space) avoids matching bg-indigo-500 progress bars
+    const exampleBlock = page.locator('[class*="bg-indigo-50 "]').first();
     await expect(exampleBlock).toBeVisible({ timeout: 5000 });
   });
 
