@@ -2,9 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: false,
+  fullyParallel: true,
   retries: 0,
-  workers: 1,
+  workers: "50%",
   timeout: 60_000,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
