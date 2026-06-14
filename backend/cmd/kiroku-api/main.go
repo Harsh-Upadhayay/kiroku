@@ -12,11 +12,15 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
-
-	// Configure structured logging
+	// Configure structured logging first so config errors are logged in JSON too.
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
 
 	database, err := db.Init(cfg.DataDir)
 	if err != nil {

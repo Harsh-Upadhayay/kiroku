@@ -1,3 +1,6 @@
+// Package db owns database connection setup and schema migrations. Row-level reads and
+// writes live in package store; db is only responsible for getting a ready-to-use,
+// fully-migrated *sql.DB.
 package db
 
 import (
@@ -9,6 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// Init opens the SQLite database under dataDir and runs any pending migrations.
 func Init(dataDir string) (*sql.DB, error) {
 	dbPath := filepath.Join(dataDir, "kiroku.db")
 	db, err := sql.Open("sqlite", dbPath)
@@ -16,6 +20,8 @@ func Init(dataDir string) (*sql.DB, error) {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 
+	// SQLite handles one writer at a time; cap the pool at a single connection so the
+	// driver never trips over concurrent writes.
 	db.SetMaxOpenConns(1)
 
 	if err := migrate(db); err != nil {
@@ -74,27 +80,4 @@ func migrate(db *sql.DB) error {
 	}
 
 	return nil
-}
-
-func GetUser(db *sql.DB, email string) (string, int64, error) {
-	var hash string
-	var joined int64
-	err := db.QueryRow(`SELECT password_hash, joined FROM users WHERE email = ?`, email).Scan(&hash, &joined)
-	return hash, joined, err
-}
-
-func CreateUser(db *sql.DB, email, hash string, joined int64, defaultState string) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if _, err = tx.Exec(`INSERT INTO users(email, password_hash, joined) VALUES(?, ?, ?)`, email, hash, joined); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(`INSERT INTO user_states(email, state_json, updated_at) VALUES(?, ?, ?)`, email, defaultState, joined); err != nil {
-		return err
-	}
-	return tx.Commit()
 }

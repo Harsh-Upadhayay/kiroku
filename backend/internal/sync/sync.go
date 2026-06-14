@@ -1,3 +1,15 @@
+// Package sync merges two snapshots of a user's study state into one. It is the conflict
+// resolution layer for cross-device sync.
+//
+// There is no single merge rule — each field has its own strategy:
+//   - newest-timestamp-wins (most fields, keyed on an "updatedAt"): mergeStreak, mergeSRSCards
+//   - set-union (ids/days that only ever accumulate): unionStrings, unionNumberValues
+//   - max (monotonic counters like unlockedDay / streak highest): math.Max
+//   - bespoke (e.g. production answers prefer the longer text): chooseProductionAnswer
+//
+// An explicit course reset (a "resetAt" timestamp) overrides the per-field merge so a wipe
+// on one device isn't resurrected from the other. See MergeState for the top-level flow and
+// keys.go for the field-name constants.
 package sync
 
 import (
@@ -7,6 +19,8 @@ import (
 	"time"
 )
 
+// MergeState merges the incoming state JSON into the existing state JSON and returns the
+// combined result. Both inputs are raw JSON of a models.SyncState.
 func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 	var existing models.SyncState
 	var incoming models.SyncState
@@ -39,13 +53,13 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 
 	// An explicit course reset (resetAt) is authoritative: without this the
 	// union-style merge would resurrect wiped progress from the other side.
-	incomingReset := getNumber(incoming.N5CourseProgress, "resetAt")
-	existingReset := getNumber(existing.N5CourseProgress, "resetAt")
+	incomingReset := getNumber(incoming.N5CourseProgress, keyResetAt)
+	existingReset := getNumber(existing.N5CourseProgress, keyResetAt)
 	switch {
-	case incomingReset > 0 && incomingReset >= getNumber(existing.N5CourseProgress, "updatedAt"):
+	case incomingReset > 0 && incomingReset >= getNumber(existing.N5CourseProgress, keyUpdatedAt):
 		result.N5CourseProgress = cloneMap(incoming.N5CourseProgress)
 		result.N5SRSCards = cloneMapSlice(incoming.N5SRSCards)
-	case existingReset > 0 && existingReset > getNumber(incoming.N5CourseProgress, "updatedAt"):
+	case existingReset > 0 && existingReset > getNumber(incoming.N5CourseProgress, keyUpdatedAt):
 		result.N5CourseProgress = cloneMap(existing.N5CourseProgress)
 		result.N5SRSCards = cloneMapSlice(existing.N5SRSCards)
 	default:
@@ -89,25 +103,49 @@ func mergeStreak(existing, incoming models.StreakInfo) models.StreakInfo {
 	return existing
 }
 
-func mergeSRSCards(existing, incoming []models.SRSCard) []models.SRSCard {
-	merged := make(map[string]models.SRSCard)
-	for _, c := range existing {
-		merged[c.Char] = c
-	}
-	for _, c := range incoming {
-		if ex, ok := merged[c.Char]; ok {
-			if c.UpdatedAt >= ex.UpdatedAt {
-				merged[c.Char] = c
-			}
-		} else {
-			merged[c.Char] = c
+// mergeByUpdatedAt merges two slices of items that are each uniquely identified by a
+// string key and versioned by an "updated at" timestamp. Existing items seed the result;
+// each incoming item then wins only if its timestamp is newer-or-equal to the item it
+// collides with (so ties favor the incoming side). When skipEmptyKey is true, items whose
+// key is "" are dropped. clone is applied to every retained item — pass an identity
+// function for value types, or cloneMap for reference types that must not be aliased.
+//
+// This one generic replaces the near-identical kana-SRS and N5-SRS merge loops.
+func mergeByUpdatedAt[T any](existing, incoming []T, key func(T) string, updatedAt func(T) float64, clone func(T) T, skipEmptyKey bool) []T {
+	merged := make(map[string]T, len(existing)+len(incoming))
+	for _, item := range existing {
+		k := key(item)
+		if skipEmptyKey && k == "" {
+			continue
 		}
+		merged[k] = clone(item)
 	}
-	out := make([]models.SRSCard, 0, len(merged))
-	for _, c := range merged {
-		out = append(out, c)
+	for _, item := range incoming {
+		k := key(item)
+		if skipEmptyKey && k == "" {
+			continue
+		}
+		if current, ok := merged[k]; ok && updatedAt(item) < updatedAt(current) {
+			continue
+		}
+		merged[k] = clone(item)
+	}
+	out := make([]T, 0, len(merged))
+	for _, item := range merged {
+		out = append(out, item)
 	}
 	return out
+}
+
+// mergeSRSCards merges kana SRS cards keyed by their character. Cards are value types, so
+// the clone step is just identity.
+func mergeSRSCards(existing, incoming []models.SRSCard) []models.SRSCard {
+	return mergeByUpdatedAt(existing, incoming,
+		func(c models.SRSCard) string { return c.Char },
+		func(c models.SRSCard) float64 { return c.UpdatedAt },
+		func(c models.SRSCard) models.SRSCard { return c },
+		false,
+	)
 }
 
 func mergeAnkiV3Collection(existing, incoming models.SyncState) map[string]any {
@@ -127,7 +165,7 @@ func getUpdatedAt(info map[string]any) float64 {
 	if info == nil {
 		return 0
 	}
-	if v, ok := info["updatedAt"].(float64); ok {
+	if v, ok := info[keyUpdatedAt].(float64); ok {
 		return v
 	}
 	return 0
@@ -146,34 +184,15 @@ func unionStrings(a, b []string) []string {
 	return out
 }
 
+// mergeN5SRSCards merges N5 SRS cards keyed by their "id". Cards are maps, so each retained
+// card is cloned to avoid aliasing the input slices. Cards without an id are dropped.
 func mergeN5SRSCards(existing, incoming []map[string]any) []map[string]any {
-	merged := map[string]map[string]any{}
-	for _, card := range existing {
-		id := getString(card, "id")
-		if id == "" {
-			continue
-		}
-		merged[id] = cloneMap(card)
-	}
-	for _, card := range incoming {
-		id := getString(card, "id")
-		if id == "" {
-			continue
-		}
-		if existingCard, ok := merged[id]; ok {
-			if getNumber(card, "updatedAt") >= getNumber(existingCard, "updatedAt") {
-				merged[id] = cloneMap(card)
-			}
-		} else {
-			merged[id] = cloneMap(card)
-		}
-	}
-
-	out := make([]map[string]any, 0, len(merged))
-	for _, card := range merged {
-		out = append(out, card)
-	}
-	return out
+	return mergeByUpdatedAt(existing, incoming,
+		func(c map[string]any) string { return getString(c, keyID) },
+		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },
+		cloneMap,
+		true,
+	)
 }
 
 func mergeN5CourseProgress(existing, incoming map[string]any) map[string]any {
@@ -185,25 +204,28 @@ func mergeN5CourseProgress(existing, incoming map[string]any) map[string]any {
 	}
 
 	result := cloneMap(existing)
-	if getNumber(incoming, "updatedAt") >= getNumber(existing, "updatedAt") {
-		copyScalar(result, incoming, "contentVersion")
-		copyScalar(result, incoming, "contentHash")
-		copyScalar(result, incoming, "currentDay")
-		copyScalar(result, incoming, "clientId")
-		copyScalar(result, incoming, "resetAt")
-		result["updatedAt"] = math.Max(getNumber(existing, "updatedAt"), getNumber(incoming, "updatedAt"))
+	// Scalar metadata follows whichever side was updated most recently.
+	if getNumber(incoming, keyUpdatedAt) >= getNumber(existing, keyUpdatedAt) {
+		copyScalar(result, incoming, keyContentVersion)
+		copyScalar(result, incoming, keyContentHash)
+		copyScalar(result, incoming, keyCurrentDay)
+		copyScalar(result, incoming, keyClientID)
+		copyScalar(result, incoming, keyResetAt)
+		result[keyUpdatedAt] = math.Max(getNumber(existing, keyUpdatedAt), getNumber(incoming, keyUpdatedAt))
 	}
 
-	result["unlockedDay"] = math.Max(getNumber(existing, "unlockedDay"), getNumber(incoming, "unlockedDay"))
-	result["completedDays"] = unionNumberValues(getSlice(existing, "completedDays"), getSlice(incoming, "completedDays"))
-	result["learnedVocabIds"] = unionStringValues(getSlice(existing, "learnedVocabIds"), getSlice(incoming, "learnedVocabIds"))
-	result["learnedKanjiIds"] = unionStringValues(getSlice(existing, "learnedKanjiIds"), getSlice(incoming, "learnedKanjiIds"))
-	result["learnedGrammarIds"] = unionStringValues(getSlice(existing, "learnedGrammarIds"), getSlice(incoming, "learnedGrammarIds"))
-	result["dayStates"] = mergeObjectMapByUpdatedAt(getMap(existing, "dayStates"), getMap(incoming, "dayStates"))
-	result["checkpointReports"] = mergeObjectMapByUpdatedAt(getMap(existing, "checkpointReports"), getMap(incoming, "checkpointReports"))
-	result["productionAnswers"] = mergeProductionAnswers(getMap(existing, "productionAnswers"), getMap(incoming, "productionAnswers"))
-	result["dueCountTrend"] = mergeDueTrend(getSlice(existing, "dueCountTrend"), getSlice(incoming, "dueCountTrend"))
-	result["streak"] = mergeN5Streak(getMap(existing, "streak"), getMap(incoming, "streak"))
+	// Progress collections accumulate across devices, so they use max / set-union /
+	// per-entry timestamp merges rather than a single winner.
+	result[keyUnlockedDay] = math.Max(getNumber(existing, keyUnlockedDay), getNumber(incoming, keyUnlockedDay))
+	result[keyCompletedDays] = unionNumberValues(getSlice(existing, keyCompletedDays), getSlice(incoming, keyCompletedDays))
+	result[keyLearnedVocabIDs] = unionStringValues(getSlice(existing, keyLearnedVocabIDs), getSlice(incoming, keyLearnedVocabIDs))
+	result[keyLearnedKanjiIDs] = unionStringValues(getSlice(existing, keyLearnedKanjiIDs), getSlice(incoming, keyLearnedKanjiIDs))
+	result[keyLearnedGrammarIDs] = unionStringValues(getSlice(existing, keyLearnedGrammarIDs), getSlice(incoming, keyLearnedGrammarIDs))
+	result[keyDayStates] = mergeObjectMapByUpdatedAt(getMap(existing, keyDayStates), getMap(incoming, keyDayStates))
+	result[keyCheckpointReports] = mergeObjectMapByUpdatedAt(getMap(existing, keyCheckpointReports), getMap(incoming, keyCheckpointReports))
+	result[keyProductionAnswers] = mergeProductionAnswers(getMap(existing, keyProductionAnswers), getMap(incoming, keyProductionAnswers))
+	result[keyDueCountTrend] = mergeDueTrend(getSlice(existing, keyDueCountTrend), getSlice(incoming, keyDueCountTrend))
+	result[keyStreak] = mergeN5Streak(getMap(existing, keyStreak), getMap(incoming, keyStreak))
 
 	return result
 }
@@ -217,7 +239,7 @@ func mergeObjectMapByUpdatedAt(existing, incoming map[string]any) map[string]any
 			continue
 		}
 		existingMap, _ := result[key].(map[string]any)
-		if getNumber(incomingMap, "updatedAt") >= getNumber(existingMap, "updatedAt") {
+		if getNumber(incomingMap, keyUpdatedAt) >= getNumber(existingMap, keyUpdatedAt) {
 			result[key] = cloneMap(incomingMap)
 		}
 	}
@@ -247,8 +269,8 @@ func mergeProductionAnswers(existing, incoming map[string]any) map[string]any {
 }
 
 func chooseProductionAnswer(existing, incoming map[string]any) map[string]any {
-	existingText := getString(existing, "text")
-	incomingText := getString(incoming, "text")
+	existingText := getString(existing, keyText)
+	incomingText := getString(incoming, keyText)
 	switch {
 	case existingText == "" && incomingText != "":
 		return cloneMap(incoming)
@@ -258,7 +280,7 @@ func chooseProductionAnswer(existing, incoming map[string]any) map[string]any {
 		return cloneMap(incoming)
 	case len([]rune(existingText)) > len([]rune(incomingText)):
 		return cloneMap(existing)
-	case getNumber(incoming, "updatedAt") >= getNumber(existing, "updatedAt"):
+	case getNumber(incoming, keyUpdatedAt) >= getNumber(existing, keyUpdatedAt):
 		return cloneMap(incoming)
 	default:
 		return cloneMap(existing)
@@ -272,7 +294,7 @@ func mergeDueTrend(existing, incoming []any) []any {
 		if !ok {
 			continue
 		}
-		date := getString(point, "date")
+		date := getString(point, keyDate)
 		if date != "" {
 			byDate[date] = cloneMap(point)
 		}
@@ -282,11 +304,11 @@ func mergeDueTrend(existing, incoming []any) []any {
 		if !ok {
 			continue
 		}
-		date := getString(point, "date")
+		date := getString(point, keyDate)
 		if date == "" {
 			continue
 		}
-		if existingPoint, ok := byDate[date]; !ok || getNumber(point, "updatedAt") >= getNumber(existingPoint, "updatedAt") {
+		if existingPoint, ok := byDate[date]; !ok || getNumber(point, keyUpdatedAt) >= getNumber(existingPoint, keyUpdatedAt) {
 			byDate[date] = cloneMap(point)
 		}
 	}
@@ -302,11 +324,11 @@ func mergeN5Streak(existing, incoming map[string]any) map[string]any {
 	if len(result) == 0 {
 		result = map[string]any{}
 	}
-	result["highest"] = math.Max(getNumber(existing, "highest"), getNumber(incoming, "highest"))
-	if getNumber(incoming, "updatedAt") >= getNumber(existing, "updatedAt") {
-		copyScalar(result, incoming, "current")
-		copyScalar(result, incoming, "lastCompletedDate")
-		copyScalar(result, incoming, "updatedAt")
+	result[keyHighest] = math.Max(getNumber(existing, keyHighest), getNumber(incoming, keyHighest))
+	if getNumber(incoming, keyUpdatedAt) >= getNumber(existing, keyUpdatedAt) {
+		copyScalar(result, incoming, keyCurrent)
+		copyScalar(result, incoming, keyLastCompletedDate)
+		copyScalar(result, incoming, keyUpdatedAt)
 	}
 	return result
 }
@@ -410,6 +432,10 @@ func cloneMap(input map[string]any) map[string]any {
 	return out
 }
 
+// IsDestructive reports whether accepting incoming would wipe meaningful data the server
+// already has. It guards against an empty push (e.g. a fresh device that hasn't loaded data
+// yet) clobbering the user's kana SRS cards or Anki collection. N5 progress is deliberately
+// not guarded here — its own resetAt + per-field merge handles an empty push safely.
 func IsDestructive(existingRaw []byte, incoming models.SyncState) bool {
 	var existing models.SyncState
 	if err := json.Unmarshal(existingRaw, &existing); err != nil {
