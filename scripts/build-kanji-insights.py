@@ -461,6 +461,66 @@ def main(full=False):
                 candidates.append((cand, cand_comps))
     candidates.sort(key=lambda item: (-len(item[1]), item[0]))
 
+    # --- RTK-first decomposition (validated against KanjiVG structure) ---
+    # The RRTK story names its primitives in parentheses, e.g. "water (氵)". When
+    # those named parts are all structurally real (appear inside the kanji per
+    # KanjiVG) the chips can match the mnemonic exactly. But Heisig also teaches
+    # some kanji by analogy to a *sister* kanji (歴 → "like calendar (暦)…"), which
+    # names non-components — so every story primitive is validated against the
+    # kanji's KanjiVG structural closure, and anything that doesn't check out
+    # falls back to the plain KanjiVG decomposition.
+    closure_cache = {}
+
+    def kvg_closure(kanji):
+        if kanji in closure_cache:
+            return closure_cache[kanji]
+        closure_cache[kanji] = set()  # cycle guard
+        top = kvg.get(kanji)
+        if top is None:
+            return closure_cache[kanji]
+        direct = set()
+
+        def walk(node):
+            for child in node.findall("g"):
+                el = child.get(KANJIVG_NS + "element")
+                if el:
+                    direct.add(KVG_NORMALIZE.get(el, el))
+                walk(child)
+
+        walk(top)
+        full = set(direct)
+        for el in direct:
+            if el != kanji:
+                full |= kvg_closure(el)
+        closure_cache[kanji] = full
+        return full
+
+    paren_re = re.compile(r"[（(]([^（）()]*)[)）]")
+
+    def story_components(kanji, story):
+        """Primitive glyphs the RRTK story names in parentheses (normalized, in
+        order, excluding the kanji itself)."""
+        out = []
+        for inner in paren_re.findall(story or ""):
+            for ch in inner:
+                if is_kanji(ch) or ch in radicals:
+                    glyph = KVG_NORMALIZE.get(ch, ch)
+                    if glyph != kanji and glyph not in out:
+                        out.append(glyph)
+        return out
+
+    def decompose(kanji):
+        """RTK story primitives when they're a valid (≥2-part, structurally real,
+        resolvable) decomposition; otherwise the KanjiVG breakdown (or None)."""
+        info = rrtk.get(kanji)
+        if info:
+            sprims = story_components(kanji, info.get("story", ""))
+            if len(sprims) >= 2:
+                clo = kvg_closure(kanji)
+                if clo and all(p in clo for p in sprims) and all(resolvable(p) for p in sprims):
+                    return sprims
+        return kvg_components(kanji, kvg, resolvable)
+
     # entries: all targets, plus any component (after decomposition) with RRTK data
     entries = {}
     unresolved = set()
@@ -477,9 +537,9 @@ def main(full=False):
                 if c in rrtk and c not in entries:
                     queue.append(c)
         else:
-            kvg_comps = kvg_components(kanji, kvg, resolvable)
+            kvg_comps = decompose(kanji)
             if kvg_comps is not None:
-                # Primary path: KanjiVG hierarchical decomposition.
+                # Primary path: validated RTK-story primitives, else KanjiVG.
                 for c in kvg_comps:
                     comps.append(c)
                     if (c in rrtk or c in kvg) and c not in entries and c not in radicals:

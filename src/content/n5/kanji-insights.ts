@@ -356,8 +356,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "below",
     "story": "A magic wand (卜) hanging below the ceiling (一).",
     "components": [
-      "一",
-      "卜"
+      "卜",
+      "一"
     ],
     "readings": "カ・ゲ / した・しも・もと",
     "inCourse": true
@@ -388,8 +388,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "third class",
     "story": "Once you're inside (内) the airplane, you realize that the ceiling (一) in third class is quite low.",
     "components": [
-      "一",
-      "内"
+      "内",
+      "一"
     ],
     "readings": "ヘイ / ひのえ"
   },
@@ -461,7 +461,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "lord",
     "story": "A lord is a little drop (丶) down from the king (王) in hierarchy.",
     "components": [
-      "亠",
+      "丶",
       "王"
     ],
     "readings": "シュ・ス・シュウ / ぬし・おも・あるじ"
@@ -629,8 +629,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "mingle",
     "story": "The father (父) of a poor family is trying to mingle with the high society, hoping to build up some good relations and maybe find some help. This is why he's wearing a very high class top hat (亠).",
     "components": [
-      "亠",
-      "父"
+      "父",
+      "亠"
     ],
     "readings": "コウ / まじ.わる・まじ.える・ま.じる"
   },
@@ -1050,8 +1050,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "inside",
     "story": "How is a person (人) ever supposed to get inside that girl when she's wearing such a huge chastity belt (冂)? I guess that's kinda the point, eh?",
     "components": [
-      "冂",
-      "人"
+      "人",
+      "冂"
     ],
     "readings": "ナイ・ダイ / うち"
   },
@@ -1156,8 +1156,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "blade",
     "story": "A drop of (丶) blood on the blade of my sword (刀).",
     "components": [
-      "刀",
-      "丶"
+      "丶",
+      "刀"
     ],
     "readings": "ジン・ニン / は・やいば・き.る"
   },
@@ -1348,8 +1348,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "change",
     "story": "Spoon(匕)-Man(亻): A new Marvel superhero, is a person (亻) who can change into a spoon (匕) anytime he wants.",
     "components": [
-      "⺅",
-      "匕"
+      "匕",
+      "⺅"
     ],
     "readings": "カ・ケ / ば.ける・ば.かす・ふ.ける"
   },
@@ -1451,8 +1451,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "fortune-telling",
     "story": "Fortune-telling: using a mouth (口) as a magic wand (卜).",
     "components": [
-      "卜",
-      "口"
+      "口",
+      "卜"
     ],
     "readings": "セン / し.める・うらな.う"
   },
@@ -1494,7 +1494,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "egg",
     "story": "The dots (丶) represent the eyes of the hare (卯), who is looking at us skeptically, asking \"What? You don't really believe the Easter Bunny lays eggs, do you?\"",
     "components": [
-      "卯",
       "丶",
       "卯"
     ],
@@ -1547,8 +1546,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "gone",
     "story": "His elbows (厶) are six feet under the soil (土). He is gone.",
     "components": [
-      "土",
-      "厶"
+      "厶",
+      "土"
     ],
     "readings": "キョ・コ / さ.る・-さ.る"
   },
@@ -1582,8 +1581,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "anti-",
     "story": "I think of an anti-hero (Dirty Harry etc.) for this primitive, whose trademark for disposing of villians is not an honorable fight, but a kick in the crotch (又) and then a shove off a cliff (厂), perhaps whilst the villain's back is turned.",
     "components": [
-      "厂",
-      "又"
+      "又",
+      "厂"
     ],
     "readings": "ハン・ホン・タン / そ.る・そ.らす・かえ.す"
   },
@@ -1601,8 +1600,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "take",
     "story": "With your right hand (又), you take a quarter out of your nephew's ear (耳).",
     "components": [
-      "耳",
-      "又"
+      "又",
+      "耳"
     ],
     "readings": "シュ / と.る・と.り・と.り-"
   },
@@ -1654,8 +1653,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "summon",
     "story": "A king is having a hard time eating a piece of of meat because it can't fit in his mouth (口), so he calls for/summons someone to bring him his sword (刀).",
     "components": [
-      "刀",
-      "口"
+      "口",
+      "刀"
     ],
     "readings": "ショウ / め.す"
   },
@@ -1663,7 +1662,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "can",
     "story": "A mouth (口) on the street (丁) asking for things: \"Can I get some help?, Can I get directions?, Can I have some money?, Can you please speak English?\".",
     "components": [
-      "丁",
       "口",
       "丁"
     ],
@@ -1716,8 +1714,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "each",
     "story": "Each person is gifted with a mouth (口) to get us into trouble and a pair of walking legs (夂) to get us out!",
     "components": [
-      "夂",
-      "口"
+      "口",
+      "夂"
     ],
     "readings": "カク / おのおの"
   },
@@ -1744,9 +1742,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "same",
     "story": "In a execution by firing squad, all of the mouths (口) underneath the hoods (冂) on a firing line are one (一) and the same.",
     "components": [
+      "口",
       "冂",
-      "一",
-      "口"
+      "一"
     ],
     "readings": "ドウ / おな.じ"
   },
@@ -1859,7 +1857,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "An employee is a worker. They lend their mouth (口) to sell products; eyes (目) to watch competitors & find customers; and work eight (八) hours a day.",
     "components": [
       "口",
-      "貝"
+      "目",
+      "八"
     ],
     "readings": "イン"
   },
@@ -1884,8 +1883,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "question",
     "story": "The mouth (口) is the gate (門) from which questions are asked.",
     "components": [
-      "門",
-      "口"
+      "口",
+      "門"
     ],
     "readings": "モン / と.う・と.い・とん"
   },
@@ -1920,7 +1919,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "quandary",
     "story": "I'm supposed to make an enclosure for my tree (木), but if I use its wood (木) for the enclosure, there won't be anything left to be pent-in (囗). What a quandary!\nquandary: a state of perplexity or uncertainty over what to do in a difficult situation.",
     "components": [
-      "囗",
       "木",
       "囗"
     ],
@@ -2089,8 +2087,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "In the summer, you are basically just one (一) walking (夂) nose (自), between flowers blooming, freshly cut grass, barbecues... Ah the smell of summer...",
     "components": [
       "一",
-      "自",
-      "夂"
+      "夂",
+      "自"
     ],
     "readings": "カ・ガ・ゲ / なつ"
   },
@@ -2195,8 +2193,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "strange",
     "story": "Can (可) you imagine something as strange as a large (大) mammoth walking through city blocks?",
     "components": [
-      "大",
-      "可"
+      "可",
+      "大"
     ],
     "readings": "キ / く.しき・あや.しい・くし"
   },
@@ -2211,8 +2209,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "guy",
     "story": "\"That guy deceived me again! (又)\" - said the woman (女)",
     "components": [
-      "女",
-      "又"
+      "又",
+      "女"
     ],
     "readings": "ド / やつ・やっこ"
   },
@@ -2229,8 +2227,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "younger sister",
     "story": "My younger sister is not yet (未) a fully grown woman (女).",
     "components": [
-      "女",
-      "未"
+      "未",
+      "女"
     ],
     "readings": "マイ / いもうと"
   },
@@ -2256,7 +2254,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "marriage",
     "story": "Marriage is the day (日) in a woman's (女) life where she gets a new family name (氏). Never enter into marriage with a woman (女) at dusk (昏), wait until you see her in daylight.",
     "components": [
+      "日",
       "女",
+      "氏",
       "昏"
     ],
     "readings": "コン"
@@ -2290,8 +2290,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "character",
     "story": "The child (子) who lives under this roof (宀) must write 漢字(かん.じ) characters if he wants to learn more.",
     "components": [
-      "宀",
-      "子"
+      "子",
+      "宀"
     ],
     "readings": "ジ / あざ・あざな・-な",
     "inCourse": true
@@ -2336,8 +2336,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "guard",
     "story": "Guards sticks like glue (寸) to the house (宀) he is supposed to guard.",
     "components": [
-      "宀",
-      "寸"
+      "寸",
+      "宀"
     ],
     "readings": "シュ・ス / まも.る・まも.り・もり"
   },
@@ -2355,8 +2355,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "perfect",
     "story": "Make the perfect impression in the beginning (元) by removing your shoes upon entering a Japanese home (宀).",
     "components": [
-      "宀",
-      "元"
+      "元",
+      "宀"
     ],
     "readings": "カン"
   },
@@ -2382,8 +2382,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "guest",
     "story": "Each (各) person under my roof (宀) is treated as a guest.",
     "components": [
-      "宀",
-      "各"
+      "各",
+      "宀"
     ],
     "readings": "キャク・カク"
   },
@@ -2400,8 +2400,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "house",
     "story": "Think of \"The Three Little Pigs\". There was a house made of straw, another made of sticks, and a third made of bricks, each occupied by a pig (豕). So, naturally, housetop (宀) over pig (豕) means house, the central element of that story.",
     "components": [
-      "宀",
-      "豕"
+      "豕",
+      "宀"
     ],
     "readings": "カ・ケ / いえ・や・うち"
   },
@@ -2410,8 +2410,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "The inn is like a big house (宀) that can accommodate a hundred (白) people (亻).",
     "components": [
       "宀",
-      "⺅",
-      "百"
+      "白",
+      "⺅"
     ],
     "readings": "シュク / やど・やど.る・やど.す"
   },
@@ -2558,8 +2558,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "rooftop",
     "story": "We reach (至) the rooftop and place the flag (尸) there. After that, the castle is claimed as ours.",
     "components": [
-      "尸",
-      "至"
+      "至",
+      "尸"
     ],
     "readings": "オク / や"
   },
@@ -2646,8 +2646,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "market",
     "story": "Dressed in nothing but a bath towel (巾) and top hat (亠), one sets off to the market in search of a bargain or two.",
     "components": [
-      "亠",
-      "巾"
+      "巾",
+      "亠"
     ],
     "readings": "シ / いち"
   },
@@ -2683,8 +2683,10 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "cap",
     "story": "Because of the risk (冒) involved of getting the sun (日) in one's eyes (目), one puts together a makeshift cap out of a dirty old towel (巾).",
     "components": [
-      "巾",
-      "冒"
+      "冒",
+      "日",
+      "目",
+      "巾"
     ],
     "readings": "ボウ・モウ / ずきん・おお.う"
   },
@@ -2725,11 +2727,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "how many",
     "story": "At the Mexican fiesta (戈), there is a coccoon (幺) eating competition. How many coccoons (幺) can one person (人) eat? And how much will that person (人) throw up afterwards?",
     "components": [
-      "幺",
-      "幺",
       "戈",
-      "人",
-      "戈"
+      "幺",
+      "人"
     ],
     "readings": "キ / いく-・いく.つ・いく.ら"
   },
@@ -2792,8 +2792,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "garden/courtyard",
     "story": "Back in caveman days, courts (廷) were held in caves (广). When too many people showed up to watch, they spilled out into the garden/courtyard, the yard outside the cave (广) court (廷).",
     "components": [
-      "广",
-      "廷"
+      "廷",
+      "广"
     ],
     "readings": "テイ / にわ"
   },
@@ -2808,8 +2808,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "prolong",
     "story": "Stretch(廴)ing correct(正)ly prolongs life. Even the top part of 正 is stretching.",
     "components": [
-      "正",
-      "廴"
+      "廴",
+      "正"
     ],
     "readings": "エン / の.びる・の.べる・の.べ"
   },
@@ -2827,8 +2827,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "build",
     "story": "A construction worker's classic morning. Stretch (廴), brush (聿) his teeth, and then start to build.",
     "components": [
-      "聿",
-      "廴"
+      "廴",
+      "聿"
     ],
     "readings": "ケン・コン / た.てる・た.て・-だ.て"
   },
@@ -2849,8 +2849,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "valve",
     "story": "Opening a stuck valve requires two hands (廾) and a lot of elbow (厶) grease.",
     "components": [
-      "厶",
-      "廾"
+      "廾",
+      "厶"
     ],
     "readings": "ベン・ヘン / かんむり・わきま.える・わ.ける"
   },
@@ -2865,7 +2865,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "style",
     "story": "Each Indian tribe crafts (工) their arrows (弋) in a certain style.",
     "components": [
-      "弋",
       "工",
       "弋"
     ],
@@ -2900,8 +2899,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "weak",
     "story": "Two weak archers agree on a duel to the death. They constantly shoot at each other but never manage to hit their target. But what they lack in skill they make up in determination, and they keep shooting for hours, and days, and months, until it's wintertime and their bows (弓) are coated in ice (冫).",
     "components": [
-      "弓",
-      "冫",
       "弓",
       "冫"
     ],
@@ -3004,8 +3001,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "To gain more knowledge of what's going on in the world I'm reading column (彳) after column (彳) of articles in the newspapers, and it takes so much time I'm glued (寸) to it till sunrise (旦).",
     "components": [
       "彳",
-      "旦",
-      "寸"
+      "寸",
+      "旦"
     ],
     "readings": "トク / え.る・う.る"
   },
@@ -3031,8 +3028,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "You think your heart (心) will invariably belong to someone, but then God says \"No\" (ノ) and you guys break up.",
     "components": [
       "心",
-      "ノ",
-      "心"
+      "ノ"
     ],
     "readings": "ヒツ / かなら.ず"
   },
@@ -3076,8 +3072,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "wish",
     "story": "A wish is something that your heart (心 ) desires right now (今).",
     "components": [
-      "今",
-      "心"
+      "心",
+      "今"
     ],
     "readings": "ネン"
   },
@@ -3085,8 +3081,10 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "angry",
     "story": "That woman (女) got angry at the guy (奴) for breaking her heart (心 ) and deceiving her again (又).",
     "components": [
+      "女",
       "奴",
-      "心"
+      "心",
+      "又"
     ],
     "readings": "ド・ヌ / いか.る・おこ.る"
   },
@@ -3132,8 +3130,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "bad/evil",
     "story": "Am I bad/evil for only having a heart (心 ) for Asian (亜) women?",
     "components": [
-      "亜",
-      "心"
+      "心",
+      "亜"
     ],
     "readings": "アク・オ / わる.い・わる-・あ.し"
   },
@@ -3141,8 +3139,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "sad",
     "story": "Saddness is like having your heart (心 ) captured and jailed (非) because of some sad or terrible event, etc. Here the sad heart (心 ) waits for someone to come and un-(非)lock their jail cell (非) and set them free again.",
     "components": [
-      "非",
-      "心"
+      "心",
+      "非"
     ],
     "readings": "ヒ / かな.しい・かな.しむ"
   },
@@ -3218,8 +3216,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "turn back",
     "story": "A large (大) door (戸) will always give someone the option to turn back home.",
     "components": [
-      "戸",
-      "大"
+      "大",
+      "戸"
     ],
     "readings": "レイ / もど.す・もど.る"
   },
@@ -3227,8 +3225,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "place",
     "story": "You outsiders better learn your place! An axe (斤) stuck in the door (戸) when you get home is a pretty good indicator that this might not be the best place for you.",
     "components": [
-      "戸",
-      "斤"
+      "斤",
+      "戸"
     ],
     "readings": "ショ / ところ・-ところ・どころ"
   },
@@ -3257,8 +3255,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "imminent",
     "story": "The old lady said that there was a flood (巛) imminent, because her fingers (扌) hurt in the evening (夕).",
     "components": [
-      "⺘",
       "巛",
+      "⺘",
       "夕"
     ],
     "readings": "サツ / せま.る"
@@ -3276,8 +3274,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "hold",
     "story": "In the Buddhist temple (寺) monks develop insane finger (扌) strength and are trained to hold positions for ridiculously long periods of time.",
     "components": [
-      "⺘",
-      "寺"
+      "寺",
+      "⺘"
     ],
     "readings": "ジ / も.つ・-も.ち・も.てる",
     "inCourse": true
@@ -3316,8 +3314,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "impart",
     "story": "\"Please accept (受) this finger (扌)\" you say, imparting it to your yakuza boss.",
     "components": [
-      "⺘",
-      "受"
+      "受",
+      "⺘"
     ],
     "readings": "ジュ / さず.ける・さず.かる"
   },
@@ -3336,8 +3334,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "snapshot",
     "story": "Take (取) the utmost (最) care that you don't have your finger (扌) in the way when you take a snapshot.",
     "components": [
-      "⺘",
-      "最"
+      "取",
+      "最",
+      "⺘"
     ],
     "readings": "サツ / と.る・つま.む・-ど.り"
   },
@@ -3398,9 +3397,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "awe",
     "story": "In order to show awe and honor to your taskmaster (攵), use phrases (句) filled with flowers (艹), praise, and honor, in other words, use 敬語(けい.ご).",
     "components": [
-      "⺾",
+      "攵",
       "句",
-      "攵"
+      "⺾"
     ],
     "readings": "ケイ・キョウ / うやま.う"
   },
@@ -3578,7 +3577,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "In the springtime bonsai (三人) get plenty of sun (日).",
     "components": [
       "三",
-      "大",
+      "人",
       "日"
     ],
     "readings": "シュン / はる"
@@ -3605,8 +3604,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "daytime",
     "story": "Right after sunrise (旦), I played my shakuhachi (尺) for a while, and next thing I knew, it was already daytime/midday.",
     "components": [
-      "尺",
-      "旦"
+      "旦",
+      "尺"
     ],
     "readings": "チュウ / ひる"
   },
@@ -3651,8 +3650,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "sultry",
     "story": "Ever wonder why ninjas (者) only operate at night? It's to avoid the sultry sun (日) of course!\nsultry: (of the air or weather) hot and humid.",
     "components": [
-      "日",
-      "者"
+      "者",
+      "日"
     ],
     "readings": "ショ / あつ.い"
   },
@@ -3679,8 +3678,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "cloudy weather",
     "story": "Cloudy weather is when a cloud (雲) blocks the sun (日).",
     "components": [
-      "日",
-      "雲"
+      "雲",
+      "日"
     ],
     "readings": "ドン / くも.る"
   },
@@ -3739,8 +3738,10 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "utmost",
     "story": "Take (取) the utmost care when you sun(日)bath all day (日), or you'll get burned from your ears (耳) to your crotch (又).",
     "components": [
+      "取",
       "日",
-      "取"
+      "耳",
+      "又"
     ],
     "readings": "サイ・シュ / もっと.も・つま"
   },
@@ -3846,8 +3847,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "Through the trees (木), I watch the sun (日) rising from the east.",
     "components": [
       "木",
-      "日",
-      "木"
+      "日"
     ],
     "readings": "トウ / ひがし"
   },
@@ -3885,6 +3885,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "An inexpensive (安) plan to put a roof (宀) over your woman's (女) head usually involves cutting your own tree (木) and using the wood for construction.",
     "components": [
       "安",
+      "宀",
+      "女",
       "木"
     ],
     "readings": "アン / つくえ"
@@ -3904,8 +3906,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "chair",
     "story": "To the Japanese, the first time they saw a chair, it looked like a strange (奇) use of a tree (木)! Probably why they still like to sit on the floor…",
     "components": [
-      "木",
-      "奇"
+      "奇",
+      "木"
     ],
     "readings": "イ"
   },
@@ -3924,7 +3926,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "There is a white (白) dove on top of that tree (木). Everytime it opens its beak, there are sparkles (＊) all around it and an enjoyable music comes out of it.",
     "components": [
       "白",
-      "冫",
       "木"
     ],
     "readings": "ガク・ラク・ゴウ / たの.しい・たの.しむ・この.む"
@@ -3990,8 +3991,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "next",
     "story": "This key word connotes the \"next in line\" of a succession of people or things. Let there be a lack (欠) of ice (冫) on the hottest day of summer, and you stand impatiently in line waiting for the distributor to call out \"Next!\"",
     "components": [
-      "冫",
-      "欠"
+      "欠",
+      "冫"
     ],
     "readings": "ジ・シ / つ.ぐ・つぎ"
   },
@@ -3999,8 +4000,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "longing",
     "story": "The lack (欠) of contact with a woman's valley (谷) will leave a man longing/craving for love.",
     "components": [
-      "谷",
-      "欠"
+      "欠",
+      "谷"
     ],
     "readings": "ヨク / ほっ.する・ほ.しい"
   },
@@ -4008,7 +4009,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "sing/song",
     "story": "A chorus line of can-can (可) girls sing a song as the audience yawns (欠) because the girls lack (欠) talent to sing.\n歌舞伎(か.ぶ.き)[song.interpretive dance.performing artist]",
     "components": [
-      "可",
       "可",
       "欠"
     ],
@@ -4043,8 +4043,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "Stop (止) shoveling (凵) rice (米) into your mouth, you'll hurt a tooth! Use chopsticks instead.",
     "components": [
       "止",
-      "米",
-      "凵"
+      "凵",
+      "米"
     ],
     "readings": "シ / よわい・は・よわ.い"
   },
@@ -4069,8 +4069,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "death",
     "story": "Imagine the grim reaper (the bringer of death), carrying a spoon (匕) made of human bones (歹) instead of a scythe.",
     "components": [
-      "歹",
-      "匕"
+      "匕",
+      "歹"
     ],
     "readings": "シ / し.ぬ・し.に-"
   },
@@ -4212,8 +4212,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "cry",
     "story": "You cry until you are standing up (立) knee-deep in water (氵), or until you have a vase (立) full of water (氵).",
     "components": [
-      "⺡",
-      "立"
+      "立",
+      "⺡"
     ],
     "readings": "キュウ / な.く"
   },
@@ -4279,8 +4279,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "extinguish",
     "story": "If that liquid has any resemblance (肖) to water (氵), it will extinguish the flame of my candle.",
     "components": [
-      "⺡",
-      "肖"
+      "肖",
+      "⺡"
     ],
     "readings": "ショウ / き.える・け.す"
   },
@@ -4338,9 +4338,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "semi-",
     "story": "At the turkey (隹) fighting semi-final, turkeys are injected with drugs via needles (十) and splashed with water (氵) to help them last the match.",
     "components": [
-      "⺡",
       "隹",
-      "十"
+      "十",
+      "⺡"
     ],
     "readings": "ジュン / じゅん.じる・じゅん.ずる・なぞら.える"
   },
@@ -4491,8 +4491,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "cat",
     "story": "I thought that tiny seedling (苗) of an animal was a newborn dog (犭), but it turns out it was a cat.",
     "components": [
-      "⺨",
-      "苗"
+      "苗",
+      "⺨"
     ],
     "readings": "ビョウ / ねこ"
   },
@@ -4594,8 +4594,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "man",
     "story": "A man has more power (力) to work the rice field (田).",
     "components": [
-      "田",
-      "力"
+      "力",
+      "田"
     ],
     "readings": "ダン・ナン / おとこ・お",
     "inCourse": true
@@ -4623,8 +4623,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "world",
     "story": "One Japanese farmer I know is so small minded that he thinks the entire world is jammed in (介) the borders of his little rice field (田).",
     "components": [
-      "田",
-      "介"
+      "介",
+      "田"
     ],
     "readings": "カイ"
   },
@@ -4690,9 +4690,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "discharge",
     "story": "The soldier was dishonorably discharged when his commanding officer saw two (二) pairs of human legs (儿) sticking out of a teepee (癶) designed for just one soldier.",
     "components": [
-      "癶",
       "二",
-      "儿"
+      "儿",
+      "癶"
     ],
     "readings": "ハツ・ホツ / た.つ・あば.く・おこ.る"
   },
@@ -4700,8 +4700,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "ascend",
     "story": "When a Native American warrior dies, his body is placed on a table (豆) inside a teepee (癶), and a ritualistic ceremony is held to encourage his spirit to ascend to that big buffalo hunting ground in the sky.\nteepee: A teepee is a cone-shaped tent, traditionally made of animal skins upon wooden poles. Modern teepees usually have a canvas covering. A teepee is distinguished from other conical tents by the smoke flaps at the top of the structure. Historically, the teepee has been used by Indigenous people.",
     "components": [
-      "癶",
-      "豆"
+      "豆",
+      "癶"
     ],
     "readings": "トウ・ト・ドウ / のぼ.る・あ.がる"
   },
@@ -4715,8 +4715,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "hundred",
     "story": "The Japanese refer to a person's 99th birthday as a \"white (白) year\" because white (白) is the kanji you are left with if you subtract one (一) from a hundred.",
     "components": [
-      "一",
-      "白"
+      "白",
+      "一"
     ],
     "readings": "ヒャク・ビャク / もも",
     "inCourse": true
@@ -4770,8 +4770,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "eyeball",
     "story": "The baron's silver (艮) eye (目) was not actually an eyeball.",
     "components": [
-      "目",
-      "艮"
+      "艮",
+      "目"
     ],
     "readings": "ガン・ゲン / まなこ・め"
   },
@@ -4814,8 +4814,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "short",
     "story": "The time it takes to hit a can of beans (豆) with an arrow (矢) is short.",
     "components": [
-      "矢",
-      "豆"
+      "豆",
+      "矢"
     ],
     "readings": "タン / みじか.い"
   },
@@ -5040,7 +5040,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "simplicity",
     "story": "The ししおどし is a bamboo (⺮) device for scaring birds from the gates (門) of your garden by clacking against a stone at regular intervals (間). Its design is simplicity itself.",
     "components": [
-      "竹",
+      "門",
       "間"
     ],
     "readings": "カン・ケン / えら.ぶ・ふだ"
@@ -5292,8 +5292,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "hear",
     "story": "Press your ear (耳) to the gates (門) and see if you can hear what is going on inside.",
     "components": [
-      "門",
-      "耳"
+      "耳",
+      "門"
     ],
     "readings": "ブン・モン / き.く・き.こえる",
     "inCourse": true
@@ -5422,8 +5422,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "seedling",
     "story": "If you plant seedlings in a field (田) eventually they will flower (艹).",
     "components": [
-      "⺾",
-      "田"
+      "田",
+      "⺾"
     ],
     "readings": "ビョウ・ミョウ / なえ・なわ-"
   },
@@ -5459,8 +5459,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "baggage",
     "story": "TSA guard: What's (何) in the baggage?! It's just flowers (艹), I swear!",
     "components": [
-      "⺾",
-      "何"
+      "何",
+      "⺾"
     ],
     "readings": "カ / に"
   },
@@ -5477,9 +5477,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "fall",
     "story": "Each (各) drop of water (氵) and flower (艹) petal that falls down is special in its own unique way.",
     "components": [
-      "⺾",
+      "各",
       "⺡",
-      "各"
+      "⺾"
     ],
     "readings": "ラク / お.ちる・お.ち・お.とす"
   },
@@ -5487,9 +5487,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "leaf",
     "story": "Think of the order of things with a tree: first comes the trunk and the branches, then the leaves spring out, and, much later, the flowers bloom. So a leaf is the generation (世) between the tree (木) and the flowers (艹).",
     "components": [
-      "⺾",
       "世",
-      "木"
+      "木",
+      "⺾"
     ],
     "readings": "ヨウ / は"
   },
@@ -5551,7 +5551,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "back",
     "story": "The computer (里) had carefully dressed up in garments (衣) to look human. It wasn't until I looked at the back and saw the cables and stuff that I realized what it was.",
     "components": [
-      "衣",
       "里",
       "衣"
     ],
@@ -5638,8 +5637,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "touch",
     "story": "An insect (虫) uses its antennae at certain angles (角) to touch and feel its way around.",
     "components": [
-      "角",
-      "虫"
+      "虫",
+      "角"
     ],
     "readings": "ショク / ふ.れる・さわ.る・さわ"
   },
@@ -5822,8 +5821,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "lend",
     "story": "In order for the bank to lend you money (貝), you need to put up some sort of collateral as a substitute (代) for the money (貝).",
     "components": [
-      "代",
-      "貝"
+      "貝",
+      "代"
     ],
     "readings": "タイ / か.す・か.し-・かし-"
   },
@@ -5840,7 +5839,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "quality",
     "story": "You're at a local axe (斤) dealer and you have two axes (斤) which you are testing for quality by trying to split shellfish (貝) right down the opening.",
     "components": [
-      "斤",
       "斤",
       "貝"
     ],
@@ -5874,8 +5872,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "gist",
     "story": "The gist of it is this: We take (取) the money and run (走)!",
     "components": [
-      "走",
-      "取"
+      "取",
+      "走"
     ],
     "readings": "シュ / おもむき・おもむ.く"
   },
@@ -5908,8 +5906,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "army",
     "story": "British army cars (車) are at the service of the crown (冖).",
     "components": [
-      "冖",
-      "車"
+      "車",
+      "冖"
     ],
     "readings": "グン / いくさ"
   },
@@ -6007,8 +6005,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "week",
     "story": "Imagine a road (辶) built so well that it takes only a week to travel the circumference (周) of the earth.",
     "components": [
-      "周",
-      "⻌"
+      "⻌",
+      "周"
     ],
     "readings": "シュウ",
     "inCourse": true
@@ -6038,8 +6036,10 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "carry",
     "story": "The king's (冖) chariot (車) carried him down the road (辶) before the army (軍).",
     "components": [
-      "軍",
-      "⻌"
+      "冖",
+      "車",
+      "⻌",
+      "軍"
     ],
     "readings": "ウン / はこ.ぶ"
   },
@@ -6162,8 +6162,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "sake",
     "story": "Sake is the generic term for alcohol (not just japanese rice wine). And a very popular alcoholic drink in Japan is whiskey (酉) and water (氵).",
     "components": [
-      "⺡",
-      "酉"
+      "酉",
+      "⺡"
     ],
     "readings": "シュ / さけ・さか-"
   },
@@ -6202,8 +6202,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "heavy",
     "story": "The first computer (里) in the world was as heavy as thousand (千) computers (里) are now.",
     "components": [
-      "千",
-      "里"
+      "里",
+      "千"
     ],
     "readings": "ジュウ・チョウ / え・おも.い・おも.り"
   },
@@ -6321,8 +6321,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "The proper, high-class way to descend from The Pinnacle (阝) is wearing a monocle (ヰ) with your walking legs (夂) splayed to a full gentlemanly stride.",
     "components": [
       "⻖",
-      "夂",
-      "㐄"
+      "夂"
     ],
     "readings": "コウ・ゴ / お.りる・お.ろす・ふ.る"
   },
@@ -6463,8 +6462,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "blue",
     "story": "\"Once in a blue moon (月)\" refers to a rare event. But originally \"blue moon (月)\" referred to a full moon (月), in other words a fully grown-up (龶) moon (月). Whether once a month is rare or not depends on what we're talking about, but that happens to be the origin of the expression.",
     "components": [
-      "龶",
-      "月"
+      "月",
+      "龶"
     ],
     "readings": "セイ・ショウ / あお・あお-・あお.い"
   },
@@ -6494,6 +6493,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "story": "Twenty (廿) stitches of a needle (十) to close a mouth (口) in the leather.",
     "components": [
       "廿",
+      "十",
       "口"
     ],
     "readings": "カク / かわ"
@@ -6551,8 +6551,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "topic",
     "story": "The topic of this paper (頁) doesn't do the contents justice (是).",
     "components": [
-      "是",
-      "頁"
+      "頁",
+      "是"
     ],
     "readings": "ダイ"
   },
@@ -6654,8 +6654,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "useless",
     "story": "A plump (太) horse (馬) is useless for a race.",
     "components": [
-      "馬",
-      "太"
+      "太",
+      "馬"
     ],
     "readings": "ダ・タ"
   },
@@ -6712,7 +6712,6 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "fish",
     "story": "That fish was caught, bound up (⺈), then carried across rice fields (田), and finally cooked over a fire (灬).",
     "components": [
-      "𠂊",
       "田",
       "⺣"
     ],
@@ -6728,8 +6727,8 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "hemp",
     "story": "The world's most prolific drug dealer maintains a massive grove (林) of hemp in a cave (广) to avoid law enforcement.",
     "components": [
-      "广",
-      "林"
+      "林",
+      "广"
     ],
     "readings": "マ・マア / あさ"
   },
@@ -6756,9 +6755,9 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "silence",
     "story": "The computer (里) won't stop beeping, which is making the dog (犬) bark, and it's driving this guy insane. The only solution he can come up with is to throw them both on the fire (灬) and finally enjoy the silence.",
     "components": [
-      "黒",
+      "里",
       "犬",
-      "黒"
+      "⺣"
     ],
     "readings": "モク・ボク / だま.る・もだ.す"
   },
