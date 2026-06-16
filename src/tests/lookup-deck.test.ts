@@ -1,5 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { State } from "ts-fsrs";
+
+// addLookupCard/removeLookupCard/hasLookupCard persist through src/utils/db.ts,
+// which talks to real IndexedDB (and pokes sync side effects on every write).
+// Mock the DB boundary with an in-memory store so these can run in vitest.
+const dbStore = new Map<string, unknown>();
+vi.mock("../utils/db", () => ({
+  getSettingFromDB: vi.fn(async (key: string, defaultValue: unknown) =>
+    dbStore.has(key) ? dbStore.get(key) : defaultValue
+  ),
+  saveSettingToDB: vi.fn(async (key: string, value: unknown) => {
+    dbStore.set(key, value);
+  }),
+}));
+
 import {
   lookupCardId,
   createLookupCard,
@@ -7,8 +21,16 @@ import {
   gradeLookupCard,
   isLookupCardDue,
   getDueLookupCards,
+  getLookupCards,
+  addLookupCard,
+  removeLookupCard,
+  hasLookupCard,
   type LookupCard,
 } from "../utils/lookup-deck";
+
+beforeEach(() => {
+  dbStore.clear();
+});
 
 describe("lookupCardId", () => {
   it("is stable for the same word/kind/reading and distinct otherwise", () => {
@@ -67,5 +89,45 @@ describe("getDueLookupCards", () => {
     const future: LookupCard = { ...createLookupCard({ kind: "vocab", word: "3", reading: "", meanings: [] }), due: new Date(now + 100000).toISOString() };
     const result = getDueLookupCards([future, due2, due1], now);
     expect(result.map((c) => c.word)).toEqual(["1", "2"]);
+  });
+});
+
+describe("getLookupCards / addLookupCard / removeLookupCard / hasLookupCard (DB-backed)", () => {
+  it("starts empty when nothing is persisted yet", async () => {
+    expect(await getLookupCards()).toEqual([]);
+    expect(await hasLookupCard("vocab", "犬", "いぬ")).toBe(false);
+  });
+
+  it("adds a new card and persists it", async () => {
+    const { added, card } = await addLookupCard({ kind: "vocab", word: "犬", reading: "いぬ", meanings: ["dog"] });
+    expect(added).toBe(true);
+    expect(card.word).toBe("犬");
+
+    const cards = await getLookupCards();
+    expect(cards.map((c) => c.word)).toEqual(["犬"]);
+    expect(await hasLookupCard("vocab", "犬", "いぬ")).toBe(true);
+  });
+
+  it("de-dupes re-adding the same word/kind/reading without persisting again", async () => {
+    await addLookupCard({ kind: "vocab", word: "犬", reading: "いぬ", meanings: ["dog"] });
+    const { added, cards } = await addLookupCard({ kind: "vocab", word: "犬", reading: "いぬ", meanings: ["dog (again)"] });
+    expect(added).toBe(false);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].meanings).toEqual(["dog"]); // unchanged — existing card returned as-is
+  });
+
+  it("removes a card by id, leaving others untouched", async () => {
+    const { card: dog } = await addLookupCard({ kind: "vocab", word: "犬", reading: "いぬ", meanings: ["dog"] });
+    await addLookupCard({ kind: "vocab", word: "猫", reading: "ねこ", meanings: ["cat"] });
+
+    const remaining = await removeLookupCard(dog.id);
+    expect(remaining.map((c) => c.word)).toEqual(["猫"]);
+    expect(await hasLookupCard("vocab", "犬", "いぬ")).toBe(false);
+  });
+
+  it("removing an id that doesn't exist is a no-op", async () => {
+    await addLookupCard({ kind: "vocab", word: "犬", reading: "いぬ", meanings: ["dog"] });
+    const remaining = await removeLookupCard("does-not-exist");
+    expect(remaining.map((c) => c.word)).toEqual(["犬"]);
   });
 });
