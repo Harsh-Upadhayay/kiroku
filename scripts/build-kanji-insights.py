@@ -6,10 +6,13 @@ kanji that appears in N5 vocab words, plus any component of those kanji that has
 its own RRTK entry (so the breakdown UI can drill down).
 
 Data sources:
-  - Component decomposition: KRADFILE (EDRDG, http://ftp.edrdg.org/pub/Nihongo/kradzip.zip)
+  - Component decomposition: KanjiVG (https://kanjivg.tagaini.net, CC BY-SA 3.0) —
+    hierarchical, learner-style breakdown (麻 -> 广 + 林) that matches the mnemonics
+    and tools like jpdb. KRADFILE (EDRDG) is a fallback for kanji KanjiVG lacks.
   - Keywords + mnemonic stories: RRTK_Recognition_Remembering_The_Kanji.apkg (repo root)
   - Readings (on/kun): KANJIDIC2 (EDRDG, http://www.edrdg.org/kanjidic/kanjidic2.xml.gz)
   - Radical meanings: curated table below (RTK-style learner names)
+  - COMPONENT_OVERRIDES win over all of the above (hand-audited N5 breakdowns).
 
 Usage:
   python3 scripts/build-kanji-insights.py          # N5 course .ts (default)
@@ -23,6 +26,7 @@ lazy-loaded superset consumed by the dictionary-lookup feature.
 """
 
 import argparse
+import gzip
 import html
 import json
 import os
@@ -31,6 +35,8 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import urllib.request
+import xml.etree.ElementTree as ET
 import zipfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +47,21 @@ OUT_JSON = os.path.join(REPO, "public", "data", "kanji-insights-full.json")
 KRAD_CACHE = "/tmp/kradzip-cache"
 KRAD_URL = "http://ftp.edrdg.org/pub/Nihongo/kradzip.zip"
 KANJIDIC_URL = "http://www.edrdg.org/kanjidic/kanjidic2.xml.gz"
+KANJIVG_CACHE = "/tmp/kanjivg-cache"
+KANJIVG_RELEASES_API = "https://api.github.com/repos/KanjiVG/kanjivg/releases/latest"
+KANJIVG_NS = "{http://kanjivg.tagaini.net}"
+
+# Decomposition source: KanjiVG (https://kanjivg.tagaini.net, CC BY-SA 3.0) provides
+# a hierarchical, learner-style breakdown (麻 -> 广 + 林) that matches how mnemonics
+# and tools like jpdb decompose kanji, unlike KRADFILE's flat radical list. KanjiVG
+# spells some radicals with their standalone glyph; remap those to the same
+# CJK-Radicals-Supplement glyphs the curated tables above use, so meanings resolve
+# and the glyph style stays consistent with the N5 course.
+KVG_NORMALIZE = {
+    "亻": "⺅", "氵": "⺡", "艹": "⺾", "扌": "⺘", "忄": "⺖", "刂": "⺉",
+    "辶": "⻌", "灬": "⺣", "礻": "⺭", "衤": "⻂", "罒": "⺲", "犭": "⺨",
+    "阝": "⻖", "𤣩": "王", "纟": "糸", "钅": "金", "丿": "ノ",
+}
 
 def is_kanji(ch):
     return "一" <= ch <= "鿿"
@@ -134,6 +155,20 @@ RADICAL_MEANINGS = {
     "隹": "small bird / turkey",
     "韋": "tanned leather / opposite walks",
     "髟": "long hair",
+    # Obscure sub-components surfaced by KanjiVG's hierarchical breakdown.
+    "乡": "bristles / streaks",
+    "𠂇": "left hand",
+    "龰": "footprint / foot",
+    "㐄": "stride / dance step",
+    "䒑": "horns / grass top",
+    "业": "base / lined up",
+    "丂": "obstructed breath",
+    "覀": "west (top form)",
+    "龶": "sprout (top of 青)",
+    "龷": "two-ten top",
+    "⺷": "sheep (top)",
+    "⻞": "eat / food",
+    "𧘇": "clothes (bottom)",
 }
 
 # Pure strokes: a grouping candidate made (partly) of these is too easy to
@@ -330,10 +365,72 @@ def group_components(kanji, comps, candidates):
     return grouped
 
 
+def load_kanjivg():
+    """Download (if needed) and parse KanjiVG, returning {kanji_char: top <g> node}."""
+    xml_path = os.path.join(KANJIVG_CACHE, "kanjivg.xml")
+    if not os.path.exists(xml_path):
+        os.makedirs(KANJIVG_CACHE, exist_ok=True)
+        with urllib.request.urlopen(KANJIVG_RELEASES_API, timeout=30) as resp:
+            release = json.load(resp)
+        url = next(a["browser_download_url"] for a in release["assets"] if a["name"].endswith(".xml.gz"))
+        print(f"Downloading KanjiVG {url} ...")
+        with urllib.request.urlopen(url, timeout=120) as resp:
+            data = gzip.decompress(resp.read())
+        with open(xml_path, "wb") as f:
+            f.write(data)
+    root = ET.parse(xml_path).getroot()
+    tops = {}
+    for kanji in root.iter("kanji"):
+        g = kanji.find("g")
+        if g is None:
+            continue
+        el = g.get(KANJIVG_NS + "element")
+        if el and el not in tops:
+            tops[el] = g
+    return tops
+
+
+def kvg_components(kanji, kvg, resolvable):
+    """First-level decomposition of `kanji` from its KanjiVG tree.
+
+    Descends through anonymous wrapper groups, and through *named* fragments that
+    aren't learner-meaningful (obscure phonetic parts with no keyword/radical name),
+    so the chips are always recognizable components. Radical glyphs are normalized
+    to the curated CJK-Radicals-Supplement forms. Repeated parts are kept (森 -> 木 + 林)."""
+    top = kvg.get(kanji)
+    if top is None:
+        return None
+
+    def walk(node):
+        out = []
+        for child in node.findall("g"):
+            el = child.get(KANJIVG_NS + "element")
+            el = KVG_NORMALIZE.get(el, el) if el else el
+            has_children = child.find("g") is not None
+            if el is None:
+                out.extend(walk(child))                 # anonymous wrapper -> descend
+            elif resolvable(el):
+                out.append(el)                          # recognizable component
+            elif has_children:
+                sub = walk(child)                       # obscure fragment -> descend
+                out.extend(sub if sub else [el])
+            else:
+                out.append(el)                          # atomic leaf -> keep as-is
+        return out
+
+    comps = walk(top)
+    # Fewer than two parts isn't a real breakdown (e.g. KanjiVG isolating a single
+    # variant glyph) — treat the kanji as atomic rather than show a one-chip "→".
+    if len(comps) < 2 or comps == [kanji]:
+        return []
+    return comps
+
+
 def main(full=False):
     krad = load_kradfile()
     rrtk = load_rrtk()
     kanjidic = load_kanjidic()
+    kvg = load_kanjivg()
     course, vocab_chars = load_targets()
     if full:
         # Lookup dataset: every kanji with an RRTK story, plus the N5 set (so the
@@ -343,8 +440,19 @@ def main(full=False):
     else:
         targets = course | vocab_chars
 
-    # grouping candidates: every RRTK kanji with a multi-part decomposition,
-    # biggest decompositions first so the greedy pass consumes large groups
+    # Radical meanings (curated table + placeholder remaps). Built up front so the
+    # KanjiVG descent can tell a "named" radical from an obscure phonetic fragment.
+    radicals = dict(RADICAL_MEANINGS)
+    for glyph, meaning in PLACEHOLDER_RADICALS.values():
+        radicals[glyph] = meaning
+
+    # A component is "resolvable" (stop descending, show it as a chip) when it has a
+    # learner-facing name: an RRTK keyword or a curated radical meaning.
+    def resolvable(el):
+        return el in rrtk or el in radicals
+
+    # KRADFILE grouping candidates (fallback path only): every RRTK kanji with a
+    # multi-part decomposition, biggest first so the greedy pass consumes large groups
     candidates = []
     for cand in rrtk:
         if cand in krad and cand not in PLACEHOLDER_RADICALS:
@@ -353,32 +461,44 @@ def main(full=False):
                 candidates.append((cand, cand_comps))
     candidates.sort(key=lambda item: (-len(item[1]), item[0]))
 
-    # entries: all targets, plus any component (after grouping) with RRTK data
+    # entries: all targets, plus any component (after decomposition) with RRTK data
     entries = {}
     unresolved = set()
-    queue = sorted(t for t in targets if t in krad or t in rrtk or t in EXTRA_ENTRIES)
+    queue = sorted(t for t in targets if t in krad or t in rrtk or t in kvg or t in EXTRA_ENTRIES)
     while queue:
         kanji = queue.pop(0)
         if kanji in entries:
             continue
         comps = []
         if kanji in COMPONENT_OVERRIDES:
+            # Hand-audited breakdowns win (e.g. 七 stays atomic, not 一 + 乙).
             comps = list(COMPONENT_OVERRIDES[kanji])
             for c in comps:
                 if c in rrtk and c not in entries:
                     queue.append(c)
         else:
-            raw_comps = group_components(kanji, top_level_components(kanji, krad), candidates)
-            for c in raw_comps:
-                if c in PLACEHOLDER_RADICALS:
-                    glyph, _meaning = PLACEHOLDER_RADICALS[c]
-                    comps.append(glyph)
-                else:
+            kvg_comps = kvg_components(kanji, kvg, resolvable)
+            if kvg_comps is not None:
+                # Primary path: KanjiVG hierarchical decomposition.
+                for c in kvg_comps:
                     comps.append(c)
-                    if c in rrtk and c not in entries:
+                    if (c in rrtk or c in kvg) and c not in entries and c not in radicals:
                         queue.append(c)
-                    elif c not in rrtk and c not in RADICAL_MEANINGS:
+                    elif c not in rrtk and c not in radicals:
                         unresolved.add(c)
+            else:
+                # Fallback: KRADFILE grouping for the few kanji KanjiVG lacks.
+                raw_comps = group_components(kanji, top_level_components(kanji, krad), candidates)
+                for c in raw_comps:
+                    if c in PLACEHOLDER_RADICALS:
+                        glyph, _meaning = PLACEHOLDER_RADICALS[c]
+                        comps.append(glyph)
+                    else:
+                        comps.append(c)
+                        if c in rrtk and c not in entries:
+                            queue.append(c)
+                        elif c not in rrtk and c not in RADICAL_MEANINGS:
+                            unresolved.add(c)
         info = rrtk.get(kanji)
         extra = EXTRA_ENTRIES.get(kanji)
         entry = {
@@ -392,10 +512,6 @@ def main(full=False):
             entry["inCourse"] = True
         entries[kanji] = entry
     entries = dict(sorted(entries.items()))
-
-    radicals = dict(RADICAL_MEANINGS)
-    for glyph, meaning in PLACEHOLDER_RADICALS.values():
-        radicals[glyph] = meaning
 
     # Every radical gets its own lightweight entry so component chips are
     # always tappable (e.g. 家 -> 宀 + 豕, neither of which is an RRTK kanji).
