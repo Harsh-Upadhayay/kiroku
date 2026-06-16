@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "build:dict": "python3 scripts/build-kanji-insights.py --full && python3 scripts/build-jmdict.py",
     "validate:n5": "tsx scripts/validate-n5-course.ts",
     "test": "vitest run",
     "test:watch": "vitest",

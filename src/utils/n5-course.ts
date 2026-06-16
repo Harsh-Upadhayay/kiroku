@@ -494,6 +494,58 @@ export function markN5KanjiLearned(
   return markN5ItemLearned(progress, cards, day, "kanji", entry.kanji, cardId);
 }
 
+/**
+ * When a word/kanji is added from the dictionary lookup, mirror it into the N5
+ * course if the course teaches it: mark it learned and create its course SRS
+ * card (so it shows up in cumulative course review). Idempotent — re-adding an
+ * already-learned item is a no-op. Returns true if a matching course item was
+ * found (and persisted), false otherwise.
+ *
+ * Vocab is matched by surface word (preferring a reading match when ambiguous);
+ * kanji by the character itself.
+ */
+export async function mirrorLookupItemToCourse(
+  course: N5CourseData,
+  kind: "vocab" | "kanji",
+  word: string,
+  reading: string
+): Promise<boolean> {
+  let vocabEntry: N5VocabEntry | undefined;
+  let kanjiEntry: N5KanjiEntry | undefined;
+
+  if (kind === "kanji") {
+    kanjiEntry = course.kanji[word];
+  } else {
+    const matches = Object.values(course.vocab).filter((v) => v.word === word);
+    vocabEntry = (reading && matches.find((v) => v.reading === reading)) || matches[0];
+  }
+  if (!vocabEntry && !kanjiEntry) return false;
+
+  // Attribute the card to the course day that actually teaches the item.
+  const day = findCourseDayForItem(course, kind, vocabEntry ? vocabEntry.id : word);
+
+  const progress = await getN5CourseProgress(course);
+  const cards = await getN5SRSCards();
+  const result = vocabEntry
+    ? markN5VocabLearned(progress, cards, day, vocabEntry)
+    : markN5KanjiLearned(progress, cards, day, kanjiEntry!);
+
+  await saveN5SRSCards(result.cards);
+  await saveN5CourseProgress(result.progress);
+  return true;
+}
+
+function findCourseDayForItem(course: N5CourseData, kind: "vocab" | "kanji", idOrChar: string): number {
+  for (const day of course.days) {
+    if (kind === "vocab") {
+      if (day.vocab.some((v) => v.id === idOrChar)) return day.day;
+    } else if (day.kanji.some((k) => k.kanji === idOrChar)) {
+      return day.day;
+    }
+  }
+  return 1;
+}
+
 export function gradeN5Card(
   card: N5SRSCard,
   grade: N5Grade,

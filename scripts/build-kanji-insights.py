@@ -11,10 +11,18 @@ Data sources:
   - Readings (on/kun): KANJIDIC2 (EDRDG, http://www.edrdg.org/kanjidic/kanjidic2.xml.gz)
   - Radical meanings: curated table below (RTK-style learner names)
 
-Usage: python3 scripts/build-kanji-insights.py
+Usage:
+  python3 scripts/build-kanji-insights.py          # N5 course .ts (default)
+  python3 scripts/build-kanji-insights.py --full    # full-RTK JSON for lookup
 Requires network only if /tmp/kradzip-cache/kradfile is absent.
+
+The default build targets the N5 course (writes src/content/n5/kanji-insights.ts,
+loaded synchronously by the course UI). The --full build targets every kanji that
+has an RRTK story (~3,000) and writes public/data/kanji-insights-full.json, a
+lazy-loaded superset consumed by the dictionary-lookup feature.
 """
 
+import argparse
 import html
 import json
 import os
@@ -29,6 +37,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(REPO, "src", "content", "n5", "raw")
 APKG = os.path.join(REPO, "RRTK_Recognition_Remembering_The_Kanji.apkg")
 OUT = os.path.join(REPO, "src", "content", "n5", "kanji-insights.ts")
+OUT_JSON = os.path.join(REPO, "public", "data", "kanji-insights-full.json")
 KRAD_CACHE = "/tmp/kradzip-cache"
 KRAD_URL = "http://ftp.edrdg.org/pub/Nihongo/kradzip.zip"
 KANJIDIC_URL = "http://www.edrdg.org/kanjidic/kanjidic2.xml.gz"
@@ -321,12 +330,18 @@ def group_components(kanji, comps, candidates):
     return grouped
 
 
-def main():
+def main(full=False):
     krad = load_kradfile()
     rrtk = load_rrtk()
     kanjidic = load_kanjidic()
     course, vocab_chars = load_targets()
-    targets = course | vocab_chars
+    if full:
+        # Lookup dataset: every kanji with an RRTK story, plus the N5 set (so the
+        # course's hand-audited overrides/readings are always present), plus any
+        # component pulled in by the recursive grouping below.
+        targets = set(rrtk) | course | vocab_chars
+    else:
+        targets = course | vocab_chars
 
     # grouping candidates: every RRTK kanji with a multi-part decomposition,
     # biggest decompositions first so the greedy pass consumes large groups
@@ -401,30 +416,51 @@ def main():
     if unresolved:
         print("WARNING: components without meaning:", "".join(sorted(unresolved)))
 
-    with open(OUT, "w") as f:
-        f.write("// GENERATED FILE — do not edit by hand.\n")
-        f.write("// Built by scripts/build-kanji-insights.py from KRADFILE (EDRDG,\n")
-        f.write("// https://www.edrdg.org/edrdg/licence.html) and the RRTK deck in the repo root.\n\n")
-        f.write("export interface KanjiInsight {\n")
-        f.write("  keyword: string;\n")
-        f.write("  story: string;\n")
-        f.write("  components: string[];\n")
-        f.write("  readings?: string;\n")
-        f.write("  inCourse?: boolean;\n")
-        f.write("  isRadical?: boolean;\n")
-        f.write("}\n\n")
-        f.write("export const RADICAL_MEANINGS: Record<string, string> = ")
-        f.write(json.dumps(radicals, ensure_ascii=False, indent=2))
-        f.write(";\n\n")
-        f.write("export const KANJI_INSIGHTS: Record<string, KanjiInsight> = ")
-        f.write(json.dumps(entries, ensure_ascii=False, indent=2))
-        f.write(";\n")
+    if full:
+        # Compact JSON superset for the lookup feature (lazy-loaded, not bundled).
+        os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
+        with open(OUT_JSON, "w") as f:
+            json.dump(
+                {"radicals": radicals, "insights": entries},
+                f,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        out = OUT_JSON
+    else:
+        with open(OUT, "w") as f:
+            f.write("// GENERATED FILE — do not edit by hand.\n")
+            f.write("// Built by scripts/build-kanji-insights.py from KRADFILE (EDRDG,\n")
+            f.write("// https://www.edrdg.org/edrdg/licence.html) and the RRTK deck in the repo root.\n\n")
+            f.write("export interface KanjiInsight {\n")
+            f.write("  keyword: string;\n")
+            f.write("  story: string;\n")
+            f.write("  components: string[];\n")
+            f.write("  readings?: string;\n")
+            f.write("  inCourse?: boolean;\n")
+            f.write("  isRadical?: boolean;\n")
+            f.write("}\n\n")
+            f.write("export const RADICAL_MEANINGS: Record<string, string> = ")
+            f.write(json.dumps(radicals, ensure_ascii=False, indent=2))
+            f.write(";\n\n")
+            f.write("export const KANJI_INSIGHTS: Record<string, KanjiInsight> = ")
+            f.write(json.dumps(entries, ensure_ascii=False, indent=2))
+            f.write(";\n")
+        out = OUT
 
-    print(f"Wrote {OUT}: {len(entries)} kanji entries, {len(radicals)} radical meanings")
+    print(f"Wrote {out}: {len(entries)} kanji entries, {len(radicals)} radical meanings")
     in_course = sum(1 for e in entries.values() if e.get("inCourse"))
     no_story = [k for k, e in entries.items() if not e["story"]]
     print(f"  course kanji: {in_course}, entries without story: {len(no_story)} {''.join(no_story[:30])}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Generate kanji decomposition + mnemonic data.")
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Build the full-RTK JSON superset for lookup (public/data/kanji-insights-full.json) "
+        "instead of the N5 course .ts file.",
+    )
+    args = parser.parse_args()
+    main(full=args.full)

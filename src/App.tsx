@@ -18,13 +18,15 @@ import { SrsQuiz } from "./components/SrsQuiz";
 import { CharDictionary } from "./components/CharDictionary";
 import { AnkiPage } from "./components/AnkiPage";
 import { N5CoursePage } from "./components/N5CoursePage";
+import { DictionaryLookup } from "./components/DictionaryLookup";
+import { LookupDeckPage } from "./components/LookupDeckPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { sound } from "./utils/audio";
 import {
   Zap, BookOpen, Settings, Layers, GraduationCap,
   LogIn, LogOut, User, Volume2, VolumeX, ChevronDown,
   X, Mail, Key, Eye, EyeOff, UserPlus, Check, Sparkles, ShieldCheck,
-  Sun, Moon, Monitor, RefreshCw,
+  Sun, Moon, Monitor, RefreshCw, Search, BookMarked,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB, setSyncRequestSuppressed } from "./utils/db";
@@ -622,13 +624,16 @@ function UserButton({ onSessionChange }: { onSessionChange: (user: AppUser | nul
 
 // ─── Main app ────────────────────────────────────────────────────────────────
 
-type MainTab = "n5" | "kana" | "anki" | "settings";
+type MainTab = "n5" | "kana" | "anki" | "lookup" | "settings";
 
 export default function App() {
   const [cards, setCards] = useState<SRSCard[]>([]);
   const [activeRows, setActiveRows] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTab>("n5");
   const [currentUser, setAppStateCurrentUser] = useState<AppUser | null>(null);
+  const [lookupOpen, setLookupOpen] = useState(false);
+  // Bumped when a card is added from the search overlay, so the deck page reloads.
+  const [lookupDeckVersion, setLookupDeckVersion] = useState(0);
 
   // Stats for header
   const [masteryPercent, setMasteryPercent] = useState(0);
@@ -762,6 +767,7 @@ export default function App() {
     { id: "n5", label: "N5 Course", icon: <GraduationCap className="h-4 w-4 shrink-0" /> },
     { id: "kana", label: "Kana", icon: <span className="text-base font-black leading-none">あ</span> },
     { id: "anki", label: "Anki Decks", icon: <Layers className="h-4 w-4 shrink-0" /> },
+    { id: "lookup", label: "My Deck", icon: <BookMarked className="h-4 w-4 shrink-0" /> },
     { id: "settings", label: "Settings", icon: <Settings className="h-4 w-4 shrink-0" /> },
   ];
 
@@ -806,8 +812,15 @@ export default function App() {
           </div>
         </div>
 
-        {/* Theme + user */}
+        {/* Search + theme + user */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => { sound.playTick(); setLookupOpen(true); }}
+            aria-label="Search dictionary"
+            className="w-11 h-11 flex items-center justify-center bg-white border-2 border-zinc-900 rounded-2xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-indigo-50 text-zinc-700"
+          >
+            <Search className="h-5 w-5" />
+          </button>
           <ThemeToggle />
           <UserButton onSessionChange={setAppStateCurrentUser} />
         </div>
@@ -863,6 +876,12 @@ export default function App() {
               </motion.div>
             )}
 
+            {activeTab === "lookup" && (
+              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
+                <LookupDeckPage key={lookupDeckVersion} onOpenSearch={() => setLookupOpen(true)} />
+              </motion.div>
+            )}
+
             {activeTab === "settings" && (
               <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
                 <SettingsTab onResetDatabase={handleForceRefreshDB} />
@@ -883,10 +902,17 @@ export default function App() {
             {activeTab === "n5" && "Tap any kanji to see its parts & mnemonic"}
             {activeTab === "kana" && "Tap a kana or grid cell to hear pronunciation"}
             {activeTab === "anki" && "Import .apkg files to study your own decks"}
+            {activeTab === "lookup" && "Search any word, then add it here to study"}
             {activeTab === "settings" && "Settings are saved on this device"}
           </span>
         </div>
       </footer>
+
+      <DictionaryLookup
+        open={lookupOpen}
+        onClose={() => setLookupOpen(false)}
+        onDeckChange={() => setLookupDeckVersion((v) => v + 1)}
+      />
     </div>
   );
 }

@@ -31,3 +31,5 @@ My recommendation: use **Jisho** for quick lookup, **Kanshudo** when you want de
 [4]: https://takoboto.jp/?utm_source=chatgpt.com "Takoboto | Japanese dictionary and Nihongo learning tool"
 [5]: https://kanjicards.org/?utm_source=chatgpt.com "Kanjicards.org - PDF Kanji Cards for download, Kanji lists and other ..."
 [6]: https://archive.kodansha.us/book/the-kodansha-kanji-learners-dictionary/index.html?utm_source=chatgpt.com "The Kodansha Kanji Learner’s Dictionary – Kodansha"
+
+https://jpdb.io/review#

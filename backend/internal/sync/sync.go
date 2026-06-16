@@ -67,6 +67,9 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 		result.N5SRSCards = mergeN5SRSCards(existing.N5SRSCards, incoming.N5SRSCards)
 	}
 
+	// Lookup deck cards accumulate across devices, keyed by id, newest wins.
+	result.LookupDeck = mergeLookupDeck(existing.LookupDeck, incoming.LookupDeck)
+
 	return json.Marshal(result)
 }
 
@@ -187,6 +190,18 @@ func unionStrings(a, b []string) []string {
 // mergeN5SRSCards merges N5 SRS cards keyed by their "id". Cards are maps, so each retained
 // card is cloned to avoid aliasing the input slices. Cards without an id are dropped.
 func mergeN5SRSCards(existing, incoming []map[string]any) []map[string]any {
+	return mergeByUpdatedAt(existing, incoming,
+		func(c map[string]any) string { return getString(c, keyID) },
+		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },
+		cloneMap,
+		true,
+	)
+}
+
+// mergeLookupDeck merges lookup-deck cards keyed by their "id", newest "updatedAt"
+// wins. Cards are maps, so each retained card is cloned; cards without an id are
+// dropped. Same shape as mergeN5SRSCards.
+func mergeLookupDeck(existing, incoming []map[string]any) []map[string]any {
 	return mergeByUpdatedAt(existing, incoming,
 		func(c map[string]any) string { return getString(c, keyID) },
 		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },

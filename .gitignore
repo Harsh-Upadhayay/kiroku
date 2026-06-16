@@ -2,6 +2,10 @@ node_modules/
 build/
 dist/
 data/
+# Generated dictionary assets (built by `npm run build:dict`) are committed so
+# deploys don't need the build inputs/network; re-include them despite `data/`.
+!public/data/
+!public/data/**
 coverage/
 .DS_Store
 *.log

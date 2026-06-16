@@ -568,6 +568,30 @@ func getN5Number(state models.SyncState, key string) float64 {
 	return 0
 }
 
+func TestMergeStateLookupDeck(t *testing.T) {
+	existing := models.SyncState{
+		LookupDeck: []map[string]any{
+			{"id": "lookup-vocab-学生-がくせい", "updatedAt": float64(200), "due": "existing"},
+		},
+	}
+	incoming := models.SyncState{
+		LookupDeck: []map[string]any{
+			{"id": "lookup-vocab-学生-がくせい", "updatedAt": float64(100), "due": "incoming-old"},
+			{"id": "lookup-kanji-海-カイ / うみ", "updatedAt": float64(300), "due": "incoming-new"},
+		},
+	}
+
+	merged := mergeForTest(t, existing, incoming)
+	if len(merged.LookupDeck) != 2 {
+		t.Fatalf("expected two merged lookup cards, got %#v", merged.LookupDeck)
+	}
+	for _, card := range merged.LookupDeck {
+		if card["id"] == "lookup-vocab-学生-がくせい" && card["due"] != "existing" {
+			t.Fatalf("older incoming lookup card overwrote newer existing: %#v", card)
+		}
+	}
+}
+
 func mergeForTest(t *testing.T, existing, incoming models.SyncState) models.SyncState {
 	t.Helper()
 	existingRaw, _ := json.Marshal(existing)

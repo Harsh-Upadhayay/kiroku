@@ -39,6 +39,7 @@ type SyncState struct {
 	AnkiV3Collection map[string]any   `json:"anki_v3_collection,omitempty"`
 	N5CourseProgress map[string]any   `json:"n5_course_progress,omitempty"`
 	N5SRSCards       []map[string]any `json:"n5_srs_cards,omitempty"`
+	LookupDeck       []map[string]any `json:"lookup_deck,omitempty"`
 }
 
 type Meta struct {

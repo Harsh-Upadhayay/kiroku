@@ -3,6 +3,7 @@ import { DEFAULT_ACTIVE_GROUP_IDS } from "../types";
 import { normalizeActiveRows, normalizeSRSCards } from "./srs";
 import { n5Course } from "../content/n5/raw";
 import { normalizeN5Cards, normalizeN5Progress, type N5CourseProgress, type N5SRSCard } from "./n5-course";
+import { normalizeLookupCards, type LookupCard } from "./lookup-deck";
 
 export interface SyncState {
   _meta?: {
@@ -19,6 +20,7 @@ export interface SyncState {
   deleted_deck_ids?: string[];
   n5_course_progress?: N5CourseProgress;
   n5_srs_cards?: N5SRSCard[];
+  lookup_deck?: LookupCard[];
 }
 
 const SYNC_DIRTY_KEY = "kiroku_sync_dirty_v1";
@@ -116,6 +118,8 @@ async function collectSyncState(): Promise<SyncState> {
   const n5_course_progress = rawN5Progress ? normalizeN5Progress(rawN5Progress, n5Course) : undefined;
   const rawN5Cards = await getSettingFromDB<N5SRSCard[]>("n5_srs_cards", []);
   const n5_srs_cards = rawN5Cards?.length ? normalizeN5Cards(rawN5Cards) : [];
+  const rawLookupCards = await getSettingFromDB<LookupCard[]>("lookup_deck_cards_v1", []);
+  const lookup_deck = rawLookupCards?.length ? normalizeLookupCards(rawLookupCards) : [];
 
   return {
     _meta: {
@@ -135,6 +139,7 @@ async function collectSyncState(): Promise<SyncState> {
     deleted_deck_ids,
     n5_course_progress,
     n5_srs_cards: stampCollection(n5_srs_cards as any[], now) as N5SRSCard[],
+    lookup_deck: stampCollection(lookup_deck as any[], now) as LookupCard[],
   };
 }
 
@@ -188,6 +193,9 @@ async function applyRemoteState(state: SyncState): Promise<void> {
     }
     if (Array.isArray(state.n5_srs_cards)) {
       await saveSettingToDB("n5_srs_cards", normalizeN5Cards(state.n5_srs_cards));
+    }
+    if (Array.isArray(state.lookup_deck)) {
+      await saveSettingToDB("lookup_deck_cards_v1", normalizeLookupCards(state.lookup_deck));
     }
   } finally {
     setSyncRequestSuppressed(false);
