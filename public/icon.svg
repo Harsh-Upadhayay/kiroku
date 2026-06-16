@@ -11,10 +11,12 @@
        icon). Matches the indigo カ logo shown on the homepage header. -->
   <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
 
-  <text x="256" y="356"
-        text-anchor="middle"
-        font-size="300"
-        font-family="'Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', Meiryo, 'Noto Sans JP', Arial, Helvetica, sans-serif"
-        font-weight="700"
-        fill="#FFFFFF">カ</text>
+  <!-- カ rendered as a static vector outline (extracted once from Droid Sans
+       Fallback via opentype.js), not text. The production Docker image has
+       no CJK fonts installed, so a font based text glyph rasterizes to
+       nothing there, which is what produced the blank "purple blob" iOS
+       home screen icon. A baked path has no font dependency at build time. -->
+  <path transform="translate(84.87,389.10) scale(0.360563)"
+        d="M484.38-605.47L851.56-605.47L835.94-179.69Q816.41 39.06 664.06 39.06L515.63 27.34L500-74.22L644.53-54.69Q699.22-54.69 720.70-89.84Q742.19-125 750-253.91L753.91-511.72L480.47-515.62Q445.31-136.72 164.06 46.88L97.66-27.34Q355.47-187.50 382.81-515.62L128.91-515.62L128.91-609.37L390.63-605.47L394.53-785.16L488.28-785.16Z"
+        fill="#FFFFFF"/>
 </svg>
