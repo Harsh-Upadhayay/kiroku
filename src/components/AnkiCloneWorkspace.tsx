@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Archive,
   BarChart3,
@@ -306,11 +307,19 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         </div>
       </div>
 
-      {notice && (
-        <div className={`rounded-2xl border-2 px-3 py-2 text-xs font-bold ${notice.type === "success" ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-red-50 border-red-300 text-red-900"}`}>
-          {notice.text}
-        </div>
-      )}
+      <AnimatePresence>
+        {notice && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={`rounded-2xl border-2 px-3 py-2 text-xs font-bold overflow-hidden ${notice.type === "success" ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-red-50 border-red-300 text-red-900"}`}
+          >
+            {notice.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {collection.cards.length === 0 ? (
         <FirstRunImport isImporting={isImporting} onImport={handleImport} />
@@ -335,13 +344,15 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
               setIsBackShown(false);
               setReviewStartedAt(Date.now());
             }}
-            className={`px-2 py-2 rounded-xl border-2 text-[10px] font-black uppercase flex items-center justify-center gap-1.5 ${activeTab === id ? "bg-zinc-900 text-white border-zinc-900" : "bg-zinc-50 text-zinc-700 border-zinc-200"}`}
+            className={`px-2 py-2 rounded-xl border-2 text-[10px] font-black uppercase flex items-center justify-center gap-1.5 transition-colors ${activeTab === id ? "bg-zinc-900 text-white border-zinc-900" : "bg-zinc-50 text-zinc-700 border-zinc-200"}`}
           >
             <Icon className="h-3.5 w-3.5" /> {label}
           </button>
         ))}
       </div>
 
+      <AnimatePresence mode="wait">
+      <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.13, ease: "easeOut" }}>
       {activeTab === "decks" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-4 space-y-2 max-h-[520px] overflow-y-auto pr-1">
@@ -532,6 +543,8 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
           <Metric label="Imports" value={collection.importReports.length} />
         </div>
       )}
+      </motion.div>
+      </AnimatePresence>
       </>
       )}
     </div>

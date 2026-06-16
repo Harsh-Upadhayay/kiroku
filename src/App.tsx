@@ -836,14 +836,21 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => { sound.playTick(); setActiveTab(tab.id); }}
-                  className={`flex-1 py-2 sm:py-2.5 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-2xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 border-2 ${
+                  className={`relative isolate flex-1 py-2 sm:py-2.5 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-2xl transition-colors cursor-pointer flex flex-col items-center justify-center gap-0.5 border-2 ${
                     active
-                      ? "bg-indigo-600 text-white border-zinc-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                      ? "text-white border-zinc-900"
                       : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
                   }`}
                 >
-                  {tab.icon}
-                  <span className="block text-center leading-tight">{tab.label}</span>
+                  {active && (
+                    <motion.div
+                      layoutId="activeMainTabBg"
+                      className="absolute inset-0 -z-10 rounded-2xl bg-indigo-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.45 }}
+                    />
+                  )}
+                  <span className="relative">{tab.icon}</span>
+                  <span className="relative block text-center leading-tight">{tab.label}</span>
                 </button>
               );
             })}
@@ -852,41 +859,35 @@ export default function App() {
 
         <ErrorBoundary>
           <div className="w-full">
-            {activeTab === "n5" && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-                <N5CoursePage />
-              </motion.div>
-            )}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.13, ease: "easeOut" }}
+              >
+                {activeTab === "n5" && <N5CoursePage />}
 
-            {activeTab === "kana" && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-                <KanaHub
-                  cards={cards}
-                  activeRows={activeRows}
-                  onActiveRowsUpdate={setActiveRows}
-                  onCardsUpdate={setCards}
-                  onResetDatabase={handleForceRefreshDB}
-                />
-              </motion.div>
-            )}
+                {activeTab === "kana" && (
+                  <KanaHub
+                    cards={cards}
+                    activeRows={activeRows}
+                    onActiveRowsUpdate={setActiveRows}
+                    onCardsUpdate={setCards}
+                    onResetDatabase={handleForceRefreshDB}
+                  />
+                )}
 
-            {activeTab === "anki" && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-                <AnkiPage />
-              </motion.div>
-            )}
+                {activeTab === "anki" && <AnkiPage />}
 
-            {activeTab === "lookup" && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-                <LookupDeckPage key={lookupDeckVersion} onOpenSearch={() => setLookupOpen(true)} />
-              </motion.div>
-            )}
+                {activeTab === "lookup" && (
+                  <LookupDeckPage key={lookupDeckVersion} onOpenSearch={() => setLookupOpen(true)} />
+                )}
 
-            {activeTab === "settings" && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-                <SettingsTab onResetDatabase={handleForceRefreshDB} />
+                {activeTab === "settings" && <SettingsTab onResetDatabase={handleForceRefreshDB} />}
               </motion.div>
-            )}
+            </AnimatePresence>
           </div>
         </ErrorBoundary>
       </main>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import { n5Course } from "../content/n5/raw";
 import { buildMcQuestion } from "../utils/n5-mc";
 import type { N5CourseProgress, N5Grade, N5SRSCard } from "../utils/n5-course";
@@ -114,13 +115,16 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {question.options.map((opt, i) => {
             let cls = "py-3 px-4 rounded-2xl border-2 text-sm font-black text-left transition-colors ";
+            let feedbackCls = "";
             if (!revealed) {
               cls += "border-zinc-900 bg-white hover:bg-indigo-50 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
             } else {
               if (i === question.correctIndex) {
                 cls += "border-zinc-900 bg-emerald-300 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]";
+                if (i === pickedIndex) feedbackCls = "animate-pop-in";
               } else if (i === pickedIndex) {
                 cls += "border-zinc-900 bg-red-300";
+                feedbackCls = "animate-shake";
               } else {
                 cls += "border-zinc-200 bg-white opacity-40";
               }
@@ -130,7 +134,7 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
                 key={i}
                 onClick={() => handlePick(i)}
                 disabled={revealed}
-                className={cls}
+                className={`${cls} ${feedbackCls}`}
               >
                 <span className="text-[10px] font-black uppercase text-zinc-400 mr-2">{i + 1}</span>
                 {opt.text}
@@ -149,9 +153,14 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
           </button>
         ) : (
           <>
-            <div className="border-t-2 border-zinc-100 pt-4 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="border-t-2 border-zinc-100 pt-4 text-center"
+            >
               {back}
-            </div>
+            </motion.div>
             {/* Sticky action bar so grading is always reachable without scrolling past the
                 explanation — the high-frequency action in a long review session. */}
             <div className="sticky bottom-2 z-10 -mx-5 px-5 pt-3 pb-1 bg-white/95 backdrop-blur border-t-2 border-zinc-100">
