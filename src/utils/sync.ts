@@ -4,6 +4,7 @@ import { normalizeActiveRows, normalizeSRSCards } from "./srs";
 import { n5Course } from "../content/n5/raw";
 import { normalizeN5Cards, normalizeN5Progress, type N5CourseProgress, type N5SRSCard } from "./n5-course";
 import { normalizeLookupCards, type LookupCard } from "./lookup-deck";
+import { normalizeVocabSheets, type VocabSheet } from "./vocab-sheets";
 
 export interface SyncState {
   _meta?: {
@@ -21,6 +22,7 @@ export interface SyncState {
   n5_course_progress?: N5CourseProgress;
   n5_srs_cards?: N5SRSCard[];
   lookup_deck?: LookupCard[];
+  vocab_sheets?: VocabSheet[];
 }
 
 const SYNC_DIRTY_KEY = "kiroku_sync_dirty_v1";
@@ -120,10 +122,12 @@ async function collectSyncState(): Promise<SyncState> {
   const n5_srs_cards = rawN5Cards?.length ? normalizeN5Cards(rawN5Cards) : [];
   const rawLookupCards = await getSettingFromDB<LookupCard[]>("lookup_deck_cards_v1", []);
   const lookup_deck = rawLookupCards?.length ? normalizeLookupCards(rawLookupCards) : [];
+  const rawVocabSheets = await getSettingFromDB<VocabSheet[]>("vocab_sheets_v1", []);
+  const vocab_sheets = rawVocabSheets?.length ? normalizeVocabSheets(rawVocabSheets) : [];
 
   return {
     _meta: {
-      schemaVersion: 4,
+      schemaVersion: 5,
       clientId,
       generatedAt: now,
       dirtySince: dirtySince(),
@@ -140,6 +144,7 @@ async function collectSyncState(): Promise<SyncState> {
     n5_course_progress,
     n5_srs_cards: stampCollection(n5_srs_cards as any[], now) as N5SRSCard[],
     lookup_deck: stampCollection(lookup_deck as any[], now) as LookupCard[],
+    vocab_sheets: stampCollection(vocab_sheets as any[], now) as VocabSheet[],
   };
 }
 
@@ -196,6 +201,9 @@ async function applyRemoteState(state: SyncState): Promise<void> {
     }
     if (Array.isArray(state.lookup_deck)) {
       await saveSettingToDB("lookup_deck_cards_v1", normalizeLookupCards(state.lookup_deck));
+    }
+    if (Array.isArray(state.vocab_sheets)) {
+      await saveSettingToDB("vocab_sheets_v1", normalizeVocabSheets(state.vocab_sheets));
     }
   } finally {
     setSyncRequestSuppressed(false);

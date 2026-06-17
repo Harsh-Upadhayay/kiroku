@@ -40,6 +40,7 @@ type SyncState struct {
 	N5CourseProgress map[string]any   `json:"n5_course_progress,omitempty"`
 	N5SRSCards       []map[string]any `json:"n5_srs_cards,omitempty"`
 	LookupDeck       []map[string]any `json:"lookup_deck,omitempty"`
+	VocabSheets      []map[string]any `json:"vocab_sheets,omitempty"`
 }
 
 type Meta struct {

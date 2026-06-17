@@ -50,6 +50,7 @@ func main() {
 	mux.HandleFunc("POST /api/sync/push", h.SyncPush)
 	mux.HandleFunc("POST /api/sync/pull", h.SyncPull)
 	mux.HandleFunc("POST /api/import-anki-package", h.ImportAnkiPackage)
+	mux.HandleFunc("POST /api/vocab/import-image", h.ImportVocabImage)
 	mux.HandleFunc("GET /api/import-anki-package/{importID}/media/{hash}", h.ImportedPackageMedia)
 	mux.HandleFunc("/api/media/{hash}", h.MediaBlob)
 	mux.HandleFunc("POST /api/auth/change-password", h.ChangePassword)

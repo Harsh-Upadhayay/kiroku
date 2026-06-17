@@ -10,6 +10,10 @@ services:
     environment:
       PORT: 8080
       DATA_DIR: /app/data
+      VOCAB_OCR_BINARY: tesseract
+      VOCAB_OCR_LANGUAGES: jpn+eng
+      VOCAB_OCR_PSM: 6
+      VOCAB_OCR_TIMEOUT_SECONDS: 90
     networks:
       - traefik
     security_opt:

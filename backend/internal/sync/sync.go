@@ -69,6 +69,7 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 
 	// Lookup deck cards accumulate across devices, keyed by id, newest wins.
 	result.LookupDeck = mergeLookupDeck(existing.LookupDeck, incoming.LookupDeck)
+	result.VocabSheets = mergeVocabSheets(existing.VocabSheets, incoming.VocabSheets)
 
 	return json.Marshal(result)
 }
@@ -202,6 +203,17 @@ func mergeN5SRSCards(existing, incoming []map[string]any) []map[string]any {
 // wins. Cards are maps, so each retained card is cloned; cards without an id are
 // dropped. Same shape as mergeN5SRSCards.
 func mergeLookupDeck(existing, incoming []map[string]any) []map[string]any {
+	return mergeByUpdatedAt(existing, incoming,
+		func(c map[string]any) string { return getString(c, keyID) },
+		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },
+		cloneMap,
+		true,
+	)
+}
+
+// mergeVocabSheets merges imported OCR sheets keyed by "id", newest "updatedAt"
+// wins. Rows are embedded in each sheet blob and are owned by the frontend.
+func mergeVocabSheets(existing, incoming []map[string]any) []map[string]any {
 	return mergeByUpdatedAt(existing, incoming,
 		func(c map[string]any) string { return getString(c, keyID) },
 		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },

@@ -592,6 +592,30 @@ func TestMergeStateLookupDeck(t *testing.T) {
 	}
 }
 
+func TestMergeStateVocabSheets(t *testing.T) {
+	existing := models.SyncState{
+		VocabSheets: []map[string]any{
+			{"id": "sheet-genki-1", "updatedAt": float64(200), "title": "Genki 1"},
+		},
+	}
+	incoming := models.SyncState{
+		VocabSheets: []map[string]any{
+			{"id": "sheet-genki-1", "updatedAt": float64(100), "title": "Older title"},
+			{"id": "sheet-genki-2", "updatedAt": float64(300), "title": "Genki 2"},
+		},
+	}
+
+	merged := mergeForTest(t, existing, incoming)
+	if len(merged.VocabSheets) != 2 {
+		t.Fatalf("expected two merged vocab sheets, got %#v", merged.VocabSheets)
+	}
+	for _, sheet := range merged.VocabSheets {
+		if sheet["id"] == "sheet-genki-1" && sheet["title"] != "Genki 1" {
+			t.Fatalf("older incoming vocab sheet overwrote newer existing: %#v", sheet)
+		}
+	}
+}
+
 func mergeForTest(t *testing.T, existing, incoming models.SyncState) models.SyncState {
 	t.Helper()
 	existingRaw, _ := json.Marshal(existing)

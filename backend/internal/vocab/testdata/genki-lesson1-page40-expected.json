@@ -1,0 +1,32 @@
+{
+  "rows": [
+    { "section": "School", "word": "だいがく", "furigana": "だいがく", "romaji": "daigaku", "meaning": "college; university" },
+    { "section": "School", "word": "こうこう", "furigana": "こうこう", "romaji": "kookoo", "meaning": "high school" },
+    { "section": "School", "word": "がくせい", "furigana": "がくせい", "romaji": "gakusee", "meaning": "student" },
+    { "section": "School", "word": "だいがくせい", "furigana": "だいがくせい", "romaji": "daigakusee", "meaning": "college student" },
+    { "section": "School", "word": "りゅうがくせい", "furigana": "りゅうがくせい", "romaji": "ryuugakusee", "meaning": "international student" },
+    { "section": "School", "word": "せんせい", "furigana": "せんせい", "romaji": "sensee", "meaning": "teacher; Professor . . ." },
+    { "section": "School", "word": "～ねんせい", "furigana": "～ねんせい", "romaji": ". . . nensee", "meaning": ". . . year student" },
+    { "section": "School", "word": "いちねんせい", "furigana": "いちねんせい", "romaji": "ichinensee", "meaning": "first-year student" },
+    { "section": "School", "word": "せんこう", "furigana": "せんこう", "romaji": "senkoo", "meaning": "major" },
+    { "section": "Person", "word": "わたし", "furigana": "わたし", "romaji": "watashi", "meaning": "I" },
+    { "section": "Person", "word": "ともだち", "furigana": "ともだち", "romaji": "tomodachi", "meaning": "friend" },
+    { "section": "Person", "word": "～さん", "furigana": "～さん", "romaji": ". . . san", "meaning": "Mr./Ms. . . ." },
+    { "section": "Person", "word": "～じん", "furigana": "～じん", "romaji": ". . . jin", "meaning": ". . . people" },
+    { "section": "Person", "word": "にほんじん", "furigana": "にほんじん", "romaji": "nihonjin", "meaning": "Japanese people" },
+    { "section": "Time", "word": "いま", "furigana": "いま", "romaji": "ima", "meaning": "now" },
+    { "section": "Time", "word": "ごぜん", "furigana": "ごぜん", "romaji": "gozen", "meaning": "A.M." },
+    { "section": "Time", "word": "ごご", "furigana": "ごご", "romaji": "gogo", "meaning": "P.M." },
+    { "section": "Time", "word": "～じ", "furigana": "～じ", "romaji": ". . . ji", "meaning": "o'clock" },
+    { "section": "Time", "word": "いちじ", "furigana": "いちじ", "romaji": "ichiji", "meaning": "one o'clock" },
+    { "section": "Time", "word": "はん", "furigana": "はん", "romaji": "han", "meaning": "half" },
+    { "section": "Time", "word": "にじはん", "furigana": "にじはん", "romaji": "niji han", "meaning": "half past two" },
+    { "section": "Others", "word": "にほん", "furigana": "にほん", "romaji": "Nihon", "meaning": "Japan" },
+    { "section": "Others", "word": "アメリカ", "furigana": "あめりか", "romaji": "Amerika", "meaning": "U.S.A." },
+    { "section": "Others", "word": "～ご", "furigana": "～ご", "romaji": ". . . go", "meaning": ". . . language" },
+    { "section": "Others", "word": "にほんご", "furigana": "にほんご", "romaji": "nihongo", "meaning": "Japanese language" },
+    { "section": "Others", "word": "～さい", "furigana": "～さい", "romaji": ". . . sai", "meaning": ". . . years old" },
+    { "section": "Others", "word": "でんわ", "furigana": "でんわ", "romaji": "denwa", "meaning": "telephone" },
+    { "section": "Others", "word": "～ばん", "furigana": "～ばん", "romaji": ". . . ban", "meaning": "number . . ." }
+  ]
+}

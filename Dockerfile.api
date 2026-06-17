@@ -37,7 +37,14 @@ ENV DATA_DIR=/app/data
 
 COPY --from=build /out/kiroku-api /app/kiroku-api
 
-RUN mkdir -p /app/data && addgroup -g 1000 appgroup && adduser -D -H -u 1000 -G appgroup appuser && chown -R appuser:appgroup /app
+RUN apk add --no-cache \
+      tesseract-ocr \
+      tesseract-ocr-data-eng \
+      tesseract-ocr-data-jpn \
+    && mkdir -p /app/data \
+    && addgroup -g 1000 appgroup \
+    && adduser -D -H -u 1000 -G appgroup appuser \
+    && chown -R appuser:appgroup /app
 
 USER appuser
 EXPOSE 8080

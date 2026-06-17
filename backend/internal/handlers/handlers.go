@@ -14,9 +14,12 @@ import (
 	"kiroku-api/internal/models"
 	"kiroku-api/internal/store"
 	"kiroku-api/internal/sync"
+	"kiroku-api/internal/vocab"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 // Handler carries the dependencies every HTTP handler needs. It is intentionally minimal —
@@ -151,6 +154,57 @@ func (h *Handler) ImportAnkiPackage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: result})
+}
+
+// ImportVocabImage runs local OCR over a textbook vocabulary page image and returns
+// editable vocab rows. It deliberately uses local tooling only; no uploaded image is sent
+// to a hosted LLM or third-party OCR service.
+func (h *Handler) ImportVocabImage(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxBodyBytes)
+	defer r.Body.Close()
+
+	if err := r.ParseMultipartForm(h.Config.MaxBodyBytes); err != nil {
+		h.WriteError(w, http.StatusBadRequest, "Invalid image upload", err)
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		h.WriteError(w, http.StatusBadRequest, "Image file is required", err)
+		return
+	}
+	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		h.WriteError(w, http.StatusBadRequest, "Failed to read image", err)
+		return
+	}
+	contentType := http.DetectContentType(bytes)
+	if !strings.HasPrefix(contentType, "image/") {
+		h.WriteError(w, http.StatusBadRequest, "Uploaded file must be an image", nil)
+		return
+	}
+
+	result, err := vocab.ImportImage(r.Context(), bytes, header.Filename, vocab.Config{
+		Binary:        h.Config.OCRBinary,
+		Languages:     h.Config.OCRLanguages,
+		PSM:           h.Config.OCRPSM,
+		Timeout:       time.Duration(h.Config.OCRTimeout) * time.Second,
+		OllamaURL:     h.Config.OllamaURL,
+		OllamaModel:   h.Config.OllamaModel,
+		OllamaTimeout: time.Duration(h.Config.OllamaTimeout) * time.Second,
+	})
+	switch {
+	case errors.Is(err, vocab.ErrOCRUnavailable):
+		h.WriteError(w, http.StatusServiceUnavailable, "Local OCR engine is not available", err)
+	case errors.Is(err, vocab.ErrNoRows):
+		h.WriteError(w, http.StatusUnprocessableEntity, "No vocabulary rows found in image", err)
+	case err != nil:
+		h.WriteError(w, http.StatusInternalServerError, "Failed to import vocabulary image", err)
+	default:
+		h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: result})
+	}
 }
 
 // ImportedPackageMedia serves a media blob cached from a prior import, by import ID and hash.

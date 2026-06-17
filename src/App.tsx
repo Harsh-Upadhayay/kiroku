@@ -20,6 +20,7 @@ import { AnkiPage } from "./components/AnkiPage";
 import { N5CoursePage } from "./components/N5CoursePage";
 import { DictionaryLookup } from "./components/DictionaryLookup";
 import { LookupDeckPage } from "./components/LookupDeckPage";
+import { VocabSheetPage } from "./components/VocabSheetPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { sound } from "./utils/audio";
 import {
@@ -27,6 +28,7 @@ import {
   LogIn, LogOut, User, Volume2, VolumeX, ChevronDown,
   X, Mail, Key, Eye, EyeOff, UserPlus, Check, Sparkles, ShieldCheck,
   Sun, Moon, Monitor, RefreshCw, Search, BookMarked,
+  FileImage,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB, setSyncRequestSuppressed } from "./utils/db";
@@ -624,7 +626,7 @@ function UserButton({ onSessionChange }: { onSessionChange: (user: AppUser | nul
 
 // ─── Main app ────────────────────────────────────────────────────────────────
 
-type MainTab = "n5" | "kana" | "anki" | "lookup" | "settings";
+type MainTab = "n5" | "kana" | "vocab" | "anki" | "lookup" | "settings";
 
 export default function App() {
   const [cards, setCards] = useState<SRSCard[]>([]);
@@ -766,6 +768,7 @@ export default function App() {
   const mainTabs: { id: MainTab; label: string; icon: React.ReactNode }[] = [
     { id: "n5", label: "N5 Course", icon: <GraduationCap className="h-4 w-4 shrink-0" /> },
     { id: "kana", label: "Kana", icon: <span className="text-base font-black leading-none">あ</span> },
+    { id: "vocab", label: "Vocab", icon: <FileImage className="h-4 w-4 shrink-0" /> },
     { id: "anki", label: "Anki Decks", icon: <Layers className="h-4 w-4 shrink-0" /> },
     { id: "lookup", label: "My Deck", icon: <BookMarked className="h-4 w-4 shrink-0" /> },
     { id: "settings", label: "Settings", icon: <Settings className="h-4 w-4 shrink-0" /> },
@@ -829,7 +832,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto space-y-6">
         {/* Tab bar */}
         <div className="flex justify-center mb-6">
-          <div className="flex bg-white rounded-3xl border-2 border-zinc-900 p-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.95)] max-w-xl w-full">
+          <div className="flex bg-white rounded-3xl border-2 border-zinc-900 p-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.95)] max-w-2xl w-full">
             {mainTabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -880,6 +883,10 @@ export default function App() {
                   />
                 )}
 
+                {activeTab === "vocab" && (
+                  <VocabSheetPage onDeckChange={() => setLookupDeckVersion((v) => v + 1)} />
+                )}
+
                 {activeTab === "anki" && <AnkiPage />}
 
                 {activeTab === "lookup" && (
@@ -903,6 +910,7 @@ export default function App() {
           <span>
             {activeTab === "n5" && "Tap any kanji to see its parts & mnemonic"}
             {activeTab === "kana" && "Tap a kana or grid cell to hear pronunciation"}
+            {activeTab === "vocab" && "Imported vocab rows stay editable before they enter SRS"}
             {activeTab === "anki" && "Import .apkg files to study your own decks"}
             {activeTab === "lookup" && "Search any word, then add it here to study"}
             {activeTab === "settings" && "Settings are saved on this device"}
