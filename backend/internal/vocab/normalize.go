@@ -1,7 +1,6 @@
 package vocab
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -20,7 +19,7 @@ func normalizeImportedRows(rows []ImportedRow) []ImportedRow {
 		if row.Word == "" || row.Romaji == "" || row.Meaning == "" {
 			continue
 		}
-		row.ID = fmt.Sprintf("row-%03d", len(out)+1)
+		row.ID = ""
 		out = append(out, row)
 	}
 	return out

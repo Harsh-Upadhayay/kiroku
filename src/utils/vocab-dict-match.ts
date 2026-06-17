@@ -173,40 +173,48 @@ export function findDictionaryMatch(row: ImportedVocabRow): VocabDictionaryMatch
   return best ? dictionaryMatchFromEntry(best.entry, row) : undefined;
 }
 
-export async function enrichImportedRowsWithDictionary(rows: ImportedVocabRow[]): Promise<ImportedVocabRow[]> {
+export async function enrichImportedRowsWithDictionary(
+  rows: ImportedVocabRow[]
+): Promise<{ rows: ImportedVocabRow[]; dictionaryAvailable: boolean }> {
   try {
     await loadDictionary();
   } catch {
-    return rows.map((row) => ({
-      ...row,
-      ocrWord: row.ocrWord || row.word,
-      ocrFurigana: row.ocrFurigana || row.furigana || row.word,
-      ocrRomaji: row.ocrRomaji || row.romaji,
-      ocrMeaning: row.ocrMeaning || row.meaning,
-      matchStatus: row.matchStatus || "unmatched",
-    }));
+    return {
+      dictionaryAvailable: false,
+      rows: rows.map((row) => ({
+        ...row,
+        ocrWord: row.ocrWord || row.word,
+        ocrFurigana: row.ocrFurigana || row.furigana || row.word,
+        ocrRomaji: row.ocrRomaji || row.romaji,
+        ocrMeaning: row.ocrMeaning || row.meaning,
+        matchStatus: row.matchStatus || ("unmatched" as const),
+      })),
+    };
   }
 
-  return rows.map((raw) => {
-    const row: ImportedVocabRow = {
-      ...raw,
-      ocrWord: raw.ocrWord || raw.word,
-      ocrFurigana: raw.ocrFurigana || raw.furigana || raw.word,
-      ocrRomaji: raw.ocrRomaji || raw.romaji,
-      ocrMeaning: raw.ocrMeaning || raw.meaning,
-    };
-    const match = findDictionaryMatch(row);
-    if (!match) {
-      return { ...row, matchStatus: "unmatched" };
-    }
-    return {
-      ...row,
-      word: match.word,
-      furigana: row.ocrFurigana || row.furigana,
-      romaji: row.ocrRomaji || row.romaji,
-      meaning: row.ocrMeaning || row.meaning,
-      dictMatch: match,
-      matchStatus: "matched",
-    };
-  });
+  return {
+    dictionaryAvailable: true,
+    rows: rows.map((raw) => {
+      const row: ImportedVocabRow = {
+        ...raw,
+        ocrWord: raw.ocrWord || raw.word,
+        ocrFurigana: raw.ocrFurigana || raw.furigana || raw.word,
+        ocrRomaji: raw.ocrRomaji || raw.romaji,
+        ocrMeaning: raw.ocrMeaning || raw.meaning,
+      };
+      const match = findDictionaryMatch(row);
+      if (!match) {
+        return { ...row, matchStatus: "unmatched" as const };
+      }
+      return {
+        ...row,
+        word: match.word,
+        furigana: row.ocrFurigana || row.furigana,
+        romaji: row.ocrRomaji || row.romaji,
+        meaning: row.ocrMeaning || row.meaning,
+        dictMatch: match,
+        matchStatus: "matched" as const,
+      };
+    }),
+  };
 }

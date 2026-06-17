@@ -108,11 +108,14 @@ export function normalizeVocabWords(input: unknown): VocabWord[] {
     normalized.push(w);
   }
 
-  // Dedup by word+furigana: prefer addedToDeckAt > dictMatch > newest updatedAt
+  // Dedup by dict identity (matched) or word+furigana (unmatched)
+  // prefer addedToDeckAt > dictMatch > newest updatedAt
   const seenWF = new Map<string, number>();
   const deduped: VocabWord[] = [];
   for (const w of normalized) {
-    const key = `${w.word}\x00${w.furigana}`;
+    const key = w.dictMatch
+      ? `dict\x00${w.dictMatch.word}\x00${w.dictMatch.reading}`
+      : `raw\x00${w.word}\x00${w.furigana}`;
     const prevIdx = seenWF.get(key);
     if (prevIdx === undefined) {
       seenWF.set(key, deduped.length);
@@ -174,7 +177,7 @@ export async function saveVocabWords(words: VocabWord[]): Promise<void> {
 export function createVocabWordsFromImport(sourceFileName: string, rows: ImportedVocabRow[], now = Date.now()): VocabWord[] {
   return rows
     .map((row, index) =>
-      normalizeWord({ ...row, id: row.id || makeId(`vocab-word-${index}`), sourceFileName, createdAt: now, updatedAt: now }, index, now),
+      normalizeWord({ ...row, id: makeId(`vocab-word-${index}`), sourceFileName, createdAt: now, updatedAt: now }, index, now),
     )
     .filter((w): w is VocabWord => !!w);
 }

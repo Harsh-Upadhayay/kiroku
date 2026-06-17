@@ -883,7 +883,7 @@ export default function App() {
 
                 {activeTab === "vocab" && (
                   <VocabSheetPage
-                    key={lookupDeckVersion}
+                    deckVersion={lookupDeckVersion}
                     onDeckChange={() => setLookupDeckVersion((v) => v + 1)}
                     onOpenSearch={() => setLookupOpen(true)}
                   />

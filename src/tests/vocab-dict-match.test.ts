@@ -30,7 +30,7 @@ describe("Genki vocab dictionary matching", () => {
   });
 
   it("uses the dictionary card while preserving OCR fields on the sheet", async () => {
-    const [row] = await enrichImportedRowsWithDictionary([
+    const { rows: [row] } = await enrichImportedRowsWithDictionary([
       {
         id: "row-1",
         section: "School",
@@ -55,7 +55,7 @@ describe("Genki vocab dictionary matching", () => {
   });
 
   it("uses OCR meaning to pick the correct homophone", async () => {
-    const rows = await enrichImportedRowsWithDictionary([
+    const { rows } = await enrichImportedRowsWithDictionary([
       {
         id: "row-2",
         section: "School",
@@ -79,7 +79,7 @@ describe("Genki vocab dictionary matching", () => {
   });
 
   it("keeps katakana loanwords in their printed form instead of ateji", async () => {
-    const [row] = await enrichImportedRowsWithDictionary([
+    const { rows: [row] } = await enrichImportedRowsWithDictionary([
       {
         id: "row-4",
         section: "Others",

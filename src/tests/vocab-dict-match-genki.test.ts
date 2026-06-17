@@ -10,7 +10,7 @@ describe("Genki page dictionary resolution", () => {
       vi.fn(async () => ({ ok: true, json: async () => dictData })) as unknown as typeof fetch
     );
     const { enrichImportedRowsWithDictionary } = await import("../utils/vocab-dict-match");
-    const rows = await enrichImportedRowsWithDictionary(genkiPage.rows.map((row, index) => ({ ...row, id: `genki-${index}` })));
+    const { rows } = await enrichImportedRowsWithDictionary(genkiPage.rows.map((row, index) => ({ ...row, id: `genki-${index}` })));
 
     const byRomaji = new Map(rows.map((row) => [row.romaji, row]));
     expect(byRomaji.get("daigakusee")?.dictMatch?.word).toBe("大学生");

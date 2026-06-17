@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { BookMarked, Check, FileImage, Loader2, Play, Search, Trash2, Upload, X } from "lucide-react";
+import { BookMarked, Check, FileImage, Loader2, Play, Search, Trash2, Upload, Volume2, X } from "lucide-react";
 import { sound } from "../utils/audio";
 import { loadExtendedKanjiInsights } from "../utils/kanji-insights";
 import {
@@ -22,7 +22,7 @@ import {
   type ImportedVocabRow,
   type VocabWord,
 } from "../utils/vocab-words";
-import { KanjiText } from "./KanjiBreakdown";
+import { KanjiText, WordKanjiStrip } from "./KanjiBreakdown";
 import { ReviewSession } from "./LookupReviewSession";
 import { State } from "ts-fsrs";
 
@@ -41,17 +41,24 @@ interface DisplayRow extends VocabWord {
 }
 
 export const VocabSheetPage: React.FC<{
+  deckVersion?: number;
   onDeckChange?: () => void;
   onOpenSearch: () => void;
-}> = ({ onDeckChange, onOpenSearch }) => {
+}> = ({ deckVersion, onDeckChange, onOpenSearch }) => {
   const [words, setWords] = useState<VocabWord[]>([]);
   const [deckCards, setDeckCards] = useState<LookupCard[]>([]);
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<SegmentFilter>("all");
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [importReview, setImportReview] = useState<{ rows: VocabWord[]; previewURL: string } | null>(null);
+  const [importReview, setImportReview] = useState<{ rows: VocabWord[] } | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<DisplayRow | null>(null);
+
+  // VOCAB-03/06: track external deckVersion to refresh without remounting
+  const prevDeckVersionRef = useRef(deckVersion);
+  const reviewingRef = useRef(reviewing);
+  useEffect(() => { reviewingRef.current = reviewing; }, [reviewing]);
 
   useEffect(() => {
     loadExtendedKanjiInsights().catch(() => {});
@@ -60,22 +67,23 @@ export const VocabSheetPage: React.FC<{
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (importReview) URL.revokeObjectURL(importReview.previewURL);
-    };
-  }, []);
+    if (deckVersion === undefined || deckVersion === prevDeckVersionRef.current) return;
+    prevDeckVersionRef.current = deckVersion;
+    if (!reviewingRef.current) {
+      getVocabWords().then(setWords);
+      refreshDeck();
+    }
+  }, [deckVersion]);
 
   const deckById = useMemo(() => new Map(deckCards.map((c) => [c.id, c])), [deckCards]);
 
   const allRows = useMemo<DisplayRow[]>(() => {
-    // Track vocab words by their deck card ID to avoid duplicates in the deck-only list
     const wordCardIds = new Set(
       words
         .map((r) => (r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : null))
         .filter(Boolean)
     );
 
-    // Deck-only rows (added via dictionary search, not via image import): both vocab + kanji
     const deckOnlyRows: DisplayRow[] = deckCards
       .filter((c) => !wordCardIds.has(c.id))
       .map((c) => ({
@@ -93,7 +101,6 @@ export const VocabSheetPage: React.FC<{
         deckCard: c,
       }));
 
-    // Vocab words enriched with their deck card if present
     const enrichedWords: DisplayRow[] = words.map((r) => {
       const cardId = r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : "";
       const deckCard = cardId ? deckById.get(cardId) : undefined;
@@ -104,6 +111,9 @@ export const VocabSheetPage: React.FC<{
   }, [words, deckCards, deckById]);
 
   const dueCount = useMemo(() => getDueLookupCards(deckCards).length, [deckCards]);
+
+  // VOCAB-01: only show 字 filter when kanji rows exist
+  const hasKanjiRows = useMemo(() => allRows.some((r) => r.rowKind === "kanji"), [allRows]);
 
   const visibleRows = useMemo(() => {
     let rows = allRows;
@@ -144,11 +154,14 @@ export const VocabSheetPage: React.FC<{
         throw new Error(payload.error || `Import failed with HTTP ${response.status}`);
       }
       const result = payload.data as ImportResult;
-      const rows = await enrichImportedRowsWithDictionary(result.rows || []);
+      // VOCAB-10: detect dictionary unavailable
+      const { rows, dictionaryAvailable } = await enrichImportedRowsWithDictionary(result.rows || []);
+      if (!dictionaryAvailable) {
+        throw new Error("Dictionary unavailable — could not match words. Check your connection and try again.");
+      }
       const imported = createVocabWordsFromImport(file.name, rows);
       if (imported.length === 0) throw new Error("No vocabulary rows found in image.");
-      if (importReview) URL.revokeObjectURL(importReview.previewURL);
-      setImportReview({ rows: imported, previewURL: URL.createObjectURL(file) });
+      setImportReview({ rows: imported });
       notify("success", `Found ${imported.length} row${imported.length === 1 ? "" : "s"} with ${result.engine}.`);
       if (result.warnings?.length) console.warn("Vocabulary OCR warnings", result.warnings);
     } catch (error: any) {
@@ -178,27 +191,35 @@ export const VocabSheetPage: React.FC<{
     await refreshDeck();
     onDeckChange?.();
     sound.playCorrect();
-    if (importReview) URL.revokeObjectURL(importReview.previewURL);
     setImportReview(null);
     const skipped = rowsToSave.length - targets.length;
     notify("success", `${added} added${existing ? `, ${existing} already existed` : ""}${skipped ? `, ${skipped} unmatched skipped` : ""}.`);
   }
 
   function handleDiscardImport() {
-    if (importReview) URL.revokeObjectURL(importReview.previewURL);
     setImportReview(null);
   }
 
-  async function handleRemove(id: string) {
-    const next = await removeLookupCard(id);
-    setDeckCards(next);
+  // VOCAB-05: remove both the deck card and the backing VocabWord
+  async function handleRemove(row: DisplayRow) {
+    // Remove deck card if present
+    const nextCards = row.deckCard ? await removeLookupCard(row.deckCard.id) : deckCards;
+    setDeckCards(nextCards);
+
+    // Remove backing VocabWord (for imported words)
+    const nextWords = words.filter((w) => w.id !== row.id);
+    if (nextWords.length !== words.length) {
+      setWords(nextWords);
+      await saveVocabWords(nextWords);
+    }
     onDeckChange?.();
   }
 
+  // VOCAB-03: don't call onDeckChange here — grading is internal; calling it bumps
+  // deckVersion which would remount the page and kill the active review session.
   async function handleReviewDone(updated: LookupCard[]) {
     setDeckCards(updated);
     await saveLookupCards(updated);
-    onDeckChange?.();
   }
 
   if (reviewing) {
@@ -219,7 +240,9 @@ export const VocabSheetPage: React.FC<{
           <FileImage className="h-6 w-6 text-indigo-600" /> Vocab
           {allRows.length > 0 && (
             <span className="text-sm font-bold text-zinc-400 normal-case tracking-normal">
-              {allRows.length} words{dueCount > 0 ? ` · ${dueCount} due` : ""}
+              {/* VOCAB-11: count only vocab-kind rows as "words" */}
+              {allRows.filter((r) => r.rowKind === "vocab").length} word{allRows.filter((r) => r.rowKind === "vocab").length === 1 ? "" : "s"}
+              {dueCount > 0 ? ` · ${dueCount} due` : ""}
             </span>
           )}
         </h2>
@@ -288,19 +311,22 @@ export const VocabSheetPage: React.FC<{
         <div className="space-y-3">
           {/* Filter row */}
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Segment pills */}
+            {/* VOCAB-01: only show 字 segment when kanji rows exist */}
             <div className="flex bg-white rounded-2xl border-2 border-zinc-900 p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-              {(["all", "words", "kanji"] as SegmentFilter[]).map((seg) => (
-                <button
-                  key={seg}
-                  onClick={() => setSegment(seg)}
-                  className={`relative px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors ${
-                    segment === seg ? "bg-indigo-600 text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]" : "text-zinc-500 hover:text-zinc-900"
-                  }`}
-                >
-                  {seg === "all" ? "All" : seg === "words" ? "語" : "字"}
-                </button>
-              ))}
+              {(["all", "words", "kanji"] as SegmentFilter[]).map((seg) => {
+                if (seg === "kanji" && !hasKanjiRows) return null;
+                return (
+                  <button
+                    key={seg}
+                    onClick={() => setSegment(seg)}
+                    className={`relative px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors ${
+                      segment === seg ? "bg-indigo-600 text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]" : "text-zinc-500 hover:text-zinc-900"
+                    }`}
+                  >
+                    {seg === "all" ? "All" : seg === "words" ? "語" : "字"}
+                  </button>
+                );
+              })}
             </div>
             {/* Text filter */}
             <div className="relative">
@@ -319,7 +345,7 @@ export const VocabSheetPage: React.FC<{
               No matching words.
             </div>
           ) : (
-            <VocabReferenceTable rows={visibleRows} onRemove={handleRemove} />
+            <VocabReferenceTable rows={visibleRows} onRemove={handleRemove} onRowClick={setSelectedRow} />
           )}
         </div>
       )}
@@ -332,6 +358,13 @@ export const VocabSheetPage: React.FC<{
             onConfirm={handleConfirmImport}
             onDiscard={handleDiscardImport}
           />
+        ) : null}
+      </AnimatePresence>
+
+      {/* VOCAB-02: vocab card detail modal */}
+      <AnimatePresence>
+        {selectedRow ? (
+          <VocabCardModal row={selectedRow} onClose={() => setSelectedRow(null)} />
         ) : null}
       </AnimatePresence>
     </div>
@@ -372,8 +405,9 @@ function SrsStatusCell({ card }: { card?: LookupCard }) {
 
 const VocabReferenceTable: React.FC<{
   rows: DisplayRow[];
-  onRemove: (id: string) => void;
-}> = ({ rows, onRemove }) => (
+  onRemove: (row: DisplayRow) => void;
+  onRowClick: (row: DisplayRow) => void;
+}> = ({ rows, onRemove, onRowClick }) => (
   <div className="overflow-x-auto rounded-[24px] border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
     <table className="min-w-[640px] w-full border-collapse text-left">
       <thead className="bg-zinc-50 border-b-2 border-zinc-900">
@@ -390,7 +424,8 @@ const VocabReferenceTable: React.FC<{
         {rows.map((row) => {
           const match = row.dictMatch;
           const word = match?.word || row.word || "";
-          const reading = row.furigana || match?.reading || "";
+          // VOCAB-07: prefer dictionary reading over noisy OCR furigana
+          const reading = match?.reading || row.furigana || "";
           const romaji = row.romaji || "";
           const english = row.meaning || match?.meanings.join("; ") || "";
           const isKanjiRow = row.rowKind === "kanji";
@@ -404,13 +439,17 @@ const VocabReferenceTable: React.FC<{
               className="group align-middle border-b border-zinc-100 last:border-b-0 hover:bg-zinc-50/60 transition-colors"
             >
               <SrsStatusCell card={row.deckCard} />
-              <td className="px-4 py-2">
+              {/* VOCAB-02: clicking word cell opens card detail (plain text — no nested kanji buttons) */}
+              <td
+                className="px-4 py-2 cursor-pointer"
+                onClick={() => onRowClick(row)}
+              >
                 <div className="flex items-center gap-2">
                   {isKanjiRow && (
                     <span className="shrink-0 text-[9px] font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded px-1 leading-tight">字</span>
                   )}
                   <div className="text-base font-black text-zinc-950 leading-tight">
-                    <KanjiText text={word || " "} />
+                    {word || " "}
                   </div>
                 </div>
               </td>
@@ -423,16 +462,15 @@ const VocabReferenceTable: React.FC<{
               <td className="px-4 py-2">
                 <span className="text-xs font-bold text-zinc-700 leading-snug">{english}</span>
               </td>
+              {/* VOCAB-05: trash always visible, removes both deck card and vocab word */}
               <td className="px-2 py-2 text-right">
-                {row.deckCard && (
-                  <button
-                    onClick={() => onRemove(row.deckCard!.id)}
-                    aria-label={`Remove ${word}`}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-300 hover:text-rose-600"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <button
+                  onClick={() => onRemove(row)}
+                  aria-label={`Remove ${word}`}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-300 hover:text-rose-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </td>
             </motion.tr>
           );
@@ -441,6 +479,82 @@ const VocabReferenceTable: React.FC<{
     </table>
   </div>
 );
+
+// ─── Vocab card detail modal (VOCAB-02) ──────────────────────────────────────
+
+const VocabCardModal: React.FC<{ row: DisplayRow; onClose: () => void }> = ({ row, onClose }) => {
+  const match = row.dictMatch;
+  const word = match?.word || row.word || "";
+  const reading = match?.reading || row.furigana || "";
+  const meanings = match?.meanings || (row.meaning ? row.meaning.split("; ") : []);
+  const example = match?.example;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 8 }}
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-md bg-white border-2 border-zinc-900 rounded-[28px] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b-2 border-zinc-100">
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+            {row.rowKind === "kanji" ? "Kanji" : "Vocab"} Card
+          </span>
+          <button onClick={onClose} className="rounded-xl border-2 border-zinc-200 bg-zinc-50 hover:bg-zinc-100 p-1.5 text-zinc-500" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4 text-center">
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-5xl font-black text-zinc-950">
+              <KanjiText text={word} />
+            </span>
+            <button
+              onClick={() => sound.playCharacter(word)}
+              aria-label={`Play ${word}`}
+              className="inline-flex items-center justify-center rounded-xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 p-1.5"
+            >
+              <Volume2 className="h-4 w-4 text-indigo-600" />
+            </button>
+          </div>
+          {reading && reading !== word && (
+            <p className="text-lg font-black text-indigo-700">{reading}</p>
+          )}
+        </div>
+
+        {meanings.length > 0 && (
+          <div className="px-5 pb-4 space-y-1.5">
+            {meanings.map((m, i) => (
+              <div key={i} className="bg-zinc-50 border-2 border-zinc-200 rounded-2xl px-3 py-2 text-sm font-bold text-zinc-900">
+                {m}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {example?.j && (
+          <div className="px-5 pb-4">
+            <div className="bg-indigo-50 border-2 border-indigo-100 rounded-2xl px-4 py-3 space-y-1">
+              <p className="text-sm font-bold text-zinc-900">{example.j}</p>
+              {example.e && <p className="text-xs font-bold text-zinc-500">{example.e}</p>}
+            </div>
+          </div>
+        )}
+
+        {word && <div className="px-5 pb-5"><WordKanjiStrip word={word} /></div>}
+      </motion.div>
+    </motion.div>
+  );
+};
 
 // ─── Import review modal ─────────────────────────────────────────────────────
 
@@ -454,6 +568,10 @@ const ImportReviewModal: React.FC<{
     () => new Set(rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id))
   );
   const [confirming, setConfirming] = useState(false);
+  // VOCAB-08: error state for confirm failures
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   function toggleRow(id: string) {
     setSelected((prev) => {
@@ -470,10 +588,19 @@ const ImportReviewModal: React.FC<{
     setSelected(allSelected ? new Set() : new Set(matchedIds));
   }
 
+  // VOCAB-08: error handling + guard setState after unmount
   async function handleConfirm() {
     setConfirming(true);
-    await onConfirm(rows, selected);
-    setConfirming(false);
+    setConfirmError(null);
+    try {
+      await onConfirm(rows, selected);
+      // success: parent unmounts us; don't touch state
+    } catch (e: any) {
+      if (mountedRef.current) {
+        setConfirmError(e?.message || "Failed to save. Please try again.");
+        setConfirming(false);
+      }
+    }
   }
 
   const matchedCount = rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).length;
@@ -511,6 +638,12 @@ const ImportReviewModal: React.FC<{
           </button>
         </div>
 
+        {confirmError && (
+          <div className="mx-5 mt-3 rounded-2xl border-2 border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-900">
+            {confirmError}
+          </div>
+        )}
+
         <div className="overflow-y-auto flex-1 px-5 py-3 space-y-1">
           <div className="flex items-center justify-between mb-2">
             <button onClick={toggleAll} className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900">
@@ -521,7 +654,7 @@ const ImportReviewModal: React.FC<{
           {rows.map((row) => {
             const match = row.dictMatch;
             const word = match?.word || row.word || "";
-            const furigana = row.furigana || match?.reading || "";
+            const furigana = match?.reading || row.furigana || "";
             const english = row.meaning || match?.meanings.slice(0, 2).join("; ") || "";
             const hasMatch = !!(match?.word && match?.reading);
             const isSelected = selected.has(row.id);
