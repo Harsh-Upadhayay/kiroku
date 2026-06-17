@@ -5,28 +5,28 @@
     </clipPath>
 
     <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"  stop-color="#3c3c3f"/>
-      <stop offset="35%" stop-color="#2a2a2c"/>
-      <stop offset="100%" stop-color="#141416"/>
+      <stop offset="0%"   stop-color="#d8d8de"/>
+      <stop offset="38%"  stop-color="#b4b4bb"/>
+      <stop offset="100%" stop-color="#86868d"/>
     </linearGradient>
 
     <linearGradient id="rimGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#6e6e74" stop-opacity="0.9"/>
-      <stop offset="18%"  stop-color="#4a4a4e" stop-opacity="0.35"/>
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="18%"  stop-color="#ffffff" stop-opacity="0.35"/>
       <stop offset="55%"  stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#4a4a50" stop-opacity="0.5"/>
     </linearGradient>
 
     <linearGradient id="glossGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.16"/>
-      <stop offset="40%"  stop-color="#ffffff" stop-opacity="0.03"/>
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="40%"  stop-color="#ffffff" stop-opacity="0.08"/>
       <stop offset="60%"  stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
 
     <linearGradient id="glyphGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#56565c"/>
-      <stop offset="55%"  stop-color="#3a3a3e"/>
-      <stop offset="100%" stop-color="#242427"/>
+      <stop offset="0%"   stop-color="#7f7f87"/>
+      <stop offset="55%"  stop-color="#5e5e66"/>
+      <stop offset="100%" stop-color="#45454c"/>
     </linearGradient>
 
     <radialGradient id="dotGrad" cx="38%" cy="32%" r="75%">
@@ -36,28 +36,24 @@
     </radialGradient>
 
     <filter id="iconShadow" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#000000" flood-opacity="0.55"/>
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#000000" flood-opacity="0.4"/>
     </filter>
-
     <filter id="dotShadow" x="-80%" y="-80%" width="260%" height="260%">
-      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.45"/>
     </filter>
-
     <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="3.2"/>
+      <feGaussianBlur stdDeviation="3"/>
     </filter>
 
-    <radialGradient id="vignette" cx="50%" cy="38%" r="72%">
+    <radialGradient id="vignette" cx="50%" cy="36%" r="72%">
       <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
     </radialGradient>
 
-    <!-- 力 glyph, pre-transformed to canvas coords -->
     <path id="chikara" transform="matrix(0.24738 0 0 -0.24738 137.1342 349.0147)"
           d="M367 853V652H71V503H361C343 335 275 138 38 18C74 -8 129 -65 153 -101C429 49 501 295 517 503H766C752 234 733 108 704 79C690 66 678 62 658 62C630 62 574 62 513 67C541 25 562 -41 564 -84C624 -86 686 -86 725 -79C772 -72 804 -59 837 -16C882 39 901 192 920 585C922 604 923 652 923 652H522V853Z"/>
   </defs>
 
-  <!-- ICON BODY -->
   <g filter="url(#iconShadow)">
     <path d="M256 70 C 110 70 70 110 70 256 C 70 402 110 442 256 442 C 402 442 442 402 442 256 C 442 110 402 70 256 70 Z"
           fill="url(#bodyGrad)"/>
@@ -67,19 +63,17 @@
     <rect x="70" y="70" width="372" height="372" fill="url(#vignette)"/>
     <rect x="70" y="70" width="372" height="220" fill="url(#glossGrad)"/>
 
-    <!-- embossed 力 -->
-    <use href="#chikara" fill="#000000" fill-opacity="0.6" transform="translate(0,5)" filter="url(#softBlur)"/>
-    <use href="#chikara" fill="#ffffff" fill-opacity="0.15" transform="translate(0,-2.5)"/>
+    <!-- embossed 力: dark recess shadow above, light highlight below -> debossed on light surface -->
+    <use href="#chikara" fill="#000000" fill-opacity="0.32" transform="translate(0,-3)" filter="url(#softBlur)"/>
+    <use href="#chikara" fill="#ffffff" fill-opacity="0.6" transform="translate(0,4)" filter="url(#softBlur)"/>
     <use href="#chikara" fill="url(#glyphGrad)"/>
   </g>
 
-  <!-- crisp rim light -->
   <path d="M256 70 C 110 70 70 110 70 256 C 70 402 110 442 256 442 C 402 442 442 402 442 256 C 442 110 402 70 256 70 Z"
         fill="none" stroke="url(#rimGrad)" stroke-width="2.5"/>
 
-  <!-- red notification dot -->
   <g filter="url(#dotShadow)">
     <circle cx="150" cy="138" r="20" fill="url(#dotGrad)"/>
-    <ellipse cx="144" cy="130" rx="9" ry="6" fill="#ffffff" fill-opacity="0.45"/>
+    <ellipse cx="144" cy="130" rx="9" ry="6" fill="#ffffff" fill-opacity="0.5"/>
   </g>
 </svg>
