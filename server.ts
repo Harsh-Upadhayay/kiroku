@@ -13,7 +13,7 @@ async function startServer() {
   // Proxy API requests to Go backend
   app.use(
     createProxyMiddleware({
-      target: "http://localhost:8080",
+      target: process.env.KIROKU_API_URL || "http://localhost:8080",
       changeOrigin: true,
       pathFilter: "/api",
     })

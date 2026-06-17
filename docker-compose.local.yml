@@ -1,0 +1,38 @@
+services:
+  kiroku-api:
+    container_name: kiroku-api-local
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: runtime
+    volumes:
+      - ./data:/app/data
+    environment:
+      PORT: 8080
+      DATA_DIR: /app/data
+      VOCAB_OCR_BINARY: tesseract
+      VOCAB_OCR_LANGUAGES: jpn+eng
+      VOCAB_OCR_PSM: 6
+      VOCAB_OCR_TIMEOUT_SECONDS: 90
+    healthcheck:
+      test: ["CMD", "/app/kiroku-api", "-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  kiroku:
+    container_name: kiroku-local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      KIROKU_API_URL: http://kiroku-api:8080
+    depends_on:
+      kiroku-api:
+        condition: service_healthy

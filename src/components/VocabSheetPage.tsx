@@ -13,7 +13,7 @@ import {
   type VocabSheet,
   type VocabSheetRow,
 } from "../utils/vocab-sheets";
-import { KanjiText, WordKanjiStrip } from "./KanjiBreakdown";
+import { KanjiText } from "./KanjiBreakdown";
 
 interface ImportResult {
   engine: string;
@@ -23,7 +23,6 @@ interface ImportResult {
 
 export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeckChange }) => {
   const [sheets, setSheets] = useState<VocabSheet[]>([]);
-  const [selectedSheetId, setSelectedSheetId] = useState("");
   const [deckIds, setDeckIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [importing, setImporting] = useState(false);
@@ -32,10 +31,7 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
 
   useEffect(() => {
     loadExtendedKanjiInsights().catch(() => {});
-    getVocabSheets().then((loaded) => {
-      setSheets(loaded);
-      setSelectedSheetId((current) => current || loaded[0]?.id || "");
-    });
+    getVocabSheets().then(setSheets);
     refreshDeckIds();
   }, []);
 
@@ -45,39 +41,23 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     };
   }, []);
 
-  const selectedSheet = sheets.find((sheet) => sheet.id === selectedSheetId) || sheets[0];
+  const allRows = useMemo(() => sheets.flatMap((s) => s.rows), [sheets]);
+
   const visibleRows = useMemo(() => {
-    const rows = selectedSheet?.rows || [];
     const needle = query.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((row) =>
-      [
-        row.section,
-        row.word,
-        row.furigana,
-        row.romaji,
-        row.meaning,
-        row.dictMatch?.word,
-        row.dictMatch?.reading,
-        row.dictMatch?.meanings.join(" "),
-        row.ocrWord,
-      ]
+    if (!needle) return allRows;
+    return allRows.filter((row) =>
+      [row.word, row.furigana, row.romaji, row.meaning, row.dictMatch?.word, row.dictMatch?.reading, row.dictMatch?.meanings.join(" ")]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(needle)
     );
-  }, [query, selectedSheet]);
+  }, [query, allRows]);
 
   async function refreshDeckIds() {
     const cards = await getLookupCards();
     setDeckIds(new Set(cards.map((card) => card.id)));
-  }
-
-  async function persist(nextSheets: VocabSheet[], nextSelectedId = selectedSheetId) {
-    setSheets(nextSheets);
-    setSelectedSheetId(nextSelectedId || nextSheets[0]?.id || "");
-    await saveVocabSheets(nextSheets);
   }
 
   function notify(type: "success" | "error", text: string) {
@@ -102,15 +82,11 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
       const result = payload.data as ImportResult;
       const rows = await enrichImportedRowsWithDictionary(result.rows || []);
       const sheet = createVocabSheet(file.name, rows);
-      if (sheet.rows.length === 0) {
-        throw new Error("No vocabulary rows found in image.");
-      }
+      if (sheet.rows.length === 0) throw new Error("No vocabulary rows found in image.");
       if (importReview) URL.revokeObjectURL(importReview.previewURL);
       setImportReview({ sheet, previewURL: URL.createObjectURL(file) });
       notify("success", `Found ${sheet.rows.length} row${sheet.rows.length === 1 ? "" : "s"} with ${result.engine}.`);
-      if (result.warnings?.length) {
-        console.warn("Vocabulary OCR warnings", result.warnings);
-      }
+      if (result.warnings?.length) console.warn("Vocabulary OCR warnings", result.warnings);
     } catch (error: any) {
       sound.playIncorrect();
       notify("error", error?.message || "Vocabulary import failed.");
@@ -124,7 +100,8 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     const rowsToSave = sheet.rows.filter((r) => selectedRowIds.has(r.id));
     const finalSheet = { ...sheet, rows: rowsToSave };
     const nextSheets = [finalSheet, ...sheets];
-    await persist(nextSheets, finalSheet.id);
+    setSheets(nextSheets);
+    await saveVocabSheets(nextSheets);
 
     const targets = rowsToSave.filter((r) => r.dictMatch?.word && r.dictMatch?.reading);
     const nextDeckIds = new Set(deckIds);
@@ -132,13 +109,7 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     let existing = 0;
     for (const row of targets) {
       const match = row.dictMatch!;
-      const result = await addLookupCard({
-        kind: "vocab",
-        word: match.word,
-        reading: match.reading,
-        meanings: match.meanings,
-        example: match.example,
-      });
+      const result = await addLookupCard({ kind: "vocab", word: match.word, reading: match.reading, meanings: match.meanings, example: match.example });
       nextDeckIds.add(result.card.id);
       if (result.added) added += 1;
       else existing += 1;
@@ -146,14 +117,10 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     setDeckIds(nextDeckIds);
     onDeckChange?.();
     sound.playCorrect();
-
     if (importReview) URL.revokeObjectURL(importReview.previewURL);
     setImportReview(null);
     const skipped = rowsToSave.length - targets.length;
-    notify(
-      "success",
-      `${added} added${existing ? `, ${existing} already existed` : ""}${skipped ? `, ${skipped} unmatched skipped` : ""}.`
-    );
+    notify("success", `${added} added${existing ? `, ${existing} already existed` : ""}${skipped ? `, ${skipped} unmatched skipped` : ""}.`);
   }
 
   function handleDiscardImport() {
@@ -161,28 +128,16 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     setImportReview(null);
   }
 
-  async function removeSheet(sheetId: string) {
-    const next = sheets.filter((sheet) => sheet.id !== sheetId);
-    await persist(next, next[0]?.id || "");
-  }
-
   return (
-    <div className="max-w-6xl mx-auto space-y-5">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-900 flex items-center gap-2">
-            <FileImage className="h-6 w-6 text-indigo-600" /> Vocab Sheets
-          </h2>
-          <p className="text-xs font-bold text-zinc-500 mt-1">
-            {sheets.length} sheet{sheets.length === 1 ? "" : "s"}
-            {selectedSheet ? ` · ${selectedSheet.rows.length} row${selectedSheet.rows.length === 1 ? "" : "s"}` : ""}
-          </p>
-        </div>
-        <label
-          className={`flex items-center justify-center gap-2 rounded-2xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${
-            importing ? "opacity-60 pointer-events-none" : ""
-          }`}
-        >
+    <div className="max-w-6xl mx-auto space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-900 flex items-center gap-2">
+          <FileImage className="h-6 w-6 text-indigo-600" /> Vocab
+          {allRows.length > 0 && (
+            <span className="text-sm font-bold text-zinc-400 normal-case tracking-normal">{allRows.length} words</span>
+          )}
+        </h2>
+        <label className={`flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${importing ? "opacity-60 pointer-events-none" : ""}`}>
           {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           {importing ? "Reading image..." : "Import image"}
           <input type="file" accept="image/*" className="hidden" onChange={handleImport} disabled={importing} />
@@ -204,89 +159,36 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
         ) : null}
       </AnimatePresence>
 
-      {sheets.length === 0 ? (
+      {allRows.length === 0 ? (
         <div className="border-2 border-dashed border-zinc-300 rounded-[24px] p-10 text-center space-y-4">
           <div className="mx-auto w-14 h-14 rounded-2xl border-2 border-zinc-900 bg-indigo-50 flex items-center justify-center">
             <FileImage className="h-6 w-6 text-indigo-600" />
           </div>
-          <p className="text-sm font-bold text-zinc-500">No vocabulary sheets yet.</p>
-          <label
-            className={`inline-flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white hover:bg-indigo-500 px-5 py-3 text-xs font-black uppercase tracking-wide shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${
-              importing ? "opacity-60 pointer-events-none" : ""
-            }`}
-          >
+          <p className="text-sm font-bold text-zinc-500">No vocabulary yet — import an image to get started.</p>
+          <label className={`inline-flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white hover:bg-indigo-500 px-5 py-3 text-xs font-black uppercase tracking-wide shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${importing ? "opacity-60 pointer-events-none" : ""}`}>
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {importing ? "Reading image..." : "Import image"}
             <input type="file" accept="image/*" className="hidden" onChange={handleImport} disabled={importing} />
           </label>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          <aside className="lg:col-span-3 bg-white border-2 border-zinc-900 rounded-[24px] p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-2">
-            {sheets.map((sheet) => (
-              <button
-                key={sheet.id}
-                onClick={() => {
-                  sound.playTick();
-                  setSelectedSheetId(sheet.id);
-                  setQuery("");
-                }}
-                className={`w-full text-left rounded-2xl border-2 p-3 transition-colors ${
-                  selectedSheet?.id === sheet.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200 hover:bg-zinc-50"
-                }`}
-              >
-                <span className="block text-xs font-black uppercase text-zinc-900 truncate">{sheet.title}</span>
-                <span className="block mt-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400">
-                  {sheet.rows.length} rows · {new Date(sheet.createdAt).toLocaleDateString()}
-                </span>
-              </button>
-            ))}
-          </aside>
-
-          <section className="lg:col-span-9 space-y-4">
-            {selectedSheet ? (
-              <>
-                <div className="bg-white border-2 border-zinc-900 rounded-[24px] p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-lg font-black uppercase text-zinc-950 truncate">{selectedSheet.title}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-400 truncate">
-                        {selectedSheet.sourceFileName || "Manual sheet"} · {new Date(selectedSheet.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                        <input
-                          value={query}
-                          onChange={(event) => setQuery(event.target.value)}
-                          placeholder="Filter rows"
-                          className="w-full md:w-44 rounded-xl border-2 border-zinc-900 pl-9 pr-3 py-2 text-xs font-bold bg-white"
-                        />
-                      </div>
-                      <button
-                        onClick={() => removeSheet(selectedSheet.id)}
-                        className="rounded-xl border-2 border-zinc-900 bg-white hover:bg-red-50 p-2 text-red-600"
-                        aria-label="Delete sheet"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  {visibleRows.length === 0 ? (
-                    <div className="bg-zinc-50 border-2 border-dashed border-zinc-300 rounded-2xl p-6 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
-                      No matching rows.
-                    </div>
-                  ) : (
-                    <VocabReferenceTable rows={visibleRows} deckIds={deckIds} />
-                  )}
-                </div>
-              </>
-            ) : null}
-          </section>
+        <div className="space-y-3">
+          <div className="relative max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter words"
+              className="w-full rounded-xl border-2 border-zinc-900 pl-9 pr-3 py-2 text-xs font-bold bg-white"
+            />
+          </div>
+          {visibleRows.length === 0 ? (
+            <div className="bg-zinc-50 border-2 border-dashed border-zinc-300 rounded-2xl p-6 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
+              No matching words.
+            </div>
+          ) : (
+            <VocabReferenceTable rows={visibleRows} deckIds={deckIds} />
+          )}
         </div>
       )}
 
@@ -294,7 +196,6 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
         {importReview ? (
           <ImportReviewModal
             sheet={importReview.sheet}
-            previewURL={importReview.previewURL}
             deckIds={deckIds}
             onConfirm={handleConfirmImport}
             onDiscard={handleDiscardImport}
@@ -310,22 +211,7 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
 const VocabReferenceTable: React.FC<{
   rows: VocabSheetRow[];
   deckIds: Set<string>;
-}> = ({ rows, deckIds }) => {
-  const grouped = useMemo(() => {
-    const sections: { label: string; rows: VocabSheetRow[] }[] = [];
-    let current: { label: string; rows: VocabSheetRow[] } | null = null;
-    for (const row of rows) {
-      const label = row.section || "";
-      if (!current || current.label !== label) {
-        current = { label, rows: [] };
-        sections.push(current);
-      }
-      current.rows.push(row);
-    }
-    return sections;
-  }, [rows]);
-
-  return (
+}> = ({ rows, deckIds }) => (
     <div className="overflow-x-auto rounded-[24px] border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
       <table className="min-w-[640px] w-full border-collapse text-left">
         <thead className="bg-zinc-50 border-b-2 border-zinc-900">
@@ -337,18 +223,7 @@ const VocabReferenceTable: React.FC<{
           </tr>
         </thead>
         <tbody>
-          {grouped.map((group) => (
-            <React.Fragment key={group.label}>
-              {group.label ? (
-                <tr>
-                  <td colSpan={4} className="px-4 pt-3 pb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 rounded-lg px-2 py-0.5">
-                      {group.label}
-                    </span>
-                  </td>
-                </tr>
-              ) : null}
-              {group.rows.map((row) => {
+          {rows.map((row) => {
                 const match = row.dictMatch;
                 const word = match?.word || row.word || "";
                 const furigana = row.furigana || match?.reading || "";
@@ -371,13 +246,8 @@ const VocabReferenceTable: React.FC<{
                         ) : (
                           <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-transparent" />
                         )}
-                        <div>
-                          <div className="text-base font-black text-zinc-950 leading-tight">
-                            <KanjiText text={word || " "} />
-                          </div>
-                          <div className="mt-0.5 max-w-44">
-                            <WordKanjiStrip word={word} />
-                          </div>
+                        <div className="text-base font-black text-zinc-950 leading-tight">
+                          <KanjiText text={word || " "} />
                         </div>
                       </div>
                     </td>
@@ -393,23 +263,19 @@ const VocabReferenceTable: React.FC<{
                   </motion.tr>
                 );
               })}
-            </React.Fragment>
-          ))}
         </tbody>
       </table>
     </div>
   );
-};
 
 // ─── Import review modal ─────────────────────────────────────────────────────
 
 const ImportReviewModal: React.FC<{
   sheet: VocabSheet;
-  previewURL: string;
   deckIds: Set<string>;
   onConfirm: (sheet: VocabSheet, selectedRowIds: Set<string>) => Promise<void>;
   onDiscard: () => void;
-}> = ({ sheet, previewURL, deckIds, onConfirm, onDiscard }) => {
+}> = ({ sheet, deckIds, onConfirm, onDiscard }) => {
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(sheet.rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id))
   );
@@ -471,15 +337,6 @@ const ImportReviewModal: React.FC<{
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
-
-        {/* Preview image */}
-        <div className="px-5 py-3 border-b-2 border-zinc-100 shrink-0">
-          <img
-            src={previewURL}
-            alt="Imported vocabulary sheet"
-            className="max-h-36 w-full object-contain rounded-2xl border-2 border-zinc-200 bg-zinc-50"
-          />
         </div>
 
         {/* Row list */}
