@@ -845,8 +845,9 @@ export default function App() {
                   {active && (
                     <motion.div
                       layoutId="activeMainTabBg"
+                      layout="position"
                       className="absolute inset-0 -z-10 rounded-2xl bg-indigo-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.45 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 32, mass: 0.6 }}
                     />
                   )}
                   <span className="relative">{tab.icon}</span>
@@ -859,13 +860,13 @@ export default function App() {
 
         <ErrorBoundary>
           <div className="w-full">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout" initial={false}>
               <motion.div
                 key={activeTab}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.13, ease: "easeOut" }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
               >
                 {activeTab === "n5" && <N5CoursePage />}
 
