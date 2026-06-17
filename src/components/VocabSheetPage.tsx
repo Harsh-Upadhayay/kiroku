@@ -1,9 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { BookMarked, Check, FileImage, Loader2, Search, Trash2, Upload, X } from "lucide-react";
+import { BookMarked, Check, FileImage, Loader2, Play, Search, Trash2, Upload, X } from "lucide-react";
 import { sound } from "../utils/audio";
 import { loadExtendedKanjiInsights } from "../utils/kanji-insights";
-import { addLookupCard, getLookupCards, lookupCardId, type LookupCard } from "../utils/lookup-deck";
+import {
+  addLookupCard,
+  getDueLookupCards,
+  getLookupCards,
+  isLookupCardDue,
+  lookupCardId,
+  removeLookupCard,
+  saveLookupCards,
+  type LookupCard,
+} from "../utils/lookup-deck";
 import { enrichImportedRowsWithDictionary } from "../utils/vocab-dict-match";
 import {
   createVocabSheet,
@@ -14,6 +23,10 @@ import {
   type VocabSheetRow,
 } from "../utils/vocab-sheets";
 import { KanjiText } from "./KanjiBreakdown";
+import { ReviewSession } from "./LookupReviewSession";
+import { State } from "ts-fsrs";
+
+type SegmentFilter = "all" | "words" | "kanji";
 
 interface ImportResult {
   engine: string;
@@ -21,13 +34,24 @@ interface ImportResult {
   warnings?: string[];
 }
 
-export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeckChange }) => {
+// A VocabSheetRow enriched with deck card info for SRS display
+interface DisplayRow extends VocabSheetRow {
+  rowKind: "vocab" | "kanji";
+  deckCard?: LookupCard;
+}
+
+export const VocabSheetPage: React.FC<{
+  onDeckChange?: () => void;
+  onOpenSearch: () => void;
+}> = ({ onDeckChange, onOpenSearch }) => {
   const [sheets, setSheets] = useState<VocabSheet[]>([]);
   const [deckCards, setDeckCards] = useState<LookupCard[]>([]);
   const [query, setQuery] = useState("");
+  const [segment, setSegment] = useState<SegmentFilter>("all");
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [importReview, setImportReview] = useState<{ sheet: VocabSheet; previewURL: string } | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
     loadExtendedKanjiInsights().catch(() => {});
@@ -41,41 +65,60 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     };
   }, []);
 
-  const deckIds = useMemo(() => new Set(deckCards.map((c) => c.id)), [deckCards]);
+  const deckById = useMemo(() => new Map(deckCards.map((c) => [c.id, c])), [deckCards]);
 
-  // Sheet rows (have romaji from OCR) merged with any vocab deck cards not already
-  // represented in sheets (added via dictionary search).
-  const allRows = useMemo<VocabSheetRow[]>(() => {
+  const allRows = useMemo<DisplayRow[]>(() => {
     const sheetRows = sheets.flatMap((s) => s.rows);
+
+    // Track sheet rows by their deck card ID to avoid duplicates
     const sheetCardIds = new Set(
-      sheetRows.map((r) => (r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : null)).filter(Boolean)
+      sheetRows
+        .map((r) => (r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : null))
+        .filter(Boolean)
     );
-    const deckOnlyRows: VocabSheetRow[] = deckCards
-      .filter((c) => c.kind === "vocab" && !sheetCardIds.has(c.id))
+
+    // Deck-only rows (not present in any sheet): both vocab + kanji
+    const deckOnlyRows: DisplayRow[] = deckCards
+      .filter((c) => !sheetCardIds.has(c.id))
       .map((c) => ({
         id: c.id,
         word: c.word,
-        furigana: c.reading,
+        furigana: c.kind === "vocab" ? c.reading : "",
         romaji: "",
         meaning: c.meanings.join("; "),
         dictMatch: { id: c.id, word: c.word, reading: c.reading, meanings: c.meanings, example: c.example },
         addedToDeckAt: c.createdAt,
         updatedAt: c.updatedAt,
+        rowKind: c.kind,
+        deckCard: c,
       }));
-    return [...sheetRows, ...deckOnlyRows];
-  }, [sheets, deckCards]);
+
+    // OCR sheet rows enriched with their deck card if present
+    const enrichedSheetRows: DisplayRow[] = sheetRows.map((r) => {
+      const cardId = r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : "";
+      const deckCard = cardId ? deckById.get(cardId) : undefined;
+      return { ...r, rowKind: "vocab" as const, deckCard };
+    });
+
+    return [...enrichedSheetRows, ...deckOnlyRows];
+  }, [sheets, deckCards, deckById]);
+
+  const dueCount = useMemo(() => getDueLookupCards(deckCards).length, [deckCards]);
 
   const visibleRows = useMemo(() => {
+    let rows = allRows;
+    if (segment === "words") rows = rows.filter((r) => r.rowKind === "vocab");
+    if (segment === "kanji") rows = rows.filter((r) => r.rowKind === "kanji");
     const needle = query.trim().toLowerCase();
-    if (!needle) return allRows;
-    return allRows.filter((row) =>
+    if (!needle) return rows;
+    return rows.filter((row) =>
       [row.word, row.furigana, row.romaji, row.meaning, row.dictMatch?.word, row.dictMatch?.reading, row.dictMatch?.meanings.join(" ")]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(needle)
     );
-  }, [query, allRows]);
+  }, [query, segment, allRows]);
 
   async function refreshDeck() {
     setDeckCards(await getLookupCards());
@@ -147,20 +190,64 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     setImportReview(null);
   }
 
+  async function handleRemove(id: string) {
+    const next = await removeLookupCard(id);
+    setDeckCards(next);
+    onDeckChange?.();
+  }
+
+  async function handleReviewDone(updated: LookupCard[]) {
+    setDeckCards(updated);
+    await saveLookupCards(updated);
+    onDeckChange?.();
+  }
+
+  if (reviewing) {
+    return (
+      <ReviewSession
+        cards={deckCards}
+        onExit={() => setReviewing(false)}
+        onCardsChange={handleReviewDone}
+      />
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-900 flex items-center gap-2">
           <FileImage className="h-6 w-6 text-indigo-600" /> Vocab
           {allRows.length > 0 && (
-            <span className="text-sm font-bold text-zinc-400 normal-case tracking-normal">{allRows.length} words</span>
+            <span className="text-sm font-bold text-zinc-400 normal-case tracking-normal">
+              {allRows.length} words{dueCount > 0 ? ` · ${dueCount} due` : ""}
+            </span>
           )}
         </h2>
-        <label className={`flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${importing ? "opacity-60 pointer-events-none" : ""}`}>
-          {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {importing ? "Reading image..." : "Import image"}
-          <input type="file" accept="image/*" className="hidden" onChange={handleImport} disabled={importing} />
-        </label>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={onOpenSearch}
+            className="flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 px-3 py-2 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          >
+            <Search className="h-4 w-4" /> Search
+          </button>
+          <label className={`flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 px-3 py-2 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${importing ? "opacity-60 pointer-events-none" : ""}`}>
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {importing ? "Reading…" : "Import"}
+            <input type="file" accept="image/*" className="hidden" onChange={handleImport} disabled={importing} />
+          </label>
+          <button
+            onClick={() => setReviewing(true)}
+            disabled={dueCount === 0}
+            className={`flex items-center gap-2 rounded-2xl border-2 border-zinc-900 px-3 py-2 text-xs font-black uppercase tracking-wide ${
+              dueCount === 0
+                ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            }`}
+          >
+            <Play className="h-4 w-4" /> Review{dueCount > 0 ? ` ${dueCount}` : ""}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -183,30 +270,57 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
           <div className="mx-auto w-14 h-14 rounded-2xl border-2 border-zinc-900 bg-indigo-50 flex items-center justify-center">
             <FileImage className="h-6 w-6 text-indigo-600" />
           </div>
-          <p className="text-sm font-bold text-zinc-500">No vocabulary yet — import an image to get started.</p>
-          <label className={`inline-flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white hover:bg-indigo-500 px-5 py-3 text-xs font-black uppercase tracking-wide shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${importing ? "opacity-60 pointer-events-none" : ""}`}>
-            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {importing ? "Reading image..." : "Import image"}
-            <input type="file" accept="image/*" className="hidden" onChange={handleImport} disabled={importing} />
-          </label>
+          <p className="text-sm font-bold text-zinc-500">No vocabulary yet.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button
+              onClick={onOpenSearch}
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-white hover:bg-indigo-50 px-4 py-2.5 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <Search className="h-4 w-4" /> Search dictionary
+            </button>
+            <label className={`inline-flex items-center gap-2 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white hover:bg-indigo-500 px-5 py-3 text-xs font-black uppercase tracking-wide shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${importing ? "opacity-60 pointer-events-none" : ""}`}>
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {importing ? "Reading image..." : "Import image"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleImport} disabled={importing} />
+            </label>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="relative max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter words"
-              className="w-full rounded-xl border-2 border-zinc-900 pl-9 pr-3 py-2 text-xs font-bold bg-white"
-            />
+          {/* Filter row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Segment pills */}
+            <div className="flex bg-white rounded-2xl border-2 border-zinc-900 p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              {(["all", "words", "kanji"] as SegmentFilter[]).map((seg) => (
+                <button
+                  key={seg}
+                  onClick={() => setSegment(seg)}
+                  className={`relative px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors ${
+                    segment === seg ? "bg-indigo-600 text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]" : "text-zinc-500 hover:text-zinc-900"
+                  }`}
+                >
+                  {seg === "all" ? "All" : seg === "words" ? "語" : "字"}
+                </button>
+              ))}
+            </div>
+            {/* Text filter */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter"
+                className="rounded-xl border-2 border-zinc-900 pl-9 pr-3 py-1.5 text-xs font-bold bg-white w-36"
+              />
+            </div>
           </div>
+
           {visibleRows.length === 0 ? (
             <div className="bg-zinc-50 border-2 border-dashed border-zinc-300 rounded-2xl p-6 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
               No matching words.
             </div>
           ) : (
-            <VocabReferenceTable rows={visibleRows} deckIds={deckIds} />
+            <VocabReferenceTable rows={visibleRows} onRemove={handleRemove} />
           )}
         </div>
       )}
@@ -215,7 +329,7 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
         {importReview ? (
           <ImportReviewModal
             sheet={importReview.sheet}
-            deckIds={deckIds}
+            deckById={deckById}
             onConfirm={handleConfirmImport}
             onDiscard={handleDiscardImport}
           />
@@ -225,76 +339,118 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
   );
 };
 
-// ─── Compact read-only reference table ──────────────────────────────────────
+// ─── SRS status helpers ──────────────────────────────────────────────────────
+
+function SrsStatusCell({ card }: { card?: LookupCard }) {
+  if (!card) return <td className="w-16 px-3 py-2" />;
+
+  if (isLookupCardDue(card)) {
+    return (
+      <td className="w-16 px-3 py-2">
+        <span className="text-[9px] font-black uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5 whitespace-nowrap">
+          Due
+        </span>
+      </td>
+    );
+  }
+  if (card.state === State.New) {
+    return (
+      <td className="w-16 px-3 py-2">
+        <span className="text-[9px] font-black uppercase tracking-wide text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg px-1.5 py-0.5 whitespace-nowrap">
+          New
+        </span>
+      </td>
+    );
+  }
+  return (
+    <td className="w-16 px-3 py-2">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" title="Scheduled" />
+    </td>
+  );
+}
+
+// ─── Compact reference table ─────────────────────────────────────────────────
 
 const VocabReferenceTable: React.FC<{
-  rows: VocabSheetRow[];
-  deckIds: Set<string>;
-}> = ({ rows, deckIds }) => (
-    <div className="overflow-x-auto rounded-[24px] border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-      <table className="min-w-[640px] w-full border-collapse text-left">
-        <thead className="bg-zinc-50 border-b-2 border-zinc-900">
-          <tr className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-            <th className="w-52 px-4 py-2.5">Word</th>
-            <th className="w-40 px-4 py-2.5">Furigana</th>
-            <th className="w-36 px-4 py-2.5">Romaji</th>
-            <th className="px-4 py-2.5">English</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-                const match = row.dictMatch;
-                const word = match?.word || row.word || "";
-                const furigana = row.furigana || match?.reading || "";
-                const romaji = row.romaji || "";
-                const english = row.meaning || match?.meanings.join("; ") || "";
-                const lookupId = match ? lookupCardId("vocab", match.word, match.reading) : "";
-                const inDeck = (!!lookupId && deckIds.has(lookupId)) || !!row.addedToDeckAt;
-                return (
-                  <motion.tr
-                    key={row.id}
-                    initial={{ opacity: 0, y: 3 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.1 }}
-                    className="align-middle border-b border-zinc-100 last:border-b-0 hover:bg-zinc-50/60 transition-colors"
+  rows: DisplayRow[];
+  onRemove: (id: string) => void;
+}> = ({ rows, onRemove }) => (
+  <div className="overflow-x-auto rounded-[24px] border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    <table className="min-w-[640px] w-full border-collapse text-left">
+      <thead className="bg-zinc-50 border-b-2 border-zinc-900">
+        <tr className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+          <th className="w-16 px-3 py-2.5">SRS</th>
+          <th className="w-52 px-4 py-2.5">Word</th>
+          <th className="w-40 px-4 py-2.5">Reading</th>
+          <th className="w-36 px-4 py-2.5">Romaji</th>
+          <th className="px-4 py-2.5">English</th>
+          <th className="w-10 px-2 py-2.5" />
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => {
+          const match = row.dictMatch;
+          const word = match?.word || row.word || "";
+          const reading = row.furigana || match?.reading || "";
+          const romaji = row.romaji || "";
+          const english = row.meaning || match?.meanings.join("; ") || "";
+          const isKanjiRow = row.rowKind === "kanji";
+
+          return (
+            <motion.tr
+              key={row.id}
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.1 }}
+              className="group align-middle border-b border-zinc-100 last:border-b-0 hover:bg-zinc-50/60 transition-colors"
+            >
+              <SrsStatusCell card={row.deckCard} />
+              <td className="px-4 py-2">
+                <div className="flex items-center gap-2">
+                  {isKanjiRow && (
+                    <span className="shrink-0 text-[9px] font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded px-1 leading-tight">字</span>
+                  )}
+                  <div className="text-base font-black text-zinc-950 leading-tight">
+                    <KanjiText text={word || " "} />
+                  </div>
+                </div>
+              </td>
+              <td className="px-4 py-2">
+                <span className="text-xs font-bold text-indigo-700">{reading}</span>
+              </td>
+              <td className="px-4 py-2">
+                <span className="text-xs font-bold text-zinc-400">{romaji}</span>
+              </td>
+              <td className="px-4 py-2">
+                <span className="text-xs font-bold text-zinc-700 leading-snug">{english}</span>
+              </td>
+              <td className="px-2 py-2 text-right">
+                {row.deckCard && (
+                  <button
+                    onClick={() => onRemove(row.deckCard!.id)}
+                    aria-label={`Remove ${word}`}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-300 hover:text-rose-600"
                   >
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        {inDeck ? (
-                          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-400" title="In deck" />
-                        ) : (
-                          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-transparent" />
-                        )}
-                        <div className="text-base font-black text-zinc-950 leading-tight">
-                          <KanjiText text={word || " "} />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="text-xs font-bold text-indigo-700">{furigana}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="text-xs font-bold text-zinc-500">{romaji}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="text-xs font-bold text-zinc-700 leading-snug">{english}</span>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-        </tbody>
-      </table>
-    </div>
-  );
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </td>
+            </motion.tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
 
 // ─── Import review modal ─────────────────────────────────────────────────────
 
 const ImportReviewModal: React.FC<{
   sheet: VocabSheet;
-  deckIds: Set<string>;
+  deckById: Map<string, LookupCard>;
   onConfirm: (sheet: VocabSheet, selectedRowIds: Set<string>) => Promise<void>;
   onDiscard: () => void;
-}> = ({ sheet, deckIds, onConfirm, onDiscard }) => {
+}> = ({ sheet, deckById, onConfirm, onDiscard }) => {
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(sheet.rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id))
   );
@@ -331,7 +487,6 @@ const ImportReviewModal: React.FC<{
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onDiscard} />
 
       <motion.div
@@ -341,7 +496,6 @@ const ImportReviewModal: React.FC<{
         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 w-full max-w-2xl bg-white border-2 border-zinc-900 rounded-[28px] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh]"
       >
-        {/* Header */}
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b-2 border-zinc-100 shrink-0">
           <div>
             <h3 className="text-base font-black uppercase tracking-tight text-zinc-900">Review import</h3>
@@ -358,7 +512,6 @@ const ImportReviewModal: React.FC<{
           </button>
         </div>
 
-        {/* Row list */}
         <div className="overflow-y-auto flex-1 px-5 py-3 space-y-1">
           <div className="flex items-center justify-between mb-2">
             <button onClick={toggleAll} className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900">
@@ -374,7 +527,7 @@ const ImportReviewModal: React.FC<{
             const hasMatch = !!(match?.word && match?.reading);
             const isSelected = selected.has(row.id);
             const lookupId = match ? lookupCardId("vocab", match.word, match.reading) : "";
-            const inDeck = (!!lookupId && deckIds.has(lookupId)) || !!row.addedToDeckAt;
+            const inDeck = !!lookupId && deckById.has(lookupId);
             return (
               <div
                 key={row.id}
@@ -417,7 +570,6 @@ const ImportReviewModal: React.FC<{
           })}
         </div>
 
-        {/* Footer actions */}
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-t-2 border-zinc-100 shrink-0">
           <button
             onClick={onDiscard}

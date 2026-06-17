@@ -19,7 +19,6 @@ import { CharDictionary } from "./components/CharDictionary";
 import { AnkiPage } from "./components/AnkiPage";
 import { N5CoursePage } from "./components/N5CoursePage";
 import { DictionaryLookup } from "./components/DictionaryLookup";
-import { LookupDeckPage } from "./components/LookupDeckPage";
 import { VocabSheetPage } from "./components/VocabSheetPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { sound } from "./utils/audio";
@@ -27,7 +26,7 @@ import {
   Zap, BookOpen, Settings, Layers, GraduationCap,
   LogIn, LogOut, User, Volume2, VolumeX, ChevronDown,
   X, Mail, Key, Eye, EyeOff, UserPlus, Check, Sparkles, ShieldCheck,
-  Sun, Moon, Monitor, RefreshCw, Search, BookMarked,
+  Sun, Moon, Monitor, RefreshCw, Search,
   FileImage,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -626,7 +625,7 @@ function UserButton({ onSessionChange }: { onSessionChange: (user: AppUser | nul
 
 // ─── Main app ────────────────────────────────────────────────────────────────
 
-type MainTab = "n5" | "kana" | "vocab" | "anki" | "lookup" | "settings";
+type MainTab = "n5" | "kana" | "vocab" | "anki" | "settings";
 
 export default function App() {
   const [cards, setCards] = useState<SRSCard[]>([]);
@@ -770,7 +769,6 @@ export default function App() {
     { id: "kana", label: "Kana", icon: <span className="text-base font-black leading-none">あ</span> },
     { id: "vocab", label: "Vocab", icon: <FileImage className="h-4 w-4 shrink-0" /> },
     { id: "anki", label: "Anki Decks", icon: <Layers className="h-4 w-4 shrink-0" /> },
-    { id: "lookup", label: "My Deck", icon: <BookMarked className="h-4 w-4 shrink-0" /> },
     { id: "settings", label: "Settings", icon: <Settings className="h-4 w-4 shrink-0" /> },
   ];
 
@@ -884,14 +882,14 @@ export default function App() {
                 )}
 
                 {activeTab === "vocab" && (
-                  <VocabSheetPage onDeckChange={() => setLookupDeckVersion((v) => v + 1)} />
+                  <VocabSheetPage
+                    key={lookupDeckVersion}
+                    onDeckChange={() => setLookupDeckVersion((v) => v + 1)}
+                    onOpenSearch={() => setLookupOpen(true)}
+                  />
                 )}
 
                 {activeTab === "anki" && <AnkiPage />}
-
-                {activeTab === "lookup" && (
-                  <LookupDeckPage key={lookupDeckVersion} onOpenSearch={() => setLookupOpen(true)} />
-                )}
 
                 {activeTab === "settings" && <SettingsTab onResetDatabase={handleForceRefreshDB} />}
               </motion.div>
@@ -910,9 +908,8 @@ export default function App() {
           <span>
             {activeTab === "n5" && "Tap any kanji to see its parts & mnemonic"}
             {activeTab === "kana" && "Tap a kana or grid cell to hear pronunciation"}
-            {activeTab === "vocab" && "Imported vocab rows stay editable before they enter SRS"}
+            {activeTab === "vocab" && "Import or search to add — review what's due, tap any kanji for its breakdown"}
             {activeTab === "anki" && "Import .apkg files to study your own decks"}
-            {activeTab === "lookup" && "Search any word, then add it here to study"}
             {activeTab === "settings" && "Settings are saved on this device"}
           </span>
         </div>
