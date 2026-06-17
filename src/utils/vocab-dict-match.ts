@@ -5,7 +5,7 @@ import {
   type DictEntry,
   type SearchResult,
 } from "./dict";
-import type { ImportedVocabRow, VocabDictionaryMatch } from "./vocab-sheets";
+import type { ImportedVocabRow, VocabDictionaryMatch } from "./vocab-words";
 
 function normalizeLookupText(value: string): string {
   return value

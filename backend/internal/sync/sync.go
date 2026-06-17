@@ -69,7 +69,17 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 
 	// Lookup deck cards accumulate across devices, keyed by id, newest wins.
 	result.LookupDeck = mergeLookupDeck(existing.LookupDeck, incoming.LookupDeck)
-	result.VocabSheets = mergeVocabSheets(existing.VocabSheets, incoming.VocabSheets)
+
+	// Vocab words: migrate from legacy vocab_sheets on first push from an old client.
+	existingWords := existing.VocabWords
+	if len(existingWords) == 0 && len(existing.VocabSheets) > 0 {
+		existingWords = flattenVocabSheets(existing.VocabSheets)
+	}
+	incomingWords := incoming.VocabWords
+	if len(incomingWords) == 0 && len(incoming.VocabSheets) > 0 {
+		incomingWords = flattenVocabSheets(incoming.VocabSheets)
+	}
+	result.VocabWords = mergeVocabWords(existingWords, incomingWords)
 
 	return json.Marshal(result)
 }
@@ -211,15 +221,38 @@ func mergeLookupDeck(existing, incoming []map[string]any) []map[string]any {
 	)
 }
 
-// mergeVocabSheets merges imported OCR sheets keyed by "id", newest "updatedAt"
-// wins. Rows are embedded in each sheet blob and are owned by the frontend.
-func mergeVocabSheets(existing, incoming []map[string]any) []map[string]any {
+// mergeVocabWords merges flat vocab word entries keyed by "id", newest "updatedAt" wins.
+func mergeVocabWords(existing, incoming []map[string]any) []map[string]any {
 	return mergeByUpdatedAt(existing, incoming,
 		func(c map[string]any) string { return getString(c, keyID) },
 		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },
 		cloneMap,
 		true,
 	)
+}
+
+// flattenVocabSheets converts legacy vocab_sheets (array of sheet objects with nested rows)
+// into the flat vocab_words format. Used once during migration.
+func flattenVocabSheets(sheets []map[string]any) []map[string]any {
+	var words []map[string]any
+	for _, sheet := range sheets {
+		sourceFileName := getString(sheet, "sourceFileName")
+		sheetCreatedAt := getNumber(sheet, "createdAt")
+		rows, _ := sheet["rows"].([]any)
+		for _, rowAny := range rows {
+			row, ok := rowAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			word := cloneMap(row)
+			word["sourceFileName"] = sourceFileName
+			if _, hasCreatedAt := word["createdAt"]; !hasCreatedAt {
+				word["createdAt"] = sheetCreatedAt
+			}
+			words = append(words, word)
+		}
+	}
+	return words
 }
 
 func mergeN5CourseProgress(existing, incoming map[string]any) map[string]any {

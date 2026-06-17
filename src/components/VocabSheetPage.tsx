@@ -15,13 +15,13 @@ import {
 } from "../utils/lookup-deck";
 import { enrichImportedRowsWithDictionary } from "../utils/vocab-dict-match";
 import {
-  createVocabSheet,
-  getVocabSheets,
-  saveVocabSheets,
+  createVocabWordsFromImport,
+  getVocabWords,
+  normalizeVocabWords,
+  saveVocabWords,
   type ImportedVocabRow,
-  type VocabSheet,
-  type VocabSheetRow,
-} from "../utils/vocab-sheets";
+  type VocabWord,
+} from "../utils/vocab-words";
 import { KanjiText } from "./KanjiBreakdown";
 import { ReviewSession } from "./LookupReviewSession";
 import { State } from "ts-fsrs";
@@ -34,8 +34,8 @@ interface ImportResult {
   warnings?: string[];
 }
 
-// A VocabSheetRow enriched with deck card info for SRS display
-interface DisplayRow extends VocabSheetRow {
+// A VocabWord enriched with deck card info for SRS display
+interface DisplayRow extends VocabWord {
   rowKind: "vocab" | "kanji";
   deckCard?: LookupCard;
 }
@@ -44,18 +44,18 @@ export const VocabSheetPage: React.FC<{
   onDeckChange?: () => void;
   onOpenSearch: () => void;
 }> = ({ onDeckChange, onOpenSearch }) => {
-  const [sheets, setSheets] = useState<VocabSheet[]>([]);
+  const [words, setWords] = useState<VocabWord[]>([]);
   const [deckCards, setDeckCards] = useState<LookupCard[]>([]);
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<SegmentFilter>("all");
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [importReview, setImportReview] = useState<{ sheet: VocabSheet; previewURL: string } | null>(null);
+  const [importReview, setImportReview] = useState<{ rows: VocabWord[]; previewURL: string } | null>(null);
   const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
     loadExtendedKanjiInsights().catch(() => {});
-    getVocabSheets().then(setSheets);
+    getVocabWords().then(setWords);
     refreshDeck();
   }, []);
 
@@ -68,24 +68,24 @@ export const VocabSheetPage: React.FC<{
   const deckById = useMemo(() => new Map(deckCards.map((c) => [c.id, c])), [deckCards]);
 
   const allRows = useMemo<DisplayRow[]>(() => {
-    const sheetRows = sheets.flatMap((s) => s.rows);
-
-    // Track sheet rows by their deck card ID to avoid duplicates
-    const sheetCardIds = new Set(
-      sheetRows
+    // Track vocab words by their deck card ID to avoid duplicates in the deck-only list
+    const wordCardIds = new Set(
+      words
         .map((r) => (r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : null))
         .filter(Boolean)
     );
 
-    // Deck-only rows (not present in any sheet): both vocab + kanji
+    // Deck-only rows (added via dictionary search, not via image import): both vocab + kanji
     const deckOnlyRows: DisplayRow[] = deckCards
-      .filter((c) => !sheetCardIds.has(c.id))
+      .filter((c) => !wordCardIds.has(c.id))
       .map((c) => ({
         id: c.id,
         word: c.word,
         furigana: c.kind === "vocab" ? c.reading : "",
         romaji: "",
         meaning: c.meanings.join("; "),
+        sourceFileName: "",
+        createdAt: c.createdAt,
         dictMatch: { id: c.id, word: c.word, reading: c.reading, meanings: c.meanings, example: c.example },
         addedToDeckAt: c.createdAt,
         updatedAt: c.updatedAt,
@@ -93,15 +93,15 @@ export const VocabSheetPage: React.FC<{
         deckCard: c,
       }));
 
-    // OCR sheet rows enriched with their deck card if present
-    const enrichedSheetRows: DisplayRow[] = sheetRows.map((r) => {
+    // Vocab words enriched with their deck card if present
+    const enrichedWords: DisplayRow[] = words.map((r) => {
       const cardId = r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : "";
       const deckCard = cardId ? deckById.get(cardId) : undefined;
       return { ...r, rowKind: "vocab" as const, deckCard };
     });
 
-    return [...enrichedSheetRows, ...deckOnlyRows];
-  }, [sheets, deckCards, deckById]);
+    return [...enrichedWords, ...deckOnlyRows];
+  }, [words, deckCards, deckById]);
 
   const dueCount = useMemo(() => getDueLookupCards(deckCards).length, [deckCards]);
 
@@ -145,11 +145,11 @@ export const VocabSheetPage: React.FC<{
       }
       const result = payload.data as ImportResult;
       const rows = await enrichImportedRowsWithDictionary(result.rows || []);
-      const sheet = createVocabSheet(file.name, rows);
-      if (sheet.rows.length === 0) throw new Error("No vocabulary rows found in image.");
+      const imported = createVocabWordsFromImport(file.name, rows);
+      if (imported.length === 0) throw new Error("No vocabulary rows found in image.");
       if (importReview) URL.revokeObjectURL(importReview.previewURL);
-      setImportReview({ sheet, previewURL: URL.createObjectURL(file) });
-      notify("success", `Found ${sheet.rows.length} row${sheet.rows.length === 1 ? "" : "s"} with ${result.engine}.`);
+      setImportReview({ rows: imported, previewURL: URL.createObjectURL(file) });
+      notify("success", `Found ${imported.length} row${imported.length === 1 ? "" : "s"} with ${result.engine}.`);
       if (result.warnings?.length) console.warn("Vocabulary OCR warnings", result.warnings);
     } catch (error: any) {
       sound.playIncorrect();
@@ -160,12 +160,11 @@ export const VocabSheetPage: React.FC<{
     }
   }
 
-  async function handleConfirmImport(sheet: VocabSheet, selectedRowIds: Set<string>) {
-    const rowsToSave = sheet.rows.filter((r) => selectedRowIds.has(r.id));
-    const finalSheet = { ...sheet, rows: rowsToSave };
-    const nextSheets = [finalSheet, ...sheets];
-    setSheets(nextSheets);
-    await saveVocabSheets(nextSheets);
+  async function handleConfirmImport(importedRows: VocabWord[], selectedRowIds: Set<string>) {
+    const rowsToSave = importedRows.filter((r) => selectedRowIds.has(r.id));
+    const nextWords = normalizeVocabWords([...rowsToSave, ...words]);
+    setWords(nextWords);
+    await saveVocabWords(nextWords);
 
     const targets = rowsToSave.filter((r) => r.dictMatch?.word && r.dictMatch?.reading);
     let added = 0;
@@ -328,7 +327,7 @@ export const VocabSheetPage: React.FC<{
       <AnimatePresence>
         {importReview ? (
           <ImportReviewModal
-            sheet={importReview.sheet}
+            rows={importReview.rows}
             deckById={deckById}
             onConfirm={handleConfirmImport}
             onDiscard={handleDiscardImport}
@@ -446,13 +445,13 @@ const VocabReferenceTable: React.FC<{
 // ─── Import review modal ─────────────────────────────────────────────────────
 
 const ImportReviewModal: React.FC<{
-  sheet: VocabSheet;
+  rows: VocabWord[];
   deckById: Map<string, LookupCard>;
-  onConfirm: (sheet: VocabSheet, selectedRowIds: Set<string>) => Promise<void>;
+  onConfirm: (rows: VocabWord[], selectedRowIds: Set<string>) => Promise<void>;
   onDiscard: () => void;
-}> = ({ sheet, deckById, onConfirm, onDiscard }) => {
+}> = ({ rows, deckById, onConfirm, onDiscard }) => {
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(sheet.rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id))
+    () => new Set(rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id))
   );
   const [confirming, setConfirming] = useState(false);
 
@@ -466,19 +465,19 @@ const ImportReviewModal: React.FC<{
   }
 
   function toggleAll() {
-    const matchedIds = sheet.rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id);
+    const matchedIds = rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).map((r) => r.id);
     const allSelected = matchedIds.length > 0 && matchedIds.every((id) => selected.has(id));
     setSelected(allSelected ? new Set() : new Set(matchedIds));
   }
 
   async function handleConfirm() {
     setConfirming(true);
-    await onConfirm(sheet, selected);
+    await onConfirm(rows, selected);
     setConfirming(false);
   }
 
-  const matchedCount = sheet.rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).length;
-  const selectedCount = sheet.rows.filter((r) => selected.has(r.id)).length;
+  const matchedCount = rows.filter((r) => r.dictMatch?.word && r.dictMatch?.reading).length;
+  const selectedCount = rows.filter((r) => selected.has(r.id)).length;
 
   return (
     <motion.div
@@ -500,7 +499,7 @@ const ImportReviewModal: React.FC<{
           <div>
             <h3 className="text-base font-black uppercase tracking-tight text-zinc-900">Review import</h3>
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mt-0.5">
-              {sheet.rows.length} detected · {matchedCount} matched
+              {rows.length} detected · {matchedCount} matched
             </p>
           </div>
           <button
@@ -519,7 +518,7 @@ const ImportReviewModal: React.FC<{
             </button>
             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{selectedCount} selected</span>
           </div>
-          {sheet.rows.map((row) => {
+          {rows.map((row) => {
             const match = row.dictMatch;
             const word = match?.word || row.word || "";
             const furigana = row.furigana || match?.reading || "";

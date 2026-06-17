@@ -592,27 +592,55 @@ func TestMergeStateLookupDeck(t *testing.T) {
 	}
 }
 
-func TestMergeStateVocabSheets(t *testing.T) {
+func TestMergeStateVocabWords(t *testing.T) {
 	existing := models.SyncState{
-		VocabSheets: []map[string]any{
-			{"id": "sheet-genki-1", "updatedAt": float64(200), "title": "Genki 1"},
+		VocabWords: []map[string]any{
+			{"id": "word-1", "updatedAt": float64(200), "word": "大学", "sourceFileName": "genki.png"},
 		},
 	}
 	incoming := models.SyncState{
-		VocabSheets: []map[string]any{
-			{"id": "sheet-genki-1", "updatedAt": float64(100), "title": "Older title"},
-			{"id": "sheet-genki-2", "updatedAt": float64(300), "title": "Genki 2"},
+		VocabWords: []map[string]any{
+			{"id": "word-1", "updatedAt": float64(100), "word": "大学 (older)", "sourceFileName": "genki.png"},
+			{"id": "word-2", "updatedAt": float64(300), "word": "学生", "sourceFileName": "genki.png"},
 		},
 	}
 
 	merged := mergeForTest(t, existing, incoming)
-	if len(merged.VocabSheets) != 2 {
-		t.Fatalf("expected two merged vocab sheets, got %#v", merged.VocabSheets)
+	if len(merged.VocabWords) != 2 {
+		t.Fatalf("expected two merged vocab words, got %#v", merged.VocabWords)
 	}
-	for _, sheet := range merged.VocabSheets {
-		if sheet["id"] == "sheet-genki-1" && sheet["title"] != "Genki 1" {
-			t.Fatalf("older incoming vocab sheet overwrote newer existing: %#v", sheet)
+	for _, word := range merged.VocabWords {
+		if word["id"] == "word-1" && word["word"] != "大学" {
+			t.Fatalf("older incoming vocab word overwrote newer existing: %#v", word)
 		}
+	}
+}
+
+func TestMergeStateVocabWordsMigrationFromSheets(t *testing.T) {
+	// Existing server state is old-format (vocab_sheets); incoming client is new-format (vocab_words).
+	// The merge should flatten the old sheets and merge with the new words.
+	existing := models.SyncState{
+		VocabSheets: []map[string]any{
+			{
+				"id": "sheet-1", "updatedAt": float64(100), "sourceFileName": "genki.png",
+				"rows": []any{
+					map[string]any{"id": "word-1", "updatedAt": float64(100), "word": "大学"},
+				},
+			},
+		},
+	}
+	incoming := models.SyncState{
+		VocabWords: []map[string]any{
+			{"id": "word-1", "updatedAt": float64(200), "word": "大学", "sourceFileName": "genki.png"},
+		},
+	}
+
+	merged := mergeForTest(t, existing, incoming)
+	if len(merged.VocabWords) != 1 {
+		t.Fatalf("expected one merged vocab word after migration, got %#v", merged.VocabWords)
+	}
+	if merged.VocabWords[0]["word"] != "大学" {
+		t.Fatalf("unexpected word after migration: %#v", merged.VocabWords[0])
 	}
 }
 
