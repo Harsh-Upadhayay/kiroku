@@ -23,13 +23,7 @@
       <stop offset="60%"  stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
 
-    <linearGradient id="glyphGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#56565c"/>
-      <stop offset="55%"  stop-color="#3a3a3e"/>
-      <stop offset="100%" stop-color="#242427"/>
-    </linearGradient>
-
-    <radialGradient id="dotGrad" cx="38%" cy="32%" r="75%">
+<radialGradient id="dotGrad" cx="38%" cy="32%" r="75%">
       <stop offset="0%"   stop-color="#ff7a6e"/>
       <stop offset="45%"  stop-color="#ff3b30"/>
       <stop offset="100%" stop-color="#c8241b"/>
@@ -43,11 +37,7 @@
       <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.5"/>
     </filter>
 
-    <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="3.2"/>
-    </filter>
-
-    <radialGradient id="vignette" cx="50%" cy="38%" r="72%">
+<radialGradient id="vignette" cx="50%" cy="38%" r="72%">
       <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
     </radialGradient>
@@ -67,10 +57,8 @@
     <rect x="70" y="70" width="372" height="372" fill="url(#vignette)"/>
     <rect x="70" y="70" width="372" height="220" fill="url(#glossGrad)"/>
 
-    <!-- embossed 力 -->
-    <use href="#chikara" fill="#000000" fill-opacity="0.6" transform="translate(0,5)" filter="url(#softBlur)"/>
-    <use href="#chikara" fill="#ffffff" fill-opacity="0.15" transform="translate(0,-2.5)"/>
-    <use href="#chikara" fill="url(#glyphGrad)"/>
+    <!-- 力 flat white — same as jpdb's "jp" on dark -->
+    <use href="#chikara" fill="#FFFFFF" fill-opacity="0.92"/>
   </g>
 
   <!-- crisp rim light -->
