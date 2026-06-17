@@ -12,14 +12,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Kiroku" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <!-- Adaptive home-screen icon: dark/light per OS preference (iOS 16.4+) -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon-dark.png"  media="(prefers-color-scheme: dark)" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon-light.png" media="(prefers-color-scheme: light)" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon-dark.png" />
-    <link rel="mask-icon" href="/icon-dark.svg" color="#1a1a1e" />
-    <!-- Adaptive favicon: SVG per color scheme, ICO fallback -->
-    <link rel="icon" href="/icon-dark.svg"  type="image/svg+xml" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/icon-light.svg" type="image/svg+xml" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/icon.svg" color="#4f46e5" />
+    <!-- Favicon (SVG for modern browsers, PNG fallback) -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="shortcut icon" href="/icon-192.png" />
+    <!-- Legacy ICO fallback -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <!-- Apply dark theme before first paint to avoid a light flash -->
     <script>
