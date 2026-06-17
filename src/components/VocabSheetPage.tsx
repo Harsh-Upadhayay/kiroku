@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { BookMarked, Check, FileImage, Loader2, Search, Trash2, Upload, X } from "lucide-react";
 import { sound } from "../utils/audio";
 import { loadExtendedKanjiInsights } from "../utils/kanji-insights";
-import { addLookupCard, getLookupCards, lookupCardId } from "../utils/lookup-deck";
+import { addLookupCard, getLookupCards, lookupCardId, type LookupCard } from "../utils/lookup-deck";
 import { enrichImportedRowsWithDictionary } from "../utils/vocab-dict-match";
 import {
   createVocabSheet,
@@ -23,7 +23,7 @@ interface ImportResult {
 
 export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeckChange }) => {
   const [sheets, setSheets] = useState<VocabSheet[]>([]);
-  const [deckIds, setDeckIds] = useState<Set<string>>(new Set());
+  const [deckCards, setDeckCards] = useState<LookupCard[]>([]);
   const [query, setQuery] = useState("");
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -32,7 +32,7 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
   useEffect(() => {
     loadExtendedKanjiInsights().catch(() => {});
     getVocabSheets().then(setSheets);
-    refreshDeckIds();
+    refreshDeck();
   }, []);
 
   useEffect(() => {
@@ -41,7 +41,29 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     };
   }, []);
 
-  const allRows = useMemo(() => sheets.flatMap((s) => s.rows), [sheets]);
+  const deckIds = useMemo(() => new Set(deckCards.map((c) => c.id)), [deckCards]);
+
+  // Sheet rows (have romaji from OCR) merged with any vocab deck cards not already
+  // represented in sheets (added via dictionary search).
+  const allRows = useMemo<VocabSheetRow[]>(() => {
+    const sheetRows = sheets.flatMap((s) => s.rows);
+    const sheetCardIds = new Set(
+      sheetRows.map((r) => (r.dictMatch ? lookupCardId("vocab", r.dictMatch.word, r.dictMatch.reading) : null)).filter(Boolean)
+    );
+    const deckOnlyRows: VocabSheetRow[] = deckCards
+      .filter((c) => c.kind === "vocab" && !sheetCardIds.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        word: c.word,
+        furigana: c.reading,
+        romaji: "",
+        meaning: c.meanings.join("; "),
+        dictMatch: { id: c.id, word: c.word, reading: c.reading, meanings: c.meanings, example: c.example },
+        addedToDeckAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      }));
+    return [...sheetRows, ...deckOnlyRows];
+  }, [sheets, deckCards]);
 
   const visibleRows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -55,9 +77,8 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     );
   }, [query, allRows]);
 
-  async function refreshDeckIds() {
-    const cards = await getLookupCards();
-    setDeckIds(new Set(cards.map((card) => card.id)));
+  async function refreshDeck() {
+    setDeckCards(await getLookupCards());
   }
 
   function notify(type: "success" | "error", text: string) {
@@ -104,17 +125,15 @@ export const VocabSheetPage: React.FC<{ onDeckChange?: () => void }> = ({ onDeck
     await saveVocabSheets(nextSheets);
 
     const targets = rowsToSave.filter((r) => r.dictMatch?.word && r.dictMatch?.reading);
-    const nextDeckIds = new Set(deckIds);
     let added = 0;
     let existing = 0;
     for (const row of targets) {
       const match = row.dictMatch!;
       const result = await addLookupCard({ kind: "vocab", word: match.word, reading: match.reading, meanings: match.meanings, example: match.example });
-      nextDeckIds.add(result.card.id);
       if (result.added) added += 1;
       else existing += 1;
     }
-    setDeckIds(nextDeckIds);
+    await refreshDeck();
     onDeckChange?.();
     sound.playCorrect();
     if (importReview) URL.revokeObjectURL(importReview.previewURL);
