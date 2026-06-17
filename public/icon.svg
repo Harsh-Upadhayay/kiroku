@@ -1,22 +1,42 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#5A4BFF"/>
-      <stop offset="100%" stop-color="#3526D9"/>
+    <clipPath id="r"><rect width="512" height="512" rx="108" ry="108"/></clipPath>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1C1C2E"/>
+      <stop offset="100%" stop-color="#0D0D18"/>
     </linearGradient>
+    <radialGradient id="pg" cx="50%" cy="60%" r="55%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="rgba(90,75,255,0.28)"/>
+      <stop offset="100%" stop-color="rgba(90,75,255,0)"/>
+    </radialGradient>
+    <linearGradient id="sh" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="28%" stop-color="rgba(255,255,255,0.01)"/>
+      <stop offset="29%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <filter id="f" x="-25%" y="-25%" width="155%" height="155%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="roundBlur"/>
+      <feColorMatrix in="roundBlur" type="matrix"
+        values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 15 -5"
+        result="roundedAlpha"/>
+      <feComposite in="SourceGraphic" in2="roundedAlpha" operator="in" result="rounded"/>
+      <feGaussianBlur in="roundedAlpha" stdDeviation="14" result="auraBlur"/>
+      <feFlood flood-color="#130030" flood-opacity="0.88" result="ac"/>
+      <feComposite in="ac" in2="auraBlur" operator="in" result="aura"/>
+      <feGaussianBlur in="roundedAlpha" stdDeviation="5" result="tblur"/>
+      <feFlood flood-color="#0a001a" flood-opacity="0.95" result="tc"/>
+      <feComposite in="tc" in2="tblur" operator="in" result="tight"/>
+      <feMerge>
+        <feMergeNode in="aura"/>
+        <feMergeNode in="tight"/>
+        <feMergeNode in="rounded"/>
+      </feMerge>
+    </filter>
   </defs>
-
-  <!-- Full-bleed opaque square: iOS/Android apply their own rounded mask, so
-       no transparent padding or corners (those caused the broken home-screen
-       icon). Matches the indigo カ logo shown on the homepage header. -->
-  <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
-
-  <!-- カ rendered as a static vector outline (extracted once from Droid Sans
-       Fallback via opentype.js), not text. The production Docker image has
-       no CJK fonts installed, so a font based text glyph rasterizes to
-       nothing there, which is what produced the blank "purple blob" iOS
-       home screen icon. A baked path has no font dependency at build time. -->
-  <path transform="translate(84.87,389.10) scale(0.360563)"
-        d="M484.38-605.47L851.56-605.47L835.94-179.69Q816.41 39.06 664.06 39.06L515.63 27.34L500-74.22L644.53-54.69Q699.22-54.69 720.70-89.84Q742.19-125 750-253.91L753.91-511.72L480.47-515.62Q445.31-136.72 164.06 46.88L97.66-27.34Q355.47-187.50 382.81-515.62L128.91-515.62L128.91-609.37L390.63-605.47L394.53-785.16L488.28-785.16Z"
-        fill="#FFFFFF"/>
+  <g clip-path="url(#r)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#pg)"/>
+    <rect width="512" height="512" fill="url(#sh)"/>
+    <path filter="url(#f)" transform="translate(84.87,389.10) scale(0.360563)" d="M484.38-605.47L851.56-605.47L835.94-179.69Q816.41 39.06 664.06 39.06L515.63 27.34L500-74.22L644.53-54.69Q699.22-54.69 720.70-89.84Q742.19-125 750-253.91L753.91-511.72L480.47-515.62Q445.31-136.72 164.06 46.88L97.66-27.34Q355.47-187.50 382.81-515.62L128.91-515.62L128.91-609.37L390.63-605.47L394.53-785.16L488.28-785.16Z" fill="rgba(255,255,255,0.72)"/>
+  </g>
 </svg>
