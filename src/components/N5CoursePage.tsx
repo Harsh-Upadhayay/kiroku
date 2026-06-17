@@ -380,7 +380,7 @@ export const N5CoursePage: React.FC = () => {
     await persistProgress(updateN5ProductionAnswer(progress, activeDayNumber, promptId, text));
   }
 
-  async function startDeckReview(opts: { scopeDay?: number; deck?: ReviewSessionState["deck"] } = {}) {
+  async function startDeckReview(opts: { scopeDay?: number; deck?: ReviewSessionState["deck"]; onlyDue?: boolean } = {}) {
     if (!progress) return;
     let allCards = cards;
     const ensured = ensureN5CardsForLearned(progress, cards, n5Course);
@@ -390,6 +390,7 @@ export const N5CoursePage: React.FC = () => {
     }
     let source = opts.scopeDay ? allCards.filter((c) => c.day === opts.scopeDay) : allCards;
     if (opts.deck && opts.deck !== "all") source = source.filter((c) => c.kind === opts.deck);
+    if (opts.onlyDue) source = dueN5Cards(source);
     const queue = buildCumulativeReviewQueue(source);
     if (queue.length === 0) return;
     sound.playTick();
@@ -556,6 +557,7 @@ export const N5CoursePage: React.FC = () => {
       syncState={syncLabel(isOnline, syncDirty)}
       onStart={() => startLesson(currentDayNumber)}
       onCumulativeReview={() => startCumulativeReview()}
+      onDueReview={() => startDeckReview({ onlyDue: true })}
       onDeckReview={(deck) => startDeckReview({ deck })}
       onMap={() => setMode("map")}
       onOpenKanjiLibrary={() => { sound.playTick(); setMode("kanji-library"); }}
@@ -654,11 +656,12 @@ const CourseHome: React.FC<{
   syncState: string;
   onStart: () => void;
   onCumulativeReview: () => void;
+  onDueReview: () => void;
   onDeckReview: (deck: ReviewSessionState["deck"]) => void;
   onMap: () => void;
   onOpenKanjiLibrary: () => void;
   onOpenVocabLibrary: () => void;
-}> = ({ progress, focusDay, dueCount, kanjiDueCount, vocabDueCount, grammarDueCount, learnedCardCount, syncState, onStart, onCumulativeReview, onDeckReview, onMap, onOpenKanjiLibrary, onOpenVocabLibrary }) => (
+}> = ({ progress, focusDay, dueCount, kanjiDueCount, vocabDueCount, grammarDueCount, learnedCardCount, syncState, onStart, onCumulativeReview, onDueReview, onDeckReview, onMap, onOpenKanjiLibrary, onOpenVocabLibrary }) => (
   <div className="space-y-4">
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <section className="lg:col-span-8 bg-white border-2 border-zinc-900 rounded-[28px] p-5 sm:p-6 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
@@ -675,7 +678,7 @@ const CourseHome: React.FC<{
             <Play className="h-4 w-4" /> Start
           </button>
           {learnedCardCount > 0 && (
-            <button onClick={onCumulativeReview} className="w-full sm:w-auto px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-white text-zinc-900 text-sm font-black uppercase flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:bg-indigo-50">
+            <button onClick={dueCount > 0 ? onDueReview : onCumulativeReview} className="w-full sm:w-auto px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-white text-zinc-900 text-sm font-black uppercase flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:bg-indigo-50">
               <History className="h-4 w-4" /> {dueCount > 0 ? `Review (${dueCount} due)` : `Practice all (${learnedCardCount})`}
             </button>
           )}
@@ -692,7 +695,7 @@ const CourseHome: React.FC<{
             <BookOpen className="h-6 w-6 text-indigo-600" />
           </div>
           {dueCount > 0 ? (
-            <button onClick={onCumulativeReview} className="mt-3 w-full px-3 py-2 rounded-xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Review now</button>
+            <button onClick={onDueReview} className="mt-3 w-full px-3 py-2 rounded-xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">Review now</button>
           ) : learnedCardCount > 0 ? (
             <button onClick={onCumulativeReview} className="mt-3 w-full px-3 py-2 rounded-xl border-2 border-zinc-900 bg-white text-zinc-900 text-xs font-black uppercase hover:bg-indigo-50">Practice all ({learnedCardCount})</button>
           ) : (
@@ -945,7 +948,6 @@ const ReviewStage: React.FC<React.ComponentProps<typeof LessonRunner>> = ({ day,
   }
   const content = card ? reviewContent(card) : null;
   if (!card || !content) {
-    const returnToDone = Boolean(state.stagesCompleted.produce);
     const dayCardCount = cards.filter((item) => item.day === day.day).length;
     return (
       <StageShell

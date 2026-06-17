@@ -1,6 +1,6 @@
 # Behavioural Bug Report — N5 Daily Learning Flow
 
-Static-analysis simulation across the full codebase (frontend + backend). Each entry includes the exact code location, the reproduction path, and the root cause.
+Static analysis, browser simulation, production-state inspection, and user reports across the full codebase (frontend + backend). Each entry includes the exact code location, the reproduction path, and the root cause.
 
 ---
 
@@ -342,8 +342,6 @@ If `rawN5Progress = null`, `n5_course_progress = undefined`. The server has the 
 
 ---
 
----
-
 ## BUG-16 — "Due now: 0" stat in Kanji/Vocab library always renders in amber even when there are no overdue cards
 
 **Severity**: Low (visual/UX)
@@ -367,6 +365,282 @@ accent={counts.due > 0 ? "text-amber-700" : "text-zinc-400"}
 
 ---
 
+## BUG-17 — Kanji breakdown components can contradict mnemonic and dictionary structure (`前`, `者`)
+
+**Severity**: Medium (learning-content correctness)  
+**Status**: User-reported, confirmed by code/data inspection and external kanji sources  
+**Files**: `src/content/n5/kanji-insights.ts:1238-1248`, `src/content/n5/kanji-insights.ts:5262-5269`, `scripts/build-kanji-insights.py:393-426`, `scripts/build-kanji-insights.py:512-522`
+
+### Reproduction
+1. Open the kanji breakdown modal for `前`.
+2. The modal displays components:
+   ```text
+   八 (eight) + 月 (month) + ⺉ (sword right) -> 前
+   ```
+3. The mnemonic underneath says:
+   ```text
+   horns (䒑), sword (刂), flesh (月), butcher (刖)
+   ```
+4. Open the kanji breakdown modal for `者`.
+5. The modal displays:
+   ```text
+   土 (soil) + 日 (day) -> 者
+   ```
+6. The mnemonic says:
+   ```text
+   old person (耂) ... days (日)
+   ```
+
+### External validation
+The mnemonic is closer to actual kanji structure than the displayed chips.
+
+- `前`: Kanshudo decomposes the kanji as `䒑 + 刖`; `刖` is the lower `月 + 刂/刀` piece. Wiktionary also describes the current form with `䒑`, `月`, and `刀`.
+- `者`: Kanshudo decomposes the kanji as `耂 + 日`. KanjiVG also marks `者` as top `耂` plus bottom `日`; `土` is only a child shape inside `耂`, not the learner-facing component.
+
+Useful references:
+- https://www.kanshudo.com/kanji/%E5%89%8D
+- https://www.kanshudo.com/kanji/%E8%80%85
+- https://en.wiktionary.org/wiki/%E5%89%8D
+- KanjiVG `/tmp/kanjivg-cache/kanjivg.xml`: `kvg:0524d` (`前`) and `kvg:08005` (`者`)
+
+### Root cause
+The generated data currently contains the wrong display components:
+
+```ts
+"前": {
+  "components": ["八", "月", "⺉"]
+}
+
+"者": {
+  "components": ["土", "日"]
+}
+```
+
+The generator has two separate failure modes:
+
+1. `前`: the RRTK story parser extracts `䒑`, `月`, `刂`, and `刖` from the mnemonic. Because `刖` is a derived/combined component and not accepted by the strict KanjiVG closure check, the story-based path is rejected. The generator falls back to the plain KanjiVG walk, which exposes the top as `八` plus a horizontal stroke rather than the learner-facing `䒑`.
+2. `者`: `耂` is present in KanjiVG but is not in `RADICAL_MEANINGS`, so `resolvable("耂")` is false. `kvg_components()` descends into `耂` and emits its child `土`, losing the correct learner-facing component.
+
+### Fix direction
+Add hand-audited overrides for these course kanji, and make the missing radical resolvable:
+
+```py
+RADICAL_MEANINGS["耂"] = "old person (top)"
+COMPONENT_OVERRIDES["前"] = ["䒑", "月", "⺉"]  # or ["䒑", "刖"] if 刖 gets its own entry
+COMPONENT_OVERRIDES["者"] = ["耂", "日"]
+```
+
+Then regenerate both generated artifacts:
+
+```sh
+python3 scripts/build-kanji-insights.py
+python3 scripts/build-kanji-insights.py --full
+```
+
+Add a focused test or validation assertion so `前` and `者` do not regress.
+
+---
+
+## BUG-18 — Grammar review can show a statement with four particles but no visible task instruction
+
+**Severity**: Medium (review UX / learning clarity)  
+**Status**: User-reported, reproduced from `buildMcQuestion()`  
+**Files**: `src/utils/n5-mc.ts:191-236`, `src/components/N5McReview.tsx:104-111`, `src/content/n5/raw/grammar/grammar_complete.md:9-24`
+
+### Reproduction
+1. Review grammar card `G01 — です / だ (copula)`.
+2. When the card has `reps = 2`, the selected example is:
+   ```text
+   学生でした。 — I was a student.
+   ```
+3. `buildMcQuestion()` returns:
+   ```ts
+   {
+     kind: "grammar-meaning",
+     promptMain: "I was a student.",
+     promptSub: "学生でした。",
+     options: ["は", "の", "です / だ", "か"],
+     correct: "です / だ"
+   }
+   ```
+4. The UI renders only the statement and options. There is no visible instruction such as "Pick the grammar pattern used in this sentence."
+
+### Root cause
+The grammar MC builder first tries to create a blank question:
+
+```ts
+const tokens = extractGrammarTokens(point.structure || "");
+const blankToken = tokens.find((t) => example.japanese.includes(t));
+```
+
+For `G01`, `extractGrammarTokens("〔noun/な-adj〕です (polite) / だ (casual)")` yields tokens like `です` and `だ`. The example `学生でした。` contains neither exact token, because `でした` is the past polite form of `です`.
+
+Since no exact token is found, the builder falls back to `grammar-meaning`:
+
+```ts
+const promptMain = example.translation || point.explanation.split(".")[0];
+const promptSub = example.japanese;
+```
+
+That fallback is logically answerable, but the component renders it like an ordinary prompt with no task label, so it looks like a random statement plus four options.
+
+### Fix direction
+There are two complementary fixes:
+
+1. Make grammar blanking conjugation-aware for common forms introduced in the same grammar point:
+   - `です`
+   - `でした`
+   - `じゃないです`
+   - `ではありません`
+   - `だ`
+   - `だった`
+   - `じゃなかった`
+2. Add explicit prompt labels in `McReviewPanel` based on `question.kind`, especially:
+   - `grammar-blank`: "Choose the missing grammar"
+   - `grammar-meaning`: "Pick the grammar pattern used"
+   - `kanji-meaning`: "Pick the meaning"
+   - `kanji-reading`: "Pick the reading"
+
+The preferred behavior for `学生でした。` is likely a blank prompt:
+
+```text
+学生____。
+```
+
+with the correct option `でした` or `です / だ`, depending on whether the review is testing exact form or the broader grammar pattern.
+
+---
+
+## BUG-19 — "Review now" due count and review-session total use different card sets
+
+**Severity**: Medium (review workflow confusion)  
+**Status**: User-reported, confirmed against production account state  
+**Files**: `src/components/N5CoursePage.tsx:383-403`, `src/components/N5CoursePage.tsx:551-559`, `src/components/N5CoursePage.tsx:677-680`, `src/components/N5CoursePage.tsx:689-697`, `src/utils/n5-course.ts:453-475`
+
+### Reproduction
+1. Have a mix of due and not-yet-due N5 SRS cards.
+2. On the N5 home screen, observe the due count. In the reported production account, the server state had:
+   ```text
+   total N5 cards: 48
+   due N5 cards:   38
+   ```
+3. Click **Review now**.
+4. The review session shows a denominator based on all learned cards, e.g. `1 / 48`, not the `38` due count shown on the home screen.
+
+### Root cause
+The home screen computes `dueCount` from `dueCards.length`:
+
+```tsx
+const dueCards = useMemo(() => dueN5Cards(cards), [cards]);
+...
+dueCount={dueCards.length}
+```
+
+But clicking **Review now** calls:
+
+```tsx
+onCumulativeReview={() => startCumulativeReview()}
+```
+
+which aliases to:
+
+```tsx
+const startCumulativeReview = (scopeDay?: number) => startDeckReview({ scopeDay });
+```
+
+`startDeckReview()` then uses every learned card as the source:
+
+```tsx
+let source = opts.scopeDay ? allCards.filter((c) => c.day === opts.scopeDay) : allCards;
+const queue = buildCumulativeReviewQueue(source);
+```
+
+`buildCumulativeReviewQueue()` sorts due cards first, but intentionally returns all cards. So **Review now** is functionally **Practice all with due cards first**, while the UI labels it as a due-review flow.
+
+### Fix direction
+Make the clicked action determine the source set:
+
+- **Review now** / `Review (N due)` should pass only `dueN5Cards(allCards)`.
+- **Practice all (N)** should pass all learned cards.
+- Deck practice buttons can either:
+  - keep practicing all cards in the selected deck, or
+  - gain separate due-only vs practice-all buttons.
+
+Example shape:
+
+```ts
+startDeckReview({ onlyDue: true })
+startDeckReview({ onlyDue: false })
+```
+
+Then update labels:
+
+- due-only session: `Cumulative review`, denominator equals due count
+- all-card practice session: `Cumulative practice`, denominator equals learned count
+
+---
+
+## BUG-20 — Exiting a review session discards session position; restarting rebuilds the queue from card state
+
+**Severity**: Low-to-Medium (review workflow confusion)  
+**Status**: User-reported; prod state shows persistence is partial, but session progress itself is volatile  
+**Files**: `src/components/N5CoursePage.tsx:82-87`, `src/components/N5CoursePage.tsx:383-403`, `src/components/N5CoursePage.tsx:405-425`, `src/components/N5CoursePage.tsx:491-494`
+
+### Reproduction
+1. Start a standalone review session.
+2. Answer many cards.
+3. Exit before completing the full session.
+4. Return to review later.
+5. The session starts from a newly built queue and a fresh `1 / N` counter.
+
+### Root cause
+`ReviewSessionState` is React-only component state:
+
+```ts
+interface ReviewSessionState {
+  ids: string[];
+  index: number;
+  scopeDay?: number;
+  deck?: "vocab" | "kanji" | "grammar" | "all";
+}
+```
+
+When the user exits:
+
+```tsx
+setSession(null);
+setMode("home");
+```
+
+No session `ids`, `index`, start time, or intended source mode is persisted to IndexedDB. The next review launch calls `startDeckReview()` again and rebuilds a new queue from the current cards.
+
+The individual card schedules are persisted per grade in `gradeSessionCard()`:
+
+```tsx
+await persistCards(cards.map((item) => item.id === card.id ? updatedCard : item));
+await persistLogs([log, ...logs]);
+```
+
+So this is not a total persistence-loss bug. In the production account inspected for the report, some cards had been rescheduled into the future, while 38 remained due. The confusing behavior is that the session counter and queue position are not durable, and Bug-19 makes the denominator include not-yet-due cards.
+
+### Additional contributor
+For cards graded `Again`, `Hard`, or sometimes `Good` while in a learning state, FSRS can reschedule the next due time only minutes ahead. If the user stops and returns after that short interval, those cards can legitimately be due again. The UI does not explain this distinction, so it can look like completed work was lost.
+
+### Fix direction
+At minimum, fix Bug-19 so due-review sessions only include due cards. That makes the pending count understandable.
+
+For a fuller fix:
+
+- Persist an active review session record:
+  - source mode (`due-only`, `practice-all`, deck, day)
+  - ordered `ids`
+  - current `index`
+  - created/updated timestamp
+- On relaunch, offer to resume the in-progress session if it is still fresh.
+- Alternatively, keep sessions stateless but change copy to make it clear that progress is saved per card, not by session position.
+
+---
+
 ## BUG-04 — CONFIRMED via live browser simulation
 
 The static analysis finding was validated in a real Chromium browser. With Day 1 cards loaded into the review session (27 cards, all marked "EARLY · DUE 23H"):
@@ -381,21 +655,25 @@ Screenshot: `sim-29-show-answer.png`. The behaviour matches the code path in `N5
 
 ## Summary Table
 
-| # | Area | Severity | Short description |
-|---|------|----------|-------------------|
-| 01 | Frontend minimap | High | skip→learn→skip shows green not amber |
-| 02 | Frontend flow | High | Minimap "Done" click bypasses Produce, marks day complete |
-| 03 | Frontend sync | Medium | Silent reload preserves wrong day (stale closure) |
-| 04 | Frontend UX | Medium | Enter/Space inert after "Show answer" in review (**browser-confirmed**) |
-| 15 | Backend sync | Medium | IsDestructive rejects first-login push on clean device |
-| 05 | Frontend display | Low | displayPos overcounts in Vocab/Kanji heading |
-| 06 | Backend health | Low | Orphaned rows from two NowMillis() calls |
-| 07 | Code hygiene | Low | Dead LessonMinimap component (180 lines, never rendered) |
-| 08 | Frontend race | Low | Grade buttons lack in-flight guard (double-tap) |
-| 09 | Frontend logic | Low | readOnly completeStage skips completed-stage avoidance logic |
-| 10 | Frontend UX | Low | firstUnlearnedIndex returns last item when all learned |
-| 11 | Frontend flow | Low | "All caught up" Continue bypasses completeN5Stage |
-| 12 | Frontend display | Low | Grammar cells show "none" instead of "learnt" for partial progress in non-grammar stage |
-| 13 | Frontend UX | Low | redoDay + firstUnlearnedIndex drops cursor on last item |
-| 14 | Frontend UX | Low | tailAllSkipped shows two finish actions simultaneously |
-| 16 | Frontend visual | Low | "Due now: 0" stat in library rendered in amber (urgency colour) even when nothing is overdue |
+| # | Area | Severity | Short description | Status |
+|---|------|----------|-------------------|--------|
+| 01 | Frontend minimap | High | skip→learn→skip shows green not amber | ✅ Fixed |
+| 02 | Frontend flow | High | Minimap "Done" click bypasses Produce, marks day complete | ✅ Fixed |
+| 03 | Frontend sync | Medium | Silent reload preserves wrong day (stale closure) | ✅ Fixed |
+| 04 | Frontend UX | Medium | Enter/Space inert after "Show answer" in review (**browser-confirmed**) | ✅ Fixed |
+| 15 | Backend sync | Medium | IsDestructive rejects first-login push on clean device | ✅ Fixed |
+| 17 | Content/data | Medium | Kanji breakdown chips contradict mnemonic and dictionary structure for `前` / `者` | ✅ Fixed |
+| 18 | Frontend review UX | Medium | Grammar fallback can show a statement plus options without telling the user what to answer | ✅ Fixed |
+| 19 | Frontend review flow | Medium | "Review now" displays due count but opens an all-learned-card session | ✅ Fixed |
+| 20 | Frontend review flow | Low-Medium | Exiting review discards session position; restarting rebuilds queue from card state | ⚠️ Partial (card schedules persist; session position does not) |
+| 05 | Frontend display | Low | displayPos overcounts in Vocab/Kanji heading | ✅ Fixed |
+| 06 | Backend health | Low | Orphaned rows from two NowMillis() calls | ✅ Fixed |
+| 07 | Code hygiene | Low | Dead LessonMinimap component (180 lines, never rendered) | ✅ Fixed |
+| 08 | Frontend race | Low | Grade buttons lack in-flight guard (double-tap) | ✅ Fixed |
+| 09 | Frontend logic | Low | readOnly completeStage skips completed-stage avoidance logic | ⚠️ Low-risk; defaultRevisitState always starts with empty stagesCompleted |
+| 10 | Frontend UX | Low | firstUnlearnedIndex returns last item when all learned | ✅ Fixed |
+| 11 | Frontend flow | Low | "All caught up" Continue bypasses completeN5Stage | ✅ Fixed (dead `returnToDone` code removed) |
+| 12 | Frontend display | Low | Grammar cells show "none" instead of "learnt" for partial progress in non-grammar stage | ✅ Fixed |
+| 13 | Frontend UX | Low | redoDay + firstUnlearnedIndex drops cursor on last item | ✅ Fixed (via BUG-10) |
+| 14 | Frontend UX | Low | tailAllSkipped shows two finish actions simultaneously | ✅ Fixed |
+| 16 | Frontend visual | Low | "Due now: 0" stat in library rendered in amber (urgency colour) even when nothing is overdue | ✅ Fixed |

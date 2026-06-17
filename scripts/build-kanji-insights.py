@@ -161,6 +161,7 @@ RADICAL_MEANINGS = {
     "龰": "footprint / foot",
     "㐄": "stride / dance step",
     "䒑": "horns / grass top",
+    "耂": "old person (top)",
     "业": "base / lined up",
     "丂": "obstructed breath",
     "覀": "west (top form)",
@@ -203,6 +204,8 @@ COMPONENT_OVERRIDES = {
     "国": ["囗", "玉"],
     "使": ["⺅", "吏"],
     "薬": ["⺾", "楽"],
+    "前": ["䒑", "月", "⺉"],
+    "者": ["耂", "日"],
 }
 
 # Target kanji that the RRTK deck does not contain.

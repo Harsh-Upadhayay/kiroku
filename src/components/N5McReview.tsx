@@ -103,6 +103,11 @@ export const McReviewPanel: React.FC<McReviewPanelProps> = ({
 
         {/* Prompt */}
         <div className="text-center py-4">
+          {(question.kind === "grammar-blank" || question.kind === "grammar-meaning") && (
+            <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              {question.kind === "grammar-blank" ? "Choose the missing grammar" : "Pick the grammar pattern used"}
+            </div>
+          )}
           <div className="text-xl sm:text-2xl font-black text-zinc-950 leading-relaxed break-words">
             {question.promptMain}
           </div>

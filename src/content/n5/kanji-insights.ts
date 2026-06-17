@@ -1239,7 +1239,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "in front of",
     "story": "At the bullfight, the matador stands bravely in front of the bull's horns (䒑). With his sword (刂), he'll dig into its flesh (月). Later on, the flesh (月) will be sent to the butcher (刖).",
     "components": [
-      "八",
+      "䒑",
       "月",
       "⺉"
     ],
@@ -5263,7 +5263,7 @@ export const KANJI_INSIGHTS: Record<string, KanjiInsight> = {
     "keyword": "someone",
     "story": "A 忍者(にん.じゃ) is someone who is able to endure (忍) dealing with an old person (耂) for many days (日).",
     "components": [
-      "土",
+      "耂",
       "日"
     ],
     "readings": "シャ / もの"
