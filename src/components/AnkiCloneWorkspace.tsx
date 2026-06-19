@@ -17,6 +17,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Trash2,
   Upload,
 } from "lucide-react";
 import {
@@ -69,6 +70,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const [newFilteredQuery, setNewFilteredQuery] = useState("is:due");
   const [editorFront, setEditorFront] = useState("");
   const [editorBack, setEditorBack] = useState("");
+  const [confirmDeleteDeckId, setConfirmDeleteDeckId] = useState<string | null>(null);
 
   useEffect(() => {
     reload();
@@ -273,6 +275,33 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     notify("success", `Created filtered deck with ${cardIds.length} cards.`);
   };
 
+  const handleDeleteDeck = async (deckId: string) => {
+    const targetDeck = collection.decks.find((d) => d.id === deckId);
+    if (!targetDeck) return;
+    const deckPrefix = `${targetDeck.name}::`;
+    const removedDeckIds = new Set(
+      collection.decks
+        .filter((d) => d.id === deckId || d.name.startsWith(deckPrefix))
+        .map((d) => d.id)
+    );
+    const remainingCards = collection.cards.filter((c) => !removedDeckIds.has(c.deckId));
+    const remainingCardIds = new Set(remainingCards.map((c) => c.id));
+    const remainingNoteIds = new Set(remainingCards.map((c) => c.noteId));
+    const next: AnkiCollection = {
+      ...collection,
+      decks: collection.decks.filter((d) => !removedDeckIds.has(d.id)),
+      cards: remainingCards,
+      notes: collection.notes.filter((n) => remainingNoteIds.has(n.id)),
+      reviewLogs: collection.reviewLogs.filter((log) => remainingCardIds.has(log.cardId)),
+    };
+    await persist(next);
+    setConfirmDeleteDeckId(null);
+    if (removedDeckIds.has(selectedDeckId)) {
+      setSelectedDeckId(next.decks[0]?.id || "");
+    }
+    notify("success", `Deleted "${targetDeck.name}" and all related progress.`);
+  };
+
   const exportCollection = () => {
     const blob = new Blob([JSON.stringify(collection, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
@@ -358,16 +387,43 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-4 space-y-2 max-h-[520px] overflow-y-auto pr-1">
             {deckRows.length === 0 ? <EmptyState text="Import an Anki package to populate decks." /> : deckRows.map((deck) => (
-              <button
+              <div
                 key={deck.id}
-                onClick={() => setSelectedDeckId(deck.id)}
-                className={`w-full text-left p-3 rounded-2xl border-2 ${selectedDeckId === deck.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200"}`}
+                className={`p-3 rounded-2xl border-2 ${selectedDeckId === deck.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200"}`}
               >
-                <span className="block text-xs font-black uppercase text-zinc-900 break-words">{deck.name}</span>
-                <span className="mt-2 flex gap-2 text-[10px] font-bold uppercase text-zinc-500">
-                  <span>{deck.total} cards</span><span>{deck.due} due</span><span>{deck.suspended} suspended</span>
-                </span>
-              </button>
+                <button className="w-full text-left" onClick={() => setSelectedDeckId(deck.id)}>
+                  <span className="block text-xs font-black uppercase text-zinc-900 break-words">{deck.name}</span>
+                  <span className="mt-2 flex gap-2 text-[10px] font-bold uppercase text-zinc-500">
+                    <span>{deck.total} cards</span><span>{deck.due} due</span><span>{deck.suspended} suspended</span>
+                  </span>
+                </button>
+                <div className="mt-2 pt-2 border-t border-zinc-100">
+                  {confirmDeleteDeckId === deck.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase text-red-700 flex-1">Delete deck + all progress?</span>
+                      <button
+                        onClick={() => handleDeleteDeck(deck.id)}
+                        className="px-2 py-1 rounded-lg border border-red-400 bg-red-100 text-[10px] font-black uppercase text-red-700"
+                      >
+                        Yes, Delete
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteDeckId(null)}
+                        className="px-2 py-1 rounded-lg border border-zinc-300 bg-white text-[10px] font-black uppercase"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteDeckId(deck.id)}
+                      className="px-2 py-1 rounded-lg border border-zinc-200 bg-white text-[10px] font-black uppercase text-zinc-500 flex items-center gap-1 hover:border-red-300 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-3 w-3" /> Delete Deck
+                    </button>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
           <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-3">
