@@ -137,6 +137,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const studyingAhead = dueCards.length === 0 && !!currentReviewCard;
   const selectedCard = collection.cards.find((card) => card.id === selectedCardId) || filteredCards[0] || currentReviewCard;
   const renderedReview = currentReviewCard ? renderAnkiCard(collection, currentReviewCard, mediaUrls) : null;
+  const reviewBack = renderedReview ? splitAnswerHTML(renderedReview.backHTML) : null;
   const renderedSelected = selectedCard ? renderAnkiCard(collection, selectedCard, mediaUrls) : null;
   const preset = collection.schedulerPresets[0] || defaultSchedulerPreset();
 
@@ -466,7 +467,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       )}
 
       {activeTab === "review" && (
-        <div className="max-w-2xl mx-auto w-full space-y-4">
+        <div className={`mx-auto w-full space-y-4 transition-[max-width] duration-200 ${isBackShown && reviewBack?.hasAnswer ? "max-w-5xl" : "max-w-2xl"}`}>
           <DeckSelect collection={collection} selectedDeckId={selectedDeckId} setSelectedDeckId={setSelectedDeckId} />
           {!currentReviewCard || !renderedReview ? (
             <EmptyState text="Import an Anki package or choose a deck with cards to start review." />
@@ -482,8 +483,23 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                   <span className="truncate">{collection.decks.find((deck) => deck.id === currentReviewCard.deckId)?.name || "Deck"}</span>
                   <span className={`shrink-0 px-2 py-0.5 rounded-full ${studyingAhead ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>{studyingAhead ? "ahead" : `${dueCards.length} due`}</span>
                 </div>
-                <div className="flex-1 flex items-center justify-center py-6">
-                  <div className="anki-card-render text-center w-full" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(isBackShown ? renderedReview.backHTML : renderedReview.frontHTML) }} />
+                <div className={`flex-1 py-6 flex ${isBackShown && reviewBack?.hasAnswer ? "items-start" : "items-center justify-center"}`}>
+                  {!isBackShown ? (
+                    <div className="anki-card-render text-center w-full" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(renderedReview.frontHTML) }} />
+                  ) : reviewBack?.hasAnswer ? (
+                    <div className="grid w-full items-start gap-4 lg:grid-cols-2 lg:gap-8">
+                      <div className="min-w-0">
+                        <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-2">Question</span>
+                        <div className="anki-card-render break-words" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(renderedReview.frontHTML) }} />
+                      </div>
+                      <div className="min-w-0 border-t-2 border-zinc-100 pt-4 lg:border-t-0 lg:border-l-2 lg:pt-0 lg:pl-8">
+                        <span className="block text-[10px] font-black uppercase tracking-wider text-indigo-500 mb-2">Answer</span>
+                        <div className="anki-card-render break-words" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(reviewBack.answerHTML) }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="anki-card-render text-center w-full" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(renderedReview.backHTML) }} />
+                  )}
                 </div>
                 <style dangerouslySetInnerHTML={{ __html: renderedReview.css.replace(/^<style>|<\/style>$/g, "") }} />
                 {!isBackShown ? (
@@ -712,6 +728,16 @@ const RenderPanel: React.FC<{ title: string; html: string; css: string }> = ({ t
 
 function renderedPreview(collection: AnkiCollection, card: AnkiCard, mediaUrls: Record<string, string>) {
   return renderAnkiCard(collection, card, mediaUrls);
+}
+
+// Anki's default answer template renders the back as `{{FrontSide}}<hr id=answer>{{Back}}`.
+// Splitting on that separator lets us lay the question and the answer side by side on wide
+// screens instead of stacking them, so the answer doesn't push content off-screen. Cards
+// whose template lacks the separator fall back to showing the full back.
+function splitAnswerHTML(backHTML: string): { hasAnswer: boolean; answerHTML: string } {
+  const parts = backHTML.split(/<hr\s+id=["']?answer["']?[^>]*>/i);
+  if (parts.length > 1) return { hasAnswer: true, answerHTML: parts.slice(1).join("") };
+  return { hasAnswer: false, answerHTML: backHTML };
 }
 
 function formatDue(timestamp: number): string {
