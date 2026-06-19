@@ -19,6 +19,7 @@ import {
   Search,
   Trash2,
   Upload,
+  Volume2,
 } from "lucide-react";
 import {
   type AnkiCard,
@@ -54,6 +55,23 @@ const gradeLabels: Record<AnkiGrade, string> = {
   3: "Good",
   4: "Easy",
 };
+
+// Matches kana, kanji and half-width katakana so we can speak the Japanese side
+// of a card regardless of which template field holds it.
+const JAPANESE_RE = /[぀-ヿ㐀-䶿一-鿿ｦ-ﾟ]/;
+
+// Pick the most natural text to read aloud from a card: prefer the first side
+// that actually contains Japanese, falling back to plain front text otherwise.
+function pickSpeechText(...sides: (string | null | undefined)[]): string {
+  let fallback = "";
+  for (const side of sides) {
+    const text = stripHTML(side || "");
+    if (!text) continue;
+    if (JAPANESE_RE.test(text)) return text;
+    if (!fallback) fallback = text;
+  }
+  return fallback;
+}
 
 export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange }) => {
   const [collection, setCollection] = useState<AnkiCollection>(emptyCollection());
@@ -138,7 +156,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const selectedCard = collection.cards.find((card) => card.id === selectedCardId) || filteredCards[0] || currentReviewCard;
   const renderedReview = currentReviewCard ? renderAnkiCard(collection, currentReviewCard, mediaUrls) : null;
   const reviewBack = renderedReview ? splitAnswerHTML(renderedReview.backHTML) : null;
+  const reviewSpeech = renderedReview ? pickSpeechText(renderedReview.frontHTML, renderedReview.backHTML) : "";
   const renderedSelected = selectedCard ? renderAnkiCard(collection, selectedCard, mediaUrls) : null;
+  const selectedSpeech = renderedSelected ? pickSpeechText(renderedSelected.frontHTML, renderedSelected.backHTML) : "";
   const preset = collection.schedulerPresets[0] || defaultSchedulerPreset();
 
   const deckRows = collection.decks.map((deck) => {
@@ -206,11 +226,13 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         if (!isBackShown) setIsBackShown(true);
       } else if (isBackShown && ["1", "2", "3", "4"].includes(event.key)) {
         gradeCurrentCard(Number(event.key) as AnkiGrade);
+      } else if ((event.key === "r" || event.key === "R") && reviewSpeech) {
+        sound.playCharacter(reviewSpeech);
       }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [activeTab, currentReviewCard, isBackShown]);
+  }, [activeTab, currentReviewCard, isBackShown, reviewSpeech]);
 
   const updateCard = async (cardId: string, updater: (card: AnkiCard) => AnkiCard) => {
     await persist({
@@ -481,7 +503,20 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
               <div className="bg-white border-2 border-zinc-900 rounded-[24px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-h-[clamp(320px,55vh,560px)] p-4 sm:p-6 flex flex-col">
                 <div className="flex justify-between items-center gap-2 text-[10px] font-black uppercase text-zinc-400">
                   <span className="truncate">{collection.decks.find((deck) => deck.id === currentReviewCard.deckId)?.name || "Deck"}</span>
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full ${studyingAhead ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>{studyingAhead ? "ahead" : `${dueCards.length} due`}</span>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {reviewSpeech && (
+                      <button
+                        type="button"
+                        onClick={() => sound.playCharacter(reviewSpeech)}
+                        aria-label="Play pronunciation"
+                        title="Play pronunciation"
+                        className="inline-flex items-center justify-center rounded-full p-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                      >
+                        <Volume2 className="h-4 w-4" />
+                      </button>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full ${studyingAhead ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>{studyingAhead ? "ahead" : `${dueCards.length} due`}</span>
+                  </div>
                 </div>
                 <div className={`flex-1 py-6 flex ${isBackShown && reviewBack?.hasAnswer ? "items-start" : "items-center justify-center"}`}>
                   {!isBackShown ? (
@@ -551,7 +586,20 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                 <div className="flex flex-wrap gap-2 justify-between">
                   <div>
                     <span className="block text-[10px] font-black uppercase text-zinc-400">Selected Card</span>
-                    <h4 className="text-lg font-black text-zinc-900">{renderedSelected.template?.name}</h4>
+                    <h4 className="flex items-center gap-1.5 text-lg font-black text-zinc-900">
+                      {renderedSelected.template?.name}
+                      {selectedSpeech && (
+                        <button
+                          type="button"
+                          onClick={() => sound.playCharacter(selectedSpeech)}
+                          aria-label="Play pronunciation"
+                          title="Play pronunciation"
+                          className="inline-flex items-center justify-center rounded-full p-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                        >
+                          <Volume2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </h4>
                   </div>
                   <CardActions card={selectedCard} updateCard={updateCard} />
                 </div>
