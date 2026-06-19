@@ -147,8 +147,17 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       total: cards.length,
       due: cards.filter((card) => isV3CardDue(card)).length,
       suspended: cards.filter((card) => card.suspended).length,
+      studied: cards.filter((card) => (card.reps || card.fsrs?.reps || 0) > 0).length,
     };
   });
+
+  const studyDeck = (deckId: string) => {
+    sound.playTick();
+    setSelectedDeckId(deckId);
+    setActiveTab("review");
+    setIsBackShown(false);
+    setReviewStartedAt(Date.now());
+  };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -316,14 +325,16 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   return (
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b-2 border-zinc-100 pb-4">
-        <div>
-          <h3 className="text-lg font-black uppercase text-zinc-950 flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="grid place-items-center h-9 w-9 rounded-xl border-2 border-zinc-900 bg-indigo-50 shrink-0">
             <Boxes className="h-5 w-5 text-indigo-600" />
-            Anki Decks
-          </h3>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 mt-1">
-          Import, review, browse, edit, and manage full Anki packages with local media and FSRS scheduling.
-          </p>
+          </span>
+          <div>
+            <h3 className="text-lg font-black uppercase text-zinc-950 leading-none">Anki Decks</h3>
+            <p className="hidden sm:block text-[11px] font-bold uppercase tracking-wide text-zinc-500 mt-1">
+              Import, review &amp; manage Anki packages — media + FSRS included.
+            </p>
+          </div>
         </div>
         <div className="flex flex-col min-[520px]:flex-row gap-2">
           <label className={`px-3 py-2 rounded-xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
@@ -355,7 +366,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         <FirstRunImport isImporting={isImporting} onImport={handleImport} />
       ) : (
       <>
-      <div className="grid grid-cols-2 min-[560px]:grid-cols-4 lg:grid-cols-9 gap-2">
+      <div className="grid grid-cols-4 min-[560px]:grid-cols-4 lg:grid-cols-8 gap-2">
         {[
           ["decks", Layers, "Decks"],
           ["review", Play, "Review"],
@@ -384,22 +395,54 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       <AnimatePresence mode="popLayout" initial={false}>
       <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15, ease: "easeOut" }}>
       {activeTab === "decks" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 space-y-2 max-h-[520px] overflow-y-auto pr-1">
-            {deckRows.length === 0 ? <EmptyState text="Import an Anki package to populate decks." /> : deckRows.map((deck) => (
-              <div
-                key={deck.id}
-                className={`p-3 rounded-2xl border-2 ${selectedDeckId === deck.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200"}`}
-              >
-                <button className="w-full text-left" onClick={() => setSelectedDeckId(deck.id)}>
-                  <span className="block text-xs font-black uppercase text-zinc-900 break-words">{deck.name}</span>
-                  <span className="mt-2 flex gap-2 text-[10px] font-bold uppercase text-zinc-500">
-                    <span>{deck.total} cards</span><span>{deck.due} due</span><span>{deck.suspended} suspended</span>
-                  </span>
-                </button>
-                <div className="mt-2 pt-2 border-t border-zinc-100">
-                  {confirmDeleteDeckId === deck.id ? (
-                    <div className="flex items-center gap-2">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <Metric label="Due now" value={dueCards.length} accent />
+            <Metric label="Cards" value={collection.cards.length} />
+            <Metric label="Studied" value={statCardsStudied} />
+            <Metric label="Mature" value={statMature} />
+          </div>
+          <div className="space-y-2">
+            {deckRows.length === 0 ? <EmptyState text="Import an Anki package to populate decks." /> : deckRows.map((deck) => {
+              const progress = deck.total > 0 ? Math.round((deck.studied / deck.total) * 100) : 0;
+              return (
+                <div
+                  key={deck.id}
+                  className={`p-3 sm:p-4 rounded-2xl border-2 transition-colors ${selectedDeckId === deck.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200 hover:border-zinc-400"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <button className="text-left min-w-0 flex-1" onClick={() => studyDeck(deck.id)}>
+                      <span className="block text-sm font-black uppercase text-zinc-900 break-words leading-tight">{deck.name}</span>
+                      <span className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-bold uppercase text-zinc-500">
+                        <span>{deck.total} cards</span>
+                        {deck.due > 0 && <span className="text-indigo-600">{deck.due} due</span>}
+                        {deck.suspended > 0 && <span>{deck.suspended} suspended</span>}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => studyDeck(deck.id)}
+                        className="px-3 py-1.5 rounded-xl border-2 border-zinc-900 bg-indigo-600 text-white text-[10px] font-black uppercase flex items-center gap-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-px active:shadow-none transition"
+                      >
+                        <Play className="h-3 w-3" /> Study
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteDeckId(deck.id)}
+                        aria-label={`Delete ${deck.name}`}
+                        className="p-1.5 rounded-xl border-2 border-zinc-200 bg-white text-zinc-400 hover:border-red-300 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 rounded-full bg-zinc-100 overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-400" style={{ width: `${progress}%` }} />
+                    </div>
+                    <span className="text-[9px] font-black uppercase tabular-nums text-zinc-400">{progress}%</span>
+                  </div>
+                  {confirmDeleteDeckId === deck.id && (
+                    <div className="mt-2.5 pt-2.5 border-t border-zinc-100 flex items-center gap-2">
                       <span className="text-[10px] font-black uppercase text-red-700 flex-1">Delete deck + all progress?</span>
                       <button
                         onClick={() => handleDeleteDeck(deck.id)}
@@ -414,33 +457,16 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                         Cancel
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDeleteDeckId(deck.id)}
-                      className="px-2 py-1 rounded-lg border border-zinc-200 bg-white text-[10px] font-black uppercase text-zinc-500 flex items-center gap-1 hover:border-red-300 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="h-3 w-3" /> Delete Deck
-                    </button>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Metric label="Decks" value={collection.decks.length} />
-            <Metric label="Notes" value={collection.notes.length} />
-            <Metric label="Cards" value={collection.cards.length} />
-            <Metric label="Media" value={collection.mediaManifest.length} />
-            <Metric label="Due" value={dueCards.length} />
-            <Metric label="Studied" value={statCardsStudied} />
-            <Metric label="Mature" value={statMature} />
-            <Metric label="Revlog" value={collection.reviewLogs.length} />
+              );
+            })}
           </div>
         </div>
       )}
 
       {activeTab === "review" && (
-        <div className="space-y-4">
+        <div className="max-w-2xl mx-auto w-full space-y-4">
           <DeckSelect collection={collection} selectedDeckId={selectedDeckId} setSelectedDeckId={setSelectedDeckId} />
           {!currentReviewCard || !renderedReview ? (
             <EmptyState text="Import an Anki package or choose a deck with cards to start review." />
@@ -451,23 +477,25 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                   All due cards are cleared — you're now studying ahead of schedule. Reviewing early can pull future cards forward.
                 </div>
               )}
-              <div className="bg-white border-2 border-zinc-900 rounded-[24px] min-h-[340px] p-4 sm:p-6 flex flex-col justify-between">
-                <div className="flex justify-between gap-2 text-[10px] font-black uppercase text-zinc-400">
-                  <span>{collection.decks.find((deck) => deck.id === currentReviewCard.deckId)?.name || "Deck"}</span>
-                  <span>{studyingAhead ? "ahead" : `${dueCards.length} due`}</span>
+              <div className="bg-white border-2 border-zinc-900 rounded-[24px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-h-[clamp(320px,55vh,560px)] p-4 sm:p-6 flex flex-col">
+                <div className="flex justify-between items-center gap-2 text-[10px] font-black uppercase text-zinc-400">
+                  <span className="truncate">{collection.decks.find((deck) => deck.id === currentReviewCard.deckId)?.name || "Deck"}</span>
+                  <span className={`shrink-0 px-2 py-0.5 rounded-full ${studyingAhead ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>{studyingAhead ? "ahead" : `${dueCards.length} due`}</span>
                 </div>
-                <div className="anki-card-render text-center my-6" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(isBackShown ? renderedReview.backHTML : renderedReview.frontHTML) }} />
+                <div className="flex-1 flex items-center justify-center py-6">
+                  <div className="anki-card-render text-center w-full" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(isBackShown ? renderedReview.backHTML : renderedReview.frontHTML) }} />
+                </div>
                 <style dangerouslySetInnerHTML={{ __html: renderedReview.css.replace(/^<style>|<\/style>$/g, "") }} />
                 {!isBackShown ? (
-                  <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase">
-                    Show Answer
+                  <button onClick={() => setIsBackShown(true)} className="w-full py-3 rounded-2xl border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-black uppercase active:translate-y-px transition">
+                    Show Answer <span className="opacity-50 normal-case">(Space)</span>
                   </button>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {([1, 2, 3, 4] as AnkiGrade[]).map((grade) => {
                       const preview = previewFSRS(currentReviewCard, preset)[grade];
                       return (
-                        <button key={grade} onClick={() => gradeCurrentCard(grade)} className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}>
+                        <button key={grade} onClick={() => gradeCurrentCard(grade)} className={`py-3 rounded-2xl border-2 border-zinc-900 text-xs font-black uppercase active:translate-y-px transition ${grade === 1 ? "bg-red-300" : grade === 2 ? "bg-amber-300" : grade === 3 ? "bg-indigo-200" : "bg-emerald-300"}`}>
                           <span className="block">{gradeLabels[grade]}</span>
                           <span className="block text-[9px] opacity-70">{formatDue(preview.card.due.getTime())}</span>
                         </button>
@@ -633,10 +661,10 @@ const FirstRunImport: React.FC<{ isImporting: boolean; onImport: (event: React.C
   </div>
 );
 
-const Metric: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="bg-white border-2 border-zinc-900 rounded-2xl p-3">
-    <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">{label}</span>
-    <span className="block text-xl font-black text-zinc-900 mt-1 break-words">{value}</span>
+const Metric: React.FC<{ label: string; value: React.ReactNode; accent?: boolean }> = ({ label, value, accent }) => (
+  <div className={`border-2 border-zinc-900 rounded-2xl p-3 ${accent ? "bg-indigo-600" : "bg-white"}`}>
+    <span className={`block text-[9px] font-black uppercase tracking-wider ${accent ? "text-indigo-200" : "text-zinc-400"}`}>{label}</span>
+    <span className={`block text-xl font-black mt-1 break-words ${accent ? "text-white" : "text-zinc-900"}`}>{value}</span>
   </div>
 );
 
