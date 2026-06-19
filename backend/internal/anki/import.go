@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,7 +76,9 @@ func ImportPackage(raw []byte, packageKind string) (*ImportResult, error) {
 	if err != nil {
 		warnings = append(warnings, "review log import failed: "+err.Error())
 	}
-	mediaManifest, mediaCache, mediaWarnings := readMedia(reader)
+	// ".anki21b"/".anki2b" collections use the newer protobuf manifest + zstd-compressed blobs.
+	newFormat := strings.HasSuffix(collectionKind, "b")
+	mediaManifest, mediaCache, mediaWarnings := readMedia(reader, newFormat)
 	warnings = append(warnings, mediaWarnings...)
 	cacheImportedMedia(importID, mediaCache)
 

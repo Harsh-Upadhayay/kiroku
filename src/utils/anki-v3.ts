@@ -459,7 +459,7 @@ export function renderAnkiCard(collection: AnkiCollection, card: AnkiCard, media
   return {
     frontHTML,
     backHTML,
-    css: sanitizeTemplateHTML(`<style>${noteType.css || ""}</style>`),
+    css: sanitizeTemplateHTML(`<style>${resolveCSSMediaRefs(noteType.css || "", mediaUrls)}</style>`),
     note,
     noteType,
     template,
@@ -551,6 +551,19 @@ function resolveMediaRefs(html: string, mediaUrls: Record<string, string>): stri
     return `${prefix}${escapeAttr(mediaUrls[fileName] || fileName)}${suffix}`;
   });
   return output;
+}
+
+// resolveCSSMediaRefs rewrites url(...) references in note-type CSS (e.g. @font-face fonts or
+// background images packaged with the deck) to their imported blob URLs, so embedded media
+// declared in CSS renders just like media referenced from card HTML.
+function resolveCSSMediaRefs(css: string, mediaUrls: Record<string, string>): string {
+  return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (match, _quote, ref) => {
+    const fileName = String(ref).trim();
+    // Leave already-resolved or external references (data:, blob:, http(s):, //) untouched.
+    if (/^(data:|blob:|https?:|\/\/)/i.test(fileName)) return match;
+    const url = mediaUrls[fileName] || mediaUrls[decodeURIComponent(fileName)];
+    return url ? `url("${escapeAttr(url)}")` : match;
+  });
 }
 
 export function sanitizeTemplateHTML(input: string): string {
@@ -647,6 +660,57 @@ export function gradeAnkiCard(card: AnkiCard, grade: AnkiGrade, preset = default
       ease: log.rating,
     },
   };
+}
+
+// ankiStudyRank groups a card the way Anki's v3 scheduler gathers a deck's queue: due
+// intraday learning first, then due reviews, then new cards, then everything not yet due
+// (including suspended/buried). Lower ranks are shown first.
+export function ankiStudyRank(card: AnkiCard, now = Date.now()): number {
+  if (card.suspended) return 3;
+  if (card.buriedUntil && card.buriedUntil > now) return 3;
+  const state = card.fsrs?.state ?? card.type;
+  const isLearning = state === State.Learning || state === State.Relearning || card.queue === 1 || card.queue === 3;
+  const isNew = state === State.New || card.queue === 0;
+  if (isLearning && isV3CardDue(card, now)) return 0;
+  if (!isNew && isV3CardDue(card, now)) return 1;
+  if (isNew) return 2;
+  return 3;
+}
+
+// dueSortValue is the timestamp a card next becomes due, used to order cards within the
+// learning and review groups.
+function dueSortValue(card: AnkiCard): number {
+  if (card.fsrs?.due) return new Date(card.fsrs.due).getTime();
+  return card.due;
+}
+
+// compareCardIds compares Anki's numeric card ids (creation epoch ms), falling back to a
+// string compare for our synthetic non-numeric ids ("card-...").
+function compareCardIds(a: string, b: string): number {
+  const na = Number(a);
+  const nb = Number(b);
+  if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// compareAnkiStudyOrder orders cards to match the sequence the official Anki app presents.
+// The key fix over raw import (SQLite rowid) order: new cards are sorted by their authored
+// position (the `due` field), which is the learner-friendly teaching sequence shared decks
+// rely on, with the template ordinal and card id as stable tie-breakers.
+export function compareAnkiStudyOrder(a: AnkiCard, b: AnkiCard, now = Date.now()): number {
+  const ra = ankiStudyRank(a, now);
+  const rb = ankiStudyRank(b, now);
+  if (ra !== rb) return ra - rb;
+  if (ra === 2) {
+    return (a.due - b.due) || ((a.ord || 0) - (b.ord || 0)) || compareCardIds(a.id, b.id);
+  }
+  return (dueSortValue(a) - dueSortValue(b)) || compareCardIds(a.id, b.id);
+}
+
+// orderCardsForStudy returns a new array sorted into Anki's study order (see
+// compareAnkiStudyOrder). It does not mutate the input.
+export function orderCardsForStudy(cards: AnkiCard[], now = Date.now()): AnkiCard[] {
+  return [...cards].sort((a, b) => compareAnkiStudyOrder(a, b, now));
 }
 
 export function isV3CardDue(card: AnkiCard, now = Date.now()): boolean {
