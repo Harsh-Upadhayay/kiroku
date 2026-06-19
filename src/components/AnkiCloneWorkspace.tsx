@@ -31,6 +31,7 @@ import {
   gradeAnkiCard,
   importAnkiPackage,
   isV3CardDue,
+  orderCardsForStudy,
   previewFSRS,
   renderAnkiCard,
   saveAnkiCollection,
@@ -101,11 +102,11 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   };
 
   const deckCards = useMemo(() => {
-    if (!selectedDeckId) return collection.cards;
+    if (!selectedDeckId) return orderCardsForStudy(collection.cards);
     const selectedDeck = collection.decks.find((deck) => deck.id === selectedDeckId);
     const deckPrefix = selectedDeck?.name ? `${selectedDeck.name}::` : "";
     const childDeckIds = new Set(collection.decks.filter((deck) => deck.id === selectedDeckId || deck.name.startsWith(deckPrefix)).map((deck) => deck.id));
-    return collection.cards.filter((card) => childDeckIds.has(card.deckId));
+    return orderCardsForStudy(collection.cards.filter((card) => childDeckIds.has(card.deckId)));
   }, [collection, selectedDeckId]);
 
   const filteredCards = useMemo(() => {
