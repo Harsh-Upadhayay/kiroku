@@ -166,6 +166,7 @@ export interface AnkiMediaRef {
   entryName?: string;
   contentType: string;
   bytes: number;
+  importId?: string;
 }
 
 export interface AnkiFilteredDeck {
@@ -717,24 +718,12 @@ async function pollImportStatus(uploadId: string): Promise<ImportResponse> {
 
 export async function importAnkiPackage(
   file: File,
-  onProgress?: (fraction: number) => void,
-  onMediaProgress?: (processed: number, total: number) => void
+  onProgress?: (fraction: number) => void
 ): Promise<AnkiCollection> {
   const imported = await uploadAnkiPackageChunked(file, onProgress);
   const current = await getAnkiCollection();
   const merged = mergeImportedCollection(current, imported);
-  // Persist and reveal the deck NOW, then download media in the background. Large decks carry
-  // thousands of media files; fetching them all before resolving used to block the deck from
-  // appearing for minutes (it looked like the import was stuck at 100%). Cards render fine
-  // without media — blobs fill into IndexedDB as they arrive and show on the next render.
   await saveAnkiCollection(merged);
-  void cacheImportedMedia(imported.importId, imported.mediaManifest, onMediaProgress)
-    .then((result) => {
-      if (result.failed > 0) {
-        console.warn(`Anki import: ${result.failed}/${imported.mediaManifest.length} media files could not be cached.`);
-      }
-    })
-    .catch((err) => console.warn("Anki import: background media caching failed", err));
   return merged;
 }
 
@@ -752,7 +741,11 @@ export function mergeImportedCollection(current: AnkiCollection, imported: Impor
     notes: mergeById(current.notes, imported.collection.notes),
     cards: mergeById(current.cards, imported.collection.cards),
     reviewLogs: mergeById(current.reviewLogs, imported.collection.reviewLogs),
-    mediaManifest: mergeById(current.mediaManifest, imported.mediaManifest, "hash"),
+    mediaManifest: mergeById(
+      current.mediaManifest,
+      imported.mediaManifest.map((m) => ({ ...m, importId: imported.importId })),
+      "hash"
+    ),
     importReports: [report, ...current.importReports].slice(0, 20),
   });
 }
@@ -798,29 +791,120 @@ async function cacheImportedMedia(
   return { cached, failed };
 }
 
-export async function saveMediaBlob(media: AnkiMediaRef, blob: Blob): Promise<void> {
+// ---------------------------------------------------------------------------
+// Media cache: 50 MB LRU cap backed by a lightweight settings key for meta.
+// Blobs live in the anki_media IndexedDB store; eviction decisions read only
+// the meta key (hash → {bytes, lastAccessedAt}) to avoid loading all blobs.
+// ---------------------------------------------------------------------------
+
+const MEDIA_CACHE_LIMIT = 50 * 1024 * 1024; // 50 MB
+const MEDIA_META_KEY = "anki_media_lru_meta";
+
+type MediaMeta = Record<string, { bytes: number; lastAccessedAt: number }>;
+
+async function readMediaMeta(): Promise<MediaMeta> {
+  return (await getSettingFromDB<MediaMeta>(MEDIA_META_KEY, {})) ?? {};
+}
+
+async function writeMediaMeta(meta: MediaMeta): Promise<void> {
+  await saveSettingToDB(MEDIA_META_KEY, meta);
+}
+
+async function touchMediaMeta(hash: string): Promise<void> {
+  const meta = await readMediaMeta();
+  if (meta[hash]) {
+    meta[hash].lastAccessedAt = Date.now();
+    await writeMediaMeta(meta);
+  }
+}
+
+async function deleteMediaBlob(hash: string): Promise<void> {
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("anki_media", "readwrite");
-    tx.objectStore("anki_media").put({ ...media, blob, storedAt: Date.now() });
+    tx.objectStore("anki_media").delete(hash);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function getMediaBlob(hash: string): Promise<Blob | null> {
-  const db = await initDB();
-  return new Promise((resolve) => {
-    const tx = db.transaction("anki_media", "readonly");
-    const req = tx.objectStore("anki_media").get(hash);
-    req.onsuccess = () => resolve(req.result?.blob || null);
-    req.onerror = () => resolve(null);
-  });
+async function enforceMediaCacheLimit(): Promise<void> {
+  const meta = await readMediaMeta();
+  const entries = Object.entries(meta);
+  const total = entries.reduce((s, [, v]) => s + v.bytes, 0);
+  if (total <= MEDIA_CACHE_LIMIT) return;
+  entries.sort(([, a], [, b]) => a.lastAccessedAt - b.lastAccessedAt);
+  let running = total;
+  for (const [hash, { bytes }] of entries) {
+    if (running <= MEDIA_CACHE_LIMIT) break;
+    await deleteMediaBlob(hash);
+    delete meta[hash];
+    running -= bytes;
+  }
+  await writeMediaMeta(meta);
 }
 
+export async function saveMediaBlob(media: AnkiMediaRef, blob: Blob): Promise<void> {
+  const now = Date.now();
+  const db = await initDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("anki_media", "readwrite");
+    tx.objectStore("anki_media").put({ ...media, blob, storedAt: now });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  const meta = await readMediaMeta();
+  meta[media.hash] = { bytes: media.bytes, lastAccessedAt: now };
+  await writeMediaMeta(meta);
+  await enforceMediaCacheLimit();
+}
+
+// Cache-only lookup — updates LRU timestamp on hit, never fetches from API.
+export async function getMediaBlob(hash: string): Promise<Blob | null> {
+  const db = await initDB();
+  const record: { blob: Blob } | undefined = await new Promise((resolve) => {
+    const tx = db.transaction("anki_media", "readonly");
+    const req = tx.objectStore("anki_media").get(hash);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(undefined);
+  });
+  if (record?.blob) {
+    void touchMediaMeta(hash);
+    return record.blob;
+  }
+  return null;
+}
+
+// Cache + API fallback — used for per-card lazy loading.
+async function resolveMediaBlob(media: AnkiMediaRef): Promise<Blob | null> {
+  const cached = await getMediaBlob(media.hash);
+  if (cached) return cached;
+  if (!media.importId) return null;
+  try {
+    const res = await fetch(`/api/import-anki-package/${encodeURIComponent(media.importId)}/media/${media.hash}`);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    await saveMediaBlob(media, blob);
+    return blob;
+  } catch {
+    return null;
+  }
+}
+
+// Build URL map from locally cached blobs only (fast, no network).
 export async function buildMediaURLMap(manifest: AnkiMediaRef[]): Promise<Record<string, string>> {
   const entries = await Promise.all(manifest.map(async (media) => {
     const blob = await getMediaBlob(media.hash);
+    if (!blob) return null;
+    return [media.fileName, URL.createObjectURL(blob)] as const;
+  }));
+  return Object.fromEntries(entries.filter(Boolean) as [string, string][]);
+}
+
+// Resolve missing media for a specific card's files, fetching from API as needed.
+export async function resolveCardMedia(mediaFiles: AnkiMediaRef[]): Promise<Record<string, string>> {
+  const entries = await Promise.all(mediaFiles.map(async (media) => {
+    const blob = await resolveMediaBlob(media);
     if (!blob) return null;
     return [media.fileName, URL.createObjectURL(blob)] as const;
   }));
