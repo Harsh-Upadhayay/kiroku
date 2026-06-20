@@ -332,12 +332,106 @@ function normalizeCard(card: Partial<AnkiCard>): AnkiCard {
   };
 }
 
-export async function importAnkiPackage(file: File): Promise<AnkiCollection> {
-  const response = await fetch("/api/import-anki-package", {
+// Chunked upload tuning. The deck is sent as a sequence of fixed-size requests so each one
+// stays well under proxy request-size caps (e.g. Cloudflare's 100 MB), which a single
+// whole-file POST of a large .apkg would exceed.
+const UPLOAD_CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB per request.
+const UPLOAD_CONCURRENCY = 3;
+const UPLOAD_CHUNK_RETRIES = 3;
+
+interface UploadInitResponse {
+  uploadId: string;
+  receivedChunks: number[];
+}
+
+// fileFingerprint identifies a file across page reloads so an interrupted upload resumes
+// instead of restarting. The server matches it to a stored session and reports which chunks
+// it already has.
+function fileFingerprint(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+async function uploadChunkWithRetry(uploadId: string, index: number, file: File): Promise<void> {
+  const start = index * UPLOAD_CHUNK_SIZE;
+  const blob = file.slice(start, Math.min(start + UPLOAD_CHUNK_SIZE, file.size));
+  let lastError: unknown;
+  for (let attempt = 0; attempt < UPLOAD_CHUNK_RETRIES; attempt++) {
+    try {
+      const response = await fetch(
+        `/api/import-anki-package/upload/${encodeURIComponent(uploadId)}/chunk/${index}`,
+        { method: "PUT", headers: { "Content-Type": "application/octet-stream" }, body: blob }
+      );
+      if (response.ok) return;
+      lastError = new Error(`Chunk ${index} upload failed: ${response.status}`);
+    } catch (err) {
+      lastError = err;
+    }
+    // Linear backoff before retrying a transient network/server failure.
+    await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+  }
+  throw lastError instanceof Error ? lastError : new Error(`Chunk ${index} upload failed`);
+}
+
+// uploadAnkiPackageChunked sends the file as 10 MB chunks (init → chunks → complete) and
+// returns the parsed import payload. It resumes from whatever chunks the server already holds
+// and uploads the rest with bounded concurrency and per-chunk retries. onProgress, if given,
+// is called with the upload fraction (0–1) as chunks land, including any already on the server.
+async function uploadAnkiPackageChunked(
+  file: File,
+  onProgress?: (fraction: number) => void
+): Promise<ImportResponse> {
+  const totalChunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK_SIZE));
+
+  const initResponse = await fetch("/api/import-anki-package/upload/init", {
     method: "POST",
-    headers: { "Content-Type": "application/octet-stream" },
-    body: await file.arrayBuffer(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fingerprint: fileFingerprint(file),
+      fileName: file.name,
+      totalSize: file.size,
+      totalChunks,
+      chunkSize: UPLOAD_CHUNK_SIZE,
+    }),
   });
+  if (!initResponse.ok) {
+    const errJson = await initResponse.json().catch(() => ({}));
+    throw new Error(errJson.error || `Server error: ${initResponse.status}`);
+  }
+  const initPayload = await initResponse.json();
+  const init = initPayload.data as UploadInitResponse | undefined;
+  if (!initPayload.success || !init?.uploadId) {
+    throw new Error("Failed to start Anki package upload.");
+  }
+
+  const have = new Set(init.receivedChunks ?? []);
+  const pending: number[] = [];
+  for (let i = 0; i < totalChunks; i++) {
+    if (!have.has(i)) pending.push(i);
+  }
+
+  // Chunks already on the server (from a resumed upload) count as done immediately.
+  let completed = have.size;
+  const reportProgress = () => onProgress?.(completed / totalChunks);
+  reportProgress();
+
+  // Concurrency-limited worker pool, mirroring cacheImportedMedia below: a fixed number of
+  // workers drain a shared cursor so we never open more than UPLOAD_CONCURRENCY connections.
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < pending.length) {
+      await uploadChunkWithRetry(init.uploadId, pending[cursor++], file);
+      completed++;
+      reportProgress();
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(UPLOAD_CONCURRENCY, pending.length) }, worker)
+  );
+
+  const response = await fetch(
+    `/api/import-anki-package/upload/${encodeURIComponent(init.uploadId)}/complete`,
+    { method: "POST" }
+  );
   if (!response.ok) {
     const errJson = await response.json().catch(() => ({}));
     throw new Error(errJson.error || `Server error: ${response.status}`);
@@ -346,8 +440,14 @@ export async function importAnkiPackage(file: File): Promise<AnkiCollection> {
   if (!payload.success || !payload.data?.collection) {
     throw new Error("Invalid Anki package import response.");
   }
+  return payload.data as ImportResponse;
+}
 
-  const imported = payload.data as ImportResponse;
+export async function importAnkiPackage(
+  file: File,
+  onProgress?: (fraction: number) => void
+): Promise<AnkiCollection> {
+  const imported = await uploadAnkiPackageChunked(file, onProgress);
   const current = await getAnkiCollection();
   const merged = mergeImportedCollection(current, imported);
   // Persist the parsed collection BEFORE caching media. Media is best-effort: a single

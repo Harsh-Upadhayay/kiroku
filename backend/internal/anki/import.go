@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"database/sql"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -13,29 +12,42 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// ImportAPKG reads an entire .apkg archive from r and parses it. size is accepted for
-// API symmetry with streaming callers but the archive is read fully into memory because
-// zip.Reader needs random access.
-func ImportAPKG(r io.Reader, size int64) (*ImportResult, error) {
-	raw, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	return ImportPackage(raw, "apkg")
-}
-
 // ImportPackage parses an in-memory .apkg archive (raw) and returns the structured result.
 // packageKind is a free-form label echoed back in the report (e.g. "apkg").
-//
-// The pipeline is: open the ZIP, extract+decompress the SQLite collection to a temp file,
-// then read metadata, notes, cards, review logs and media out of it. Non-fatal problems
-// are collected as warnings rather than failing the whole import.
 func ImportPackage(raw []byte, packageKind string) (*ImportResult, error) {
 	reader, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
 	if err != nil {
 		return nil, err
 	}
+	return importFromZipReader(reader, packageKind)
+}
 
+// ImportPackageFile parses an .apkg archive read directly from a file on disk. It is the
+// streaming counterpart to ImportPackage: an *os.File satisfies io.ReaderAt, so zip.Reader
+// seeks within it instead of the whole archive being buffered in memory. This matters for
+// large chunk-reassembled uploads that can be hundreds of megabytes.
+func ImportPackageFile(path string) (*ImportResult, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	reader, err := zip.NewReader(file, info.Size())
+	if err != nil {
+		return nil, err
+	}
+	return importFromZipReader(reader, "apkg")
+}
+
+// importFromZipReader is the shared parsing pipeline behind ImportPackage and
+// ImportPackageFile. It opens the ZIP's SQLite collection, spills it to a temp file (the
+// driver needs a path), then reads metadata, notes, cards, review logs and media out of it.
+// Non-fatal problems are collected as warnings rather than failing the whole import.
+func importFromZipReader(reader *zip.Reader, packageKind string) (*ImportResult, error) {
 	collection, collectionKind, err := readCollection(reader)
 	if err != nil {
 		return nil, err

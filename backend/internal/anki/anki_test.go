@@ -43,20 +43,10 @@ func TestImportSampleDecks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join("..", "..", "..", tt.file)
-			f, err := os.Open(path)
-			if os.IsNotExist(err) {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
 				t.Skipf("sample deck not present: %s", path)
 			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer f.Close()
-
-			info, err := f.Stat()
-			if err != nil {
-				t.Fatal(err)
-			}
-			result, err := ImportAPKG(f, info.Size())
+			result, err := ImportPackageFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -5,7 +5,7 @@
 // "collection") plus a "media" manifest and the referenced media blobs. The import
 // pipeline lives across a few files, each with a single responsibility:
 //
-//   - import.go     – the public entry points (ImportAPKG/ImportPackage) and orchestration.
+//   - import.go     – the public entry points (ImportPackage/ImportPackageFile) and orchestration.
 //   - collection.go – locating/decompressing the SQLite DB and reading deck/model metadata.
 //   - queries.go    – reading the notes/cards/revlog tables out of that SQLite DB.
 //   - media.go      – hashing media blobs and the in-memory media cache.

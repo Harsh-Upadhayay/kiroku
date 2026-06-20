@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -141,18 +142,117 @@ func (h *Handler) SyncPull(w http.ResponseWriter, r *http.Request) {
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: state})
 }
 
-// ImportAnkiPackage parses an uploaded .apkg file and returns its structured contents.
-// POST /api/import-anki-package.
-func (h *Handler) ImportAnkiPackage(w http.ResponseWriter, r *http.Request) {
+// uploadsRoot is the on-disk directory holding in-progress chunked upload sessions.
+func (h *Handler) uploadsRoot() string {
+	return filepath.Join(h.Config.DataDir, "uploads")
+}
+
+// writeUploadError maps an upload-session error to the appropriate status code. It exists so
+// every chunked-upload handler reports invalid ids, unknown sessions, and incomplete uploads
+// consistently instead of collapsing them all to 500.
+func (h *Handler) writeUploadError(w http.ResponseWriter, msg string, err error) {
+	switch {
+	case errors.Is(err, anki.ErrInvalidUploadID):
+		h.WriteError(w, http.StatusBadRequest, "Invalid upload id", err)
+	case errors.Is(err, anki.ErrChunkOutOfRange):
+		h.WriteError(w, http.StatusBadRequest, "Chunk index out of range", err)
+	case errors.Is(err, anki.ErrIncompleteUpload):
+		h.WriteError(w, http.StatusConflict, "Upload is incomplete", err)
+	case errors.Is(err, os.ErrNotExist):
+		h.WriteError(w, http.StatusNotFound, "Upload session not found", err)
+	default:
+		h.WriteError(w, http.StatusInternalServerError, msg, err)
+	}
+}
+
+// UploadInit starts or resumes a chunked .apkg upload. When an incomplete session already
+// matches the file's fingerprint it returns that session and the chunks already received, so
+// the client uploads only what is missing. POST /api/import-anki-package/upload/init.
+func (h *Handler) UploadInit(w http.ResponseWriter, r *http.Request) {
+	req, err := decodeJSON[uploadInitReq](r)
+	if err != nil {
+		h.WriteError(w, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+	if req.TotalSize <= 0 || req.TotalChunks <= 0 {
+		h.WriteError(w, http.StatusBadRequest, "totalSize and totalChunks must be positive", nil)
+		return
+	}
+	if req.TotalSize > h.Config.MaxUploadBytes {
+		h.WriteError(w, http.StatusRequestEntityTooLarge, "File exceeds maximum upload size", nil)
+		return
+	}
+
+	root := h.uploadsRoot()
+	if meta, ok, findErr := anki.FindSessionByFingerprint(root, req.Fingerprint); findErr == nil && ok {
+		received, recvErr := anki.ReceivedChunks(root, meta.UploadID)
+		if recvErr == nil {
+			h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true,
+				Data: uploadInitResp{UploadID: meta.UploadID, ReceivedChunks: received}})
+			return
+		}
+		// Session metadata was found but its chunks could not be listed; fall through and start
+		// a fresh session rather than failing the import.
+	}
+
+	meta, err := anki.CreateSession(root, anki.UploadMeta{
+		Fingerprint: req.Fingerprint,
+		FileName:    req.FileName,
+		TotalSize:   req.TotalSize,
+		TotalChunks: req.TotalChunks,
+		ChunkSize:   req.ChunkSize,
+	})
+	if err != nil {
+		h.WriteError(w, http.StatusInternalServerError, "Failed to start upload", err)
+		return
+	}
+	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true,
+		Data: uploadInitResp{UploadID: meta.UploadID, ReceivedChunks: []int{}}})
+}
+
+// UploadChunk stores one chunk of an in-progress upload. The body is a raw octet-stream
+// capped at MaxBodyBytes (chunks are well under it). Writes are idempotent so retries are
+// safe. PUT /api/import-anki-package/upload/{uploadID}/chunk/{index}.
+func (h *Handler) UploadChunk(w http.ResponseWriter, r *http.Request) {
+	uploadID := r.PathValue("uploadID")
+	index, err := strconv.Atoi(r.PathValue("index"))
+	if err != nil {
+		h.WriteError(w, http.StatusBadRequest, "Invalid chunk index", err)
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxBodyBytes)
 	defer r.Body.Close()
 
-	result, err := anki.ImportAPKG(r.Body, h.Config.MaxBodyBytes)
+	if err := anki.WriteChunk(h.uploadsRoot(), uploadID, index, r.Body); err != nil {
+		h.writeUploadError(w, "Failed to store chunk", err)
+		return
+	}
+	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true})
+}
+
+// UploadComplete reassembles a finished upload and runs it through the normal import parser,
+// returning the same result as the single-shot /api/import-anki-package endpoint. The session
+// is discarded whether the parse succeeds or fails. POST
+// /api/import-anki-package/upload/{uploadID}/complete.
+func (h *Handler) UploadComplete(w http.ResponseWriter, r *http.Request) {
+	uploadID := r.PathValue("uploadID")
+	root := h.uploadsRoot()
+
+	path, err := anki.AssembleSession(root, uploadID)
+	if err != nil {
+		// A missing chunk is recoverable (client resends), so leave the session in place.
+		h.writeUploadError(w, "Failed to assemble upload", err)
+		return
+	}
+
+	result, err := anki.ImportPackageFile(path)
+	// The reassembled archive is either parsed or unusable; either way the session's job is
+	// done, so reclaim its disk now.
+	_ = anki.DiscardSession(root, uploadID)
 	if err != nil {
 		h.WriteError(w, http.StatusBadRequest, "Failed to import Anki package", err)
 		return
 	}
-
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: result})
 }
 
