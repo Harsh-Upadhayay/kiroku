@@ -775,7 +775,7 @@ async function cacheImportedMedia(
       try {
         const existing = await getMediaBlob(media.hash);
         if (existing) { cached++; continue; }
-        const response = await fetch(`/api/import-anki-package/${encodeURIComponent(importId)}/media/${media.hash}`);
+        const response = await fetch(`/api/import-anki-package/media/${encodeURIComponent(importId)}/${media.hash}`);
         if (!response.ok) { failed++; continue; }
         const blob = await response.blob();
         await saveMediaBlob(media, blob);
@@ -881,7 +881,7 @@ async function resolveMediaBlob(media: AnkiMediaRef): Promise<Blob | null> {
   if (cached) return cached;
   if (!media.importId) return null;
   try {
-    const res = await fetch(`/api/import-anki-package/${encodeURIComponent(media.importId)}/media/${media.hash}`);
+    const res = await fetch(`/api/import-anki-package/media/${encodeURIComponent(media.importId)}/${media.hash}`);
     if (!res.ok) return null;
     const blob = await res.blob();
     await saveMediaBlob(media, blob);
