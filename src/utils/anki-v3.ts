@@ -247,7 +247,12 @@ export async function getAnkiCollection(): Promise<AnkiCollection> {
 }
 
 export async function saveAnkiCollection(collection: AnkiCollection): Promise<void> {
-  await saveSettingToDB(COLLECTION_KEY, normalizeCollection(collection));
+  // Persist as-is. The collection is normalized once when it enters memory — on load
+  // (getAnkiCollection) and at import (mergeImportedCollection) — so re-normalizing here
+  // would re-map every card/note/media on each save (e.g. every card review), which is the
+  // dominant per-grade cost on a large deck. getAnkiCollection re-normalizes on the next load,
+  // so any drift is still corrected.
+  await saveSettingToDB(COLLECTION_KEY, collection);
 }
 
 export function normalizeCollection(input?: Partial<AnkiCollection> | null): AnkiCollection {

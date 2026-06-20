@@ -9,12 +9,16 @@ vi.mock("../utils/db", () => ({
   initDB: vi.fn(async () => ({})),
 }));
 
+import { saveSettingToDB as mockedSaveSettingToDB } from "../utils/db";
+
 import {
   orderCardsForStudy,
   compareAnkiStudyOrder,
   renderAnkiCard,
   buildCollectionIndex,
   cardSearchText,
+  emptyCollection,
+  saveAnkiCollection,
   importAnkiPackage,
   type AnkiCard,
   type AnkiCollection,
@@ -142,6 +146,20 @@ describe("renderAnkiCard CSS media resolution", () => {
       cardSearchText(collection, collection.cards[0])
     );
     expect(cardSearchText(collection, collection.cards[0], index)).toContain("hello");
+  });
+});
+
+describe("saveAnkiCollection persists without re-normalizing (Phase 2)", () => {
+  afterEach(() => vi.mocked(mockedSaveSettingToDB).mockClear());
+
+  it("writes the exact in-memory object through, not a re-mapped copy", async () => {
+    const coll = emptyCollection();
+    await saveAnkiCollection(coll);
+    // Re-normalizing would deep-map every array into fresh objects; instead the same
+    // reference must reach storage, proving the per-save normalize pass is gone.
+    const lastCall = vi.mocked(mockedSaveSettingToDB).mock.calls.at(-1)!;
+    expect(lastCall[0]).toBe("anki_v3_collection");
+    expect(lastCall[1]).toBe(coll);
   });
 });
 

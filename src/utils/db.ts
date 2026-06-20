@@ -50,7 +50,10 @@ function requestSyncPush() {
         .catch((err) => {
           console.warn("Failed to load sync dynamic module", err);
         });
-    }, 1000);
+    // Coalesce bursts of writes (e.g. answering several cards in a row) into one push. Each
+    // push currently serializes the whole collection, so a longer debounce meaningfully cuts
+    // redundant full-state uploads during an active review session.
+    }, 2500);
   } catch {
     // ignore
   }
