@@ -30,13 +30,23 @@ type APIResponse struct {
 // (Anki/N5 progress) are open-ended blobs the frontend owns and the server merges
 // generically. See package sync for the merge rules.
 type SyncState struct {
-	Meta             Meta             `json:"_meta"`
-	ActiveRows       []string         `json:"active_rows"`
-	ActiveRowsInfo   map[string]any   `json:"active_rows_info"`
-	StreakInfo       StreakInfo       `json:"streak_info"`
-	SRSCards         []SRSCard        `json:"srs_cards_list"`
-	DeletedDeckIDs   []string         `json:"deleted_deck_ids"`
-	AnkiV3Collection map[string]any   `json:"anki_v3_collection,omitempty"`
+	Meta           Meta           `json:"_meta"`
+	ActiveRows     []string       `json:"active_rows"`
+	ActiveRowsInfo map[string]any `json:"active_rows_info"`
+	StreakInfo     StreakInfo     `json:"streak_info"`
+	SRSCards       []SRSCard      `json:"srs_cards_list"`
+	DeletedDeckIDs []string       `json:"deleted_deck_ids"`
+	// AnkiV3Collection holds collection metadata (decks, note types, media manifest, …). Since
+	// the delta-sync change the big arrays live in the per-record lists below; older clients
+	// still send them inside this blob and the merge seeds the lists from it (see package sync).
+	AnkiV3Collection map[string]any `json:"anki_v3_collection,omitempty"`
+	// Per-record Anki data, merged individually so a client pushes only what changed. Cards and
+	// notes are keyed by "id" and versioned by "updatedAt" (newest wins); review logs are
+	// immutable and unioned by "id". DeletedCardIDs are tombstones that suppress resurrection.
+	AnkiCardsList    []map[string]any `json:"anki_cards_list,omitempty"`
+	AnkiNotesList    []map[string]any `json:"anki_notes_list,omitempty"`
+	AnkiRevlogsList  []map[string]any `json:"anki_revlogs_list,omitempty"`
+	DeletedCardIDs   []string         `json:"deleted_card_ids,omitempty"`
 	N5CourseProgress map[string]any   `json:"n5_course_progress,omitempty"`
 	N5SRSCards       []map[string]any `json:"n5_srs_cards,omitempty"`
 	LookupDeck       []map[string]any `json:"lookup_deck,omitempty"`

@@ -50,6 +50,7 @@ func MergeState(existingRaw, incomingRaw []byte) ([]byte, error) {
 	result.SRSCards = mergeSRSCards(existing.SRSCards, incoming.SRSCards)
 
 	result.AnkiV3Collection = mergeAnkiV3Collection(existing, incoming)
+	mergeAnkiRecords(&result, existing, incoming)
 
 	// An explicit course reset (resetAt) is authoritative: without this the
 	// union-style merge would resurrect wiped progress from the other side.
@@ -159,6 +160,69 @@ func mergeSRSCards(existing, incoming []models.SRSCard) []models.SRSCard {
 		func(c models.SRSCard) float64 { return c.UpdatedAt },
 		func(c models.SRSCard) models.SRSCard { return c },
 		false,
+	)
+}
+
+// mergeAnkiRecords merges the per-record Anki lists into result. A side's lists are seeded from
+// its AnkiV3Collection blob arrays when the lists are absent, which transparently handles both
+// the pre-delta data already stored on the server and any old client still sending the whole
+// collection — no separate back-compat path. Cards/notes are newest-wins by id; review logs are
+// unioned by id; deleted-card tombstones accumulate and suppress those cards from the result.
+func mergeAnkiRecords(result *models.SyncState, existing, incoming models.SyncState) {
+	existingCards := seedAnkiList(existing.AnkiCardsList, existing.AnkiV3Collection, "cards")
+	incomingCards := seedAnkiList(incoming.AnkiCardsList, incoming.AnkiV3Collection, "cards")
+	existingNotes := seedAnkiList(existing.AnkiNotesList, existing.AnkiV3Collection, "notes")
+	incomingNotes := seedAnkiList(incoming.AnkiNotesList, incoming.AnkiV3Collection, "notes")
+	existingLogs := seedAnkiList(existing.AnkiRevlogsList, existing.AnkiV3Collection, "reviewLogs")
+	incomingLogs := seedAnkiList(incoming.AnkiRevlogsList, incoming.AnkiV3Collection, "reviewLogs")
+
+	deleted := unionStrings(existing.DeletedCardIDs, incoming.DeletedCardIDs)
+	deletedSet := make(map[string]bool, len(deleted))
+	for _, id := range deleted {
+		deletedSet[id] = true
+	}
+
+	mergedCards := mergeAnkiByID(existingCards, incomingCards)
+	keptCards := mergedCards[:0]
+	for _, card := range mergedCards {
+		if !deletedSet[getString(card, keyID)] {
+			keptCards = append(keptCards, card)
+		}
+	}
+
+	result.AnkiCardsList = keptCards
+	result.AnkiNotesList = mergeAnkiByID(existingNotes, incomingNotes)
+	result.AnkiRevlogsList = mergeAnkiByID(existingLogs, incomingLogs)
+	result.DeletedCardIDs = deleted
+}
+
+// seedAnkiList returns list when it has entries, otherwise the named array out of the legacy
+// collection blob (cards/notes/reviewLogs), so old data/clients merge correctly.
+func seedAnkiList(list []map[string]any, blob map[string]any, field string) []map[string]any {
+	if len(list) > 0 || blob == nil {
+		return list
+	}
+	raw, ok := blob[field].([]any)
+	if !ok {
+		return list
+	}
+	out := make([]map[string]any, 0, len(raw))
+	for _, item := range raw {
+		if m, ok := item.(map[string]any); ok {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// mergeAnkiByID merges record slices keyed by "id", newest "updatedAt" winning (records lacking
+// updatedAt sort as 0, so ties favor the incoming side — fine for immutable review logs).
+func mergeAnkiByID(existing, incoming []map[string]any) []map[string]any {
+	return mergeByUpdatedAt(existing, incoming,
+		func(c map[string]any) string { return getString(c, keyID) },
+		func(c map[string]any) float64 { return getNumber(c, keyUpdatedAt) },
+		cloneMap,
+		true,
 	)
 }
 

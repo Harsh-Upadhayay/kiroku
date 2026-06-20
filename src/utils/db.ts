@@ -417,6 +417,53 @@ export async function putAnkiRecord<T>(storeName: string, user: string, id: stri
   requestSyncPush();
 }
 
+// Load specific records by id for the current user (used to build a sync delta of just the
+// cards/logs that changed). Missing ids are skipped.
+export async function getAnkiRecordsByIds<T>(storeName: string, user: string, ids: string[]): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    const out: T[] = [];
+    for (const id of ids) {
+      const req = store.get(`${user}|${id}`);
+      req.onsuccess = () => {
+        if (req.result) out.push((req.result as AnkiStoreRecord<T>).data);
+      };
+    }
+    tx.oncomplete = () => resolve(out);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Upsert many records without clearing the store and WITHOUT triggering a sync push (used to
+// apply records pulled from the server — they must not bounce straight back as local changes).
+export async function upsertAnkiRecords<T>(storeName: string, user: string, records: AnkiStoreRecord<T>[]): Promise<void> {
+  if (records.length === 0) return;
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    for (const record of records) store.put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Delete records by id for the current user (applying deletion tombstones from the server).
+export async function deleteAnkiRecordsByIds(storeName: string, user: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    for (const id of ids) store.delete(`${user}|${id}`);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 // Count `user`'s records in `storeName` (used to verify a migration before dropping the blob).
 export async function countAnkiStore(storeName: string, user: string): Promise<number> {
   const db = await initDB();

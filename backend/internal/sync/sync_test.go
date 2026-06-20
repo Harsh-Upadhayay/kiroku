@@ -658,3 +658,106 @@ func mergeForTest(t *testing.T, existing, incoming models.SyncState) models.Sync
 	}
 	return merged
 }
+
+// helper: run MergeState over two states and return the parsed result.
+func mergeStates(t *testing.T, existing, incoming models.SyncState) models.SyncState {
+	t.Helper()
+	existingRaw, _ := json.Marshal(existing)
+	incomingRaw, _ := json.Marshal(incoming)
+	mergedRaw, err := MergeState(existingRaw, incomingRaw)
+	if err != nil {
+		t.Fatalf("MergeState failed: %v", err)
+	}
+	var merged models.SyncState
+	if err := json.Unmarshal(mergedRaw, &merged); err != nil {
+		t.Fatalf("unmarshal merged: %v", err)
+	}
+	return merged
+}
+
+func cardsByID(list []map[string]any) map[string]map[string]any {
+	out := map[string]map[string]any{}
+	for _, c := range list {
+		if id, ok := c["id"].(string); ok {
+			out[id] = c
+		}
+	}
+	return out
+}
+
+// Per-record card merge: newest updatedAt wins, untouched cards on each side are preserved.
+func TestMergeAnkiCardsPerRecord(t *testing.T) {
+	existing := models.SyncState{AnkiCardsList: []map[string]any{
+		{"id": "c1", "reps": 1.0, "updatedAt": 100.0},
+		{"id": "c2", "reps": 1.0, "updatedAt": 100.0},
+	}}
+	incoming := models.SyncState{Meta: models.Meta{GeneratedAt: 200}, AnkiCardsList: []map[string]any{
+		{"id": "c1", "reps": 9.0, "updatedAt": 200.0}, // newer -> wins
+		{"id": "c3", "reps": 1.0, "updatedAt": 150.0}, // new card from another device
+	}}
+
+	merged := cardsByID(mergeStates(t, existing, incoming).AnkiCardsList)
+	if len(merged) != 3 {
+		t.Fatalf("expected 3 cards (c1,c2,c3), got %d", len(merged))
+	}
+	if merged["c1"]["reps"].(float64) != 9.0 {
+		t.Errorf("c1 should take the newer reps=9, got %v", merged["c1"]["reps"])
+	}
+	if merged["c2"]["reps"].(float64) != 1.0 {
+		t.Errorf("c2 (untouched on incoming) must be preserved")
+	}
+}
+
+// A deleted-card tombstone removes the card from the merged result and survives.
+func TestMergeAnkiCardTombstone(t *testing.T) {
+	existing := models.SyncState{AnkiCardsList: []map[string]any{
+		{"id": "c1", "updatedAt": 100.0},
+		{"id": "c2", "updatedAt": 100.0},
+	}}
+	incoming := models.SyncState{Meta: models.Meta{GeneratedAt: 200}, DeletedCardIDs: []string{"c1"}}
+
+	merged := mergeStates(t, existing, incoming)
+	if ids := cardsByID(merged.AnkiCardsList); len(ids) != 1 || ids["c1"] != nil {
+		t.Fatalf("c1 should be tombstoned out, got %v", merged.AnkiCardsList)
+	}
+	found := false
+	for _, id := range merged.DeletedCardIDs {
+		if id == "c1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("tombstone c1 must persist in DeletedCardIDs")
+	}
+}
+
+// Review logs are immutable and unioned by id (no loss when both sides have distinct logs).
+func TestMergeAnkiRevlogsUnion(t *testing.T) {
+	existing := models.SyncState{AnkiRevlogsList: []map[string]any{{"id": "l1"}}}
+	incoming := models.SyncState{Meta: models.Meta{GeneratedAt: 200}, AnkiRevlogsList: []map[string]any{{"id": "l2"}}}
+	merged := mergeStates(t, existing, incoming)
+	if len(merged.AnkiRevlogsList) != 2 {
+		t.Fatalf("expected union of 2 logs, got %d", len(merged.AnkiRevlogsList))
+	}
+}
+
+// Back-compat: a side that only has the legacy blob (existing server data OR an old client)
+// gets its cards seeded into the per-record merge.
+func TestMergeAnkiSeedsFromLegacyBlob(t *testing.T) {
+	// Existing server has only the old blob; incoming new client sends one per-record delta.
+	existing := models.SyncState{AnkiV3Collection: map[string]any{
+		"id":    "coll",
+		"cards": []any{map[string]any{"id": "c1", "updatedAt": 100.0}, map[string]any{"id": "c2", "updatedAt": 100.0}},
+	}}
+	incoming := models.SyncState{
+		Meta:          models.Meta{GeneratedAt: 200},
+		AnkiCardsList: []map[string]any{{"id": "c1", "reps": 5.0, "updatedAt": 300.0}},
+	}
+	merged := cardsByID(mergeStates(t, existing, incoming).AnkiCardsList)
+	if len(merged) != 2 {
+		t.Fatalf("expected c1+c2 (c2 seeded from blob), got %d", len(merged))
+	}
+	if merged["c1"]["reps"].(float64) != 5.0 {
+		t.Errorf("incoming newer c1 should win over blob-seeded c1")
+	}
+}
