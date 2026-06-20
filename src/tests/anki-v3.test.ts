@@ -27,6 +27,7 @@ import {
 
 import {
   orderCardsForStudy,
+  firstDeckWithCards,
   compareAnkiStudyOrder,
   renderAnkiCard,
   buildCollectionIndex,
@@ -57,6 +58,33 @@ function card(overrides: Partial<AnkiCard>): AnkiCard {
     ...overrides,
   };
 }
+
+describe("firstDeckWithCards", () => {
+  it("skips an empty leading deck (e.g. Anki's Default) and picks the first deck with cards", () => {
+    const coll: AnkiCollection = {
+      ...emptyCollection(),
+      decks: [
+        { id: "default", name: "Default" } as any,
+        { id: "rrtk", name: "RRTK" } as any,
+      ],
+      cards: [card({ id: "c1", deckId: "rrtk" })],
+    };
+    expect(firstDeckWithCards(coll)).toBe("rrtk");
+  });
+
+  it("falls back to the first deck when no deck has cards", () => {
+    const coll: AnkiCollection = {
+      ...emptyCollection(),
+      decks: [{ id: "default", name: "Default" } as any],
+      cards: [],
+    };
+    expect(firstDeckWithCards(coll)).toBe("default");
+  });
+
+  it("returns \"\" for a collection with no decks", () => {
+    expect(firstDeckWithCards(emptyCollection())).toBe("");
+  });
+});
 
 describe("orderCardsForStudy", () => {
   it("orders new cards by authored position (due), not import/rowid order", () => {
