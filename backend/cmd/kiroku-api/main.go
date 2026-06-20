@@ -50,21 +50,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", h.Health)
-	mux.HandleFunc("GET /api/healthz", h.Health)
-	mux.HandleFunc("POST /api/auth/register", h.Register)
-	mux.HandleFunc("POST /api/auth/login", h.Login)
-	mux.HandleFunc("POST /api/sync/push", h.SyncPush)
-	mux.HandleFunc("POST /api/sync/pull", h.SyncPull)
-	mux.HandleFunc("POST /api/import-anki-package/upload/init", h.UploadInit)
-	mux.HandleFunc("PUT /api/import-anki-package/upload/{uploadID}/chunk/{index}", h.UploadChunk)
-	mux.HandleFunc("POST /api/import-anki-package/upload/{uploadID}/complete", h.UploadComplete)
-	mux.HandleFunc("GET /api/import-anki-package/upload/{uploadID}/status", h.UploadStatus)
-	mux.HandleFunc("POST /api/vocab/import-image", h.ImportVocabImage)
-	mux.HandleFunc("GET /api/import-anki-package/{importID}/media/{hash}", h.ImportedPackageMedia)
-	mux.HandleFunc("/api/media/{hash}", h.MediaBlob)
-	mux.HandleFunc("POST /api/auth/change-password", h.ChangePassword)
-	mux.HandleFunc("POST /api/auth/delete-account", h.DeleteAccount)
+	handlers.RegisterRoutes(mux, h)
 
 	// Reclaim disk from chunked uploads that were started but never completed: sweep once at
 	// startup, then hourly in the background.
