@@ -25,6 +25,8 @@ import {
   type AnkiCard,
   type AnkiCollection,
   type AnkiGrade,
+  type CollectionIndex,
+  buildCollectionIndex,
   buildMediaURLMap,
   cardSearchText,
   defaultSchedulerPreset,
@@ -55,6 +57,15 @@ const gradeLabels: Record<AnkiGrade, string> = {
   3: "Good",
   4: "Easy",
 };
+
+// Render long lists incrementally: only this many rows are mounted up front, growing as the
+// user scrolls near the bottom. Keeps a 10k-card browser from putting thousands of nodes (each
+// running renderAnkiCard) in the DOM at once.
+const BROWSER_PAGE = 100;
+const MEDIA_PAGE = 60;
+
+// Append more rows once the scroll position is within this many px of the bottom.
+const SCROLL_LOAD_THRESHOLD = 240;
 
 // Matches kana, kanji and half-width katakana so we can speak the Japanese side
 // of a card regardless of which template field holds it.
@@ -93,10 +104,27 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const [editorFront, setEditorFront] = useState("");
   const [editorBack, setEditorBack] = useState("");
   const [confirmDeleteDeckId, setConfirmDeleteDeckId] = useState<string | null>(null);
+  // How many browser/media rows are currently mounted (grows on scroll).
+  const [browserVisibleCount, setBrowserVisibleCount] = useState(BROWSER_PAGE);
+  const [mediaVisibleCount, setMediaVisibleCount] = useState(MEDIA_PAGE);
 
   useEffect(() => {
     reload();
   }, []);
+
+  // Reset the browser window whenever the result set changes so we don't start scrolled deep
+  // into a stale, now-shorter list.
+  useEffect(() => {
+    setBrowserVisibleCount(BROWSER_PAGE);
+  }, [browserFilter, browserQuery, selectedDeckId]);
+
+  // Grow a list's mounted-row count when the scroll container nears its bottom.
+  const onListScroll = (grow: (n: number) => void, page: number) => (event: React.UIEvent<HTMLDivElement>) => {
+    const el = event.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_LOAD_THRESHOLD) {
+      grow(page);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -125,13 +153,17 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     window.setTimeout(() => setNotice(null), 4500);
   };
 
+  // O(1) id→record lookups, rebuilt only when the collection changes. Threaded into the render
+  // and search paths below so they stop doing linear scans per card.
+  const collectionIndex = useMemo(() => buildCollectionIndex(collection), [collection]);
+
   const deckCards = useMemo(() => {
     if (!selectedDeckId) return orderCardsForStudy(collection.cards);
-    const selectedDeck = collection.decks.find((deck) => deck.id === selectedDeckId);
+    const selectedDeck = collectionIndex.decksById.get(selectedDeckId);
     const deckPrefix = selectedDeck?.name ? `${selectedDeck.name}::` : "";
     const childDeckIds = new Set(collection.decks.filter((deck) => deck.id === selectedDeckId || deck.name.startsWith(deckPrefix)).map((deck) => deck.id));
     return orderCardsForStudy(collection.cards.filter((card) => childDeckIds.has(card.deckId)));
-  }, [collection, selectedDeckId]);
+  }, [collection, collectionIndex, selectedDeckId]);
 
   const filteredCards = useMemo(() => {
     const query = browserQuery.trim().toLowerCase();
@@ -147,34 +179,44 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         (browserFilter === "suspended" && !!card.suspended) ||
         (browserFilter === "buried" && !!card.buriedUntil && card.buriedUntil > Date.now()) ||
         (browserFilter === "flagged" && !!card.flags);
-      const matchesQuery = !query || cardSearchText(collection, card).includes(query);
+      const matchesQuery = !query || cardSearchText(collection, card, collectionIndex).includes(query);
       return matchesFilter && matchesQuery;
     });
-  }, [browserFilter, browserQuery, collection, deckCards]);
+  }, [browserFilter, browserQuery, collection, collectionIndex, deckCards]);
 
   const dueCards = useMemo(() => deckCards.filter((card) => isV3CardDue(card)), [deckCards]);
   const currentReviewCard = dueCards[0] || deckCards[0];
   // No cards are due but the deck still has cards: we fall back to studying ahead of schedule.
   // Surface that explicitly rather than silently handing out not-yet-due cards.
   const studyingAhead = dueCards.length === 0 && !!currentReviewCard;
-  const selectedCard = collection.cards.find((card) => card.id === selectedCardId) || filteredCards[0] || currentReviewCard;
-  const renderedReview = currentReviewCard ? renderAnkiCard(collection, currentReviewCard, mediaUrls) : null;
+  const selectedCard = (selectedCardId ? collectionIndex.cardsById.get(selectedCardId) : undefined) || filteredCards[0] || currentReviewCard;
+  const renderedReview = useMemo(
+    () => (currentReviewCard ? renderAnkiCard(collection, currentReviewCard, mediaUrls, collectionIndex) : null),
+    [collection, collectionIndex, currentReviewCard, mediaUrls]
+  );
   const reviewBack = renderedReview ? splitAnswerHTML(renderedReview.backHTML) : null;
   const reviewSpeech = renderedReview ? pickSpeechText(renderedReview.frontHTML, renderedReview.backHTML) : "";
-  const renderedSelected = selectedCard ? renderAnkiCard(collection, selectedCard, mediaUrls) : null;
+  const renderedSelected = useMemo(
+    () => (selectedCard ? renderAnkiCard(collection, selectedCard, mediaUrls, collectionIndex) : null),
+    [collection, collectionIndex, selectedCard, mediaUrls]
+  );
   const selectedSpeech = renderedSelected ? pickSpeechText(renderedSelected.frontHTML, renderedSelected.backHTML) : "";
   const preset = collection.schedulerPresets[0] || defaultSchedulerPreset();
 
-  const deckRows = collection.decks.map((deck) => {
-    const cards = collection.cards.filter((card) => card.deckId === deck.id);
-    return {
-      ...deck,
-      total: cards.length,
-      due: cards.filter((card) => isV3CardDue(card)).length,
-      suspended: cards.filter((card) => card.suspended).length,
-      studied: cards.filter((card) => (card.reps || card.fsrs?.reps || 0) > 0).length,
-    };
-  });
+  // Per-deck counts in a single pass over the cards instead of four filters per deck.
+  const deckRows = useMemo(() => {
+    const counts = new Map<string, { total: number; due: number; suspended: number; studied: number }>();
+    for (const deck of collection.decks) counts.set(deck.id, { total: 0, due: 0, suspended: 0, studied: 0 });
+    for (const card of collection.cards) {
+      const row = counts.get(card.deckId);
+      if (!row) continue;
+      row.total++;
+      if (isV3CardDue(card)) row.due++;
+      if (card.suspended) row.suspended++;
+      if ((card.reps || card.fsrs?.reps || 0) > 0) row.studied++;
+    }
+    return collection.decks.map((deck) => ({ ...deck, ...(counts.get(deck.id) || { total: 0, due: 0, suspended: 0, studied: 0 }) }));
+  }, [collection]);
 
   const studyDeck = (deckId: string) => {
     sound.playTick();
@@ -350,8 +392,29 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     link.click();
   };
 
-  const statCardsStudied = collection.cards.filter((card) => (card.reps || card.fsrs?.reps || 0) > 0).length;
-  const statMature = collection.cards.filter((card) => (card.fsrs?.scheduled_days || card.interval || 0) >= 21).length;
+  // All collection-wide stats in a single memoized pass, recomputed only when the collection
+  // changes — not on every render of the header/stats tabs.
+  const stats = useMemo(() => {
+    let studied = 0, mature = 0, due = 0, lapses = 0;
+    for (const card of collection.cards) {
+      if ((card.reps || card.fsrs?.reps || 0) > 0) studied++;
+      if ((card.fsrs?.scheduled_days || card.interval || 0) >= 21) mature++;
+      if (isV3CardDue(card)) due++;
+      lapses += card.lapses || card.fsrs?.lapses || 0;
+    }
+    let mediaBytes = 0;
+    for (const media of collection.mediaManifest) mediaBytes += media.bytes;
+    return {
+      cards: collection.cards.length,
+      studied,
+      mature,
+      due,
+      lapses,
+      reviews: collection.reviewLogs.length,
+      mediaMB: (mediaBytes / 1024 / 1024).toFixed(1),
+      imports: collection.importReports.length,
+    };
+  }, [collection]);
 
   return (
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-5">
@@ -437,9 +500,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Metric label="Due now" value={dueCards.length} accent />
-            <Metric label="Cards" value={collection.cards.length} />
-            <Metric label="Studied" value={statCardsStudied} />
-            <Metric label="Mature" value={statMature} />
+            <Metric label="Cards" value={stats.cards} />
+            <Metric label="Studied" value={stats.studied} />
+            <Metric label="Mature" value={stats.mature} />
           </div>
           <div className="space-y-2">
             {deckRows.length === 0 ? <EmptyState text="Import an Anki package to populate decks." /> : deckRows.map((deck) => {
@@ -587,13 +650,21 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                 {["all", "due", "new", "learning", "review", "suspended", "buried", "flagged"].map((filter) => <option key={filter} value={filter}>{filter}</option>)}
               </select>
             </div>
-            <div className="max-h-[520px] overflow-y-auto space-y-2 pr-1">
-              {filteredCards.map((card) => (
+            <div
+              className="max-h-[520px] overflow-y-auto space-y-2 pr-1"
+              onScroll={onListScroll((n) => setBrowserVisibleCount((c) => Math.min(filteredCards.length, c + n)), BROWSER_PAGE)}
+            >
+              {filteredCards.slice(0, browserVisibleCount).map((card) => (
                 <button key={card.id} onClick={() => setSelectedCardId(card.id)} className={`w-full p-3 rounded-2xl border-2 text-left ${selectedCard?.id === card.id ? "bg-indigo-50 border-indigo-900" : "bg-white border-zinc-200"}`}>
-                  <span className="block text-sm font-black text-zinc-900 truncate">{stripHTML(card.front || renderedPreview(collection, card, mediaUrls)?.frontHTML || "")}</span>
-                  <span className="block text-[10px] font-bold text-zinc-500 mt-1 truncate">{collection.notes.find((note) => note.id === card.noteId)?.tags.map((tag) => `#${tag}`).join(" ")}</span>
+                  <span className="block text-sm font-black text-zinc-900 truncate">{stripHTML(card.front || renderedPreview(collection, card, mediaUrls, collectionIndex)?.frontHTML || "")}</span>
+                  <span className="block text-[10px] font-bold text-zinc-500 mt-1 truncate">{collectionIndex.notesById.get(card.noteId)?.tags.map((tag) => `#${tag}`).join(" ")}</span>
                 </button>
               ))}
+              {filteredCards.length > browserVisibleCount && (
+                <p className="text-center text-[10px] font-bold uppercase tracking-wide text-zinc-400 py-2">
+                  Showing {browserVisibleCount.toLocaleString()} of {filteredCards.length.toLocaleString()} — scroll for more
+                </p>
+              )}
             </div>
           </div>
           <div className="lg:col-span-7 bg-zinc-50 border-2 border-zinc-900 rounded-[22px] p-4 space-y-4">
@@ -627,7 +698,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
                   {Object.entries(renderedSelected.note.fields).map(([name, value]) => (
                     <details key={name} className="bg-white border border-zinc-200 rounded-xl p-3" open={/kanji|reading|front|back|meaning|english|story|audio/i.test(name)}>
                       <summary className="text-[10px] font-black uppercase text-zinc-700 cursor-pointer">{name}</summary>
-                      <div className="mt-2 text-sm text-zinc-700 break-words" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(value) }} />
+                      <div className="mt-2 text-sm text-zinc-700 break-words" dangerouslySetInnerHTML={{ __html: sanitizeTemplateHTML(String(value)) }} />
                     </details>
                   ))}
                 </div>
@@ -652,19 +723,31 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       )}
 
       {activeTab === "media" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {collection.mediaManifest.length === 0 ? <EmptyState text="No imported media yet." /> : collection.mediaManifest.slice(0, 300).map((media) => (
-            <div key={media.hash} className="bg-white border-2 border-zinc-200 rounded-2xl p-3 min-w-0">
-              <div className="flex items-center gap-2">
-                {media.contentType.startsWith("audio") ? <FileAudio className="h-4 w-4 text-indigo-600" /> : <FileImage className="h-4 w-4 text-emerald-600" />}
-                <span className="text-xs font-black text-zinc-900 truncate">{media.fileName}</span>
-              </div>
-              <span className="block mt-1 text-[10px] font-mono text-zinc-400">{Math.round(media.bytes / 1024)} KB</span>
-              {media.contentType.startsWith("audio") && mediaUrls[media.fileName] ? <audio controls src={mediaUrls[media.fileName]} className="mt-2 w-full" /> : null}
-              {media.contentType.startsWith("image") && mediaUrls[media.fileName] ? <img src={mediaUrls[media.fileName]} alt="" className="mt-2 max-h-40 rounded-xl border border-zinc-200 mx-auto" /> : null}
+        collection.mediaManifest.length === 0 ? <EmptyState text="No imported media yet." /> : (
+          <div
+            className="max-h-[640px] overflow-y-auto pr-1"
+            onScroll={onListScroll((n) => setMediaVisibleCount((c) => Math.min(collection.mediaManifest.length, c + n)), MEDIA_PAGE)}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {collection.mediaManifest.slice(0, mediaVisibleCount).map((media) => (
+                <div key={media.hash} className="bg-white border-2 border-zinc-200 rounded-2xl p-3 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {media.contentType.startsWith("audio") ? <FileAudio className="h-4 w-4 text-indigo-600" /> : <FileImage className="h-4 w-4 text-emerald-600" />}
+                    <span className="text-xs font-black text-zinc-900 truncate">{media.fileName}</span>
+                  </div>
+                  <span className="block mt-1 text-[10px] font-mono text-zinc-400">{Math.round(media.bytes / 1024)} KB</span>
+                  {media.contentType.startsWith("audio") && mediaUrls[media.fileName] ? <audio controls preload="none" src={mediaUrls[media.fileName]} className="mt-2 w-full" /> : null}
+                  {media.contentType.startsWith("image") && mediaUrls[media.fileName] ? <img loading="lazy" src={mediaUrls[media.fileName]} alt="" className="mt-2 max-h-40 rounded-xl border border-zinc-200 mx-auto" /> : null}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+            {collection.mediaManifest.length > mediaVisibleCount && (
+              <p className="text-center text-[10px] font-bold uppercase tracking-wide text-zinc-400 py-2">
+                Showing {mediaVisibleCount.toLocaleString()} of {collection.mediaManifest.length.toLocaleString()} — scroll for more
+              </p>
+            )}
+          </div>
+        )
       )}
 
       {activeTab === "options" && (
@@ -698,14 +781,14 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
 
       {activeTab === "stats" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Metric label="Cards" value={collection.cards.length} />
-          <Metric label="Due" value={collection.cards.filter((card) => isV3CardDue(card)).length} />
-          <Metric label="Studied" value={statCardsStudied} />
-          <Metric label="Mature" value={statMature} />
-          <Metric label="Reviews" value={collection.reviewLogs.length} />
-          <Metric label="Lapses" value={collection.cards.reduce((sum, card) => sum + (card.lapses || card.fsrs?.lapses || 0), 0)} />
-          <Metric label="Media MB" value={(collection.mediaManifest.reduce((sum, media) => sum + media.bytes, 0) / 1024 / 1024).toFixed(1)} />
-          <Metric label="Imports" value={collection.importReports.length} />
+          <Metric label="Cards" value={stats.cards} />
+          <Metric label="Due" value={stats.due} />
+          <Metric label="Studied" value={stats.studied} />
+          <Metric label="Mature" value={stats.mature} />
+          <Metric label="Reviews" value={stats.reviews} />
+          <Metric label="Lapses" value={stats.lapses} />
+          <Metric label="Media MB" value={stats.mediaMB} />
+          <Metric label="Imports" value={stats.imports} />
         </div>
       )}
       </motion.div>
@@ -809,8 +892,8 @@ const RenderPanel: React.FC<{ title: string; html: string; css: string }> = ({ t
   </div>
 );
 
-function renderedPreview(collection: AnkiCollection, card: AnkiCard, mediaUrls: Record<string, string>) {
-  return renderAnkiCard(collection, card, mediaUrls);
+function renderedPreview(collection: AnkiCollection, card: AnkiCard, mediaUrls: Record<string, string>, index?: CollectionIndex) {
+  return renderAnkiCard(collection, card, mediaUrls, index);
 }
 
 // Anki's default answer template renders the back as `{{FrontSide}}<hr id=answer>{{Back}}`.

@@ -555,10 +555,29 @@ export async function buildMediaURLMap(manifest: AnkiMediaRef[]): Promise<Record
   return Object.fromEntries(entries.filter(Boolean) as [string, string][]);
 }
 
-export function renderAnkiCard(collection: AnkiCollection, card: AnkiCard, mediaUrls: Record<string, string> = {}): RenderedAnkiCard | null {
-  const note = collection.notes.find((n) => n.id === card.noteId);
+// CollectionIndex turns the collection's flat arrays into id→record lookups. Render and search
+// paths run per-card over thousands of items, so the old linear `.find()` calls were O(n) each
+// (O(n²) across a list). Build this once per collection (memoized) and thread it through.
+export interface CollectionIndex {
+  cardsById: Map<string, AnkiCard>;
+  notesById: Map<string, AnkiNote>;
+  noteTypesById: Map<string, AnkiNoteType>;
+  decksById: Map<string, AnkiDeck>;
+}
+
+export function buildCollectionIndex(collection: AnkiCollection): CollectionIndex {
+  return {
+    cardsById: new Map(collection.cards.map((c) => [c.id, c])),
+    notesById: new Map(collection.notes.map((n) => [n.id, n])),
+    noteTypesById: new Map(collection.noteTypes.map((m) => [m.id, m])),
+    decksById: new Map(collection.decks.map((d) => [d.id, d])),
+  };
+}
+
+export function renderAnkiCard(collection: AnkiCollection, card: AnkiCard, mediaUrls: Record<string, string> = {}, index?: CollectionIndex): RenderedAnkiCard | null {
+  const note = index ? index.notesById.get(card.noteId) : collection.notes.find((n) => n.id === card.noteId);
   if (!note) return null;
-  const noteType = collection.noteTypes.find((m) => m.id === note.noteTypeId);
+  const noteType = index ? index.noteTypesById.get(note.noteTypeId) : collection.noteTypes.find((m) => m.id === note.noteTypeId);
   if (!noteType) return null;
   const template = noteType.templates.find((t) => t.ord === card.ord) || noteType.templates[card.ord] || noteType.templates[0];
   if (!template) return null;
@@ -830,9 +849,9 @@ export function isV3CardDue(card: AnkiCard, now = Date.now()): boolean {
   return card.queue <= 0 || card.due <= Math.floor(now / 86400000);
 }
 
-export function cardSearchText(collection: AnkiCollection, card: AnkiCard): string {
-  const note = collection.notes.find((n) => n.id === card.noteId);
-  const deck = collection.decks.find((d) => d.id === card.deckId);
+export function cardSearchText(collection: AnkiCollection, card: AnkiCard, index?: CollectionIndex): string {
+  const note = index ? index.notesById.get(card.noteId) : collection.notes.find((n) => n.id === card.noteId);
+  const deck = index ? index.decksById.get(card.deckId) : collection.decks.find((d) => d.id === card.deckId);
   return [
     deck?.name,
     card.templateName,
