@@ -572,6 +572,19 @@ interface UploadInitResponse {
   receivedChunks: number[];
 }
 
+// Parsing a large deck on the server can take longer than Cloudflare's ~100s proxy timeout, so
+// /complete only enqueues the parse and the client polls this status until the deck is ready.
+interface UploadStatusResponse {
+  status: "pending" | "done" | "error";
+  result?: ImportResponse;
+  error?: string;
+}
+
+// How often, and for how long, to poll the import-status endpoint. The cap is generous: a very
+// large deck can take minutes to parse, and the only cost of waiting is a spinner.
+const IMPORT_POLL_INTERVAL_MS = 2000;
+const IMPORT_POLL_TIMEOUT_MS = 30 * 60 * 1000; // 30 min, matching the server's job TTL.
+
 // fileFingerprint identifies a file across page reloads so an interrupted upload resumes
 // instead of restarting. The server matches it to a stored session and reports which chunks
 // it already has.
@@ -656,19 +669,50 @@ async function uploadAnkiPackageChunked(
     Array.from({ length: Math.min(UPLOAD_CONCURRENCY, pending.length) }, worker)
   );
 
-  const response = await fetch(
+  // Enqueue the parse. This returns immediately (202) with the job pending; the server parses in
+  // the background so a slow deck no longer holds the request open past the proxy timeout.
+  const completeResponse = await fetch(
     `/api/import-anki-package/upload/${encodeURIComponent(init.uploadId)}/complete`,
     { method: "POST" }
   );
-  if (!response.ok) {
-    const errJson = await response.json().catch(() => ({}));
-    throw new Error(errJson.error || `Server error: ${response.status}`);
+  if (!completeResponse.ok) {
+    const errJson = await completeResponse.json().catch(() => ({}));
+    throw new Error(errJson.error || `Server error: ${completeResponse.status}`);
   }
-  const payload = await response.json();
-  if (!payload.success || !payload.data?.collection) {
-    throw new Error("Invalid Anki package import response.");
+
+  return pollImportStatus(init.uploadId);
+}
+
+// pollImportStatus waits for a background parse to finish, returning the parsed payload. On
+// failure it throws the server's message; the upload session is left intact on the server, so
+// re-running the import resumes from the chunks already uploaded rather than starting over.
+async function pollImportStatus(uploadId: string): Promise<ImportResponse> {
+  const deadline = Date.now() + IMPORT_POLL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS));
+    const response = await fetch(
+      `/api/import-anki-package/upload/${encodeURIComponent(uploadId)}/status`
+    );
+    if (!response.ok) {
+      const errJson = await response.json().catch(() => ({}));
+      throw new Error(errJson.error || `Server error: ${response.status}`);
+    }
+    const payload = await response.json();
+    const status = payload.data as UploadStatusResponse | undefined;
+    if (!payload.success || !status) {
+      throw new Error("Invalid import status response.");
+    }
+    if (status.status === "error") {
+      throw new Error(status.error || "Anki package import failed on the server.");
+    }
+    if (status.status === "done") {
+      if (!status.result?.collection) {
+        throw new Error("Invalid Anki package import response.");
+      }
+      return status.result;
+    }
   }
-  return payload.data as ImportResponse;
+  throw new Error("Anki package import timed out while the server was parsing the deck.");
 }
 
 export async function importAnkiPackage(
