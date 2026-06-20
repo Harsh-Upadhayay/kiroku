@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -25,13 +26,19 @@ import (
 var zstdMagic = []byte{0x28, 0xb5, 0x2f, 0xfd}
 
 // importMediaCache holds the decoded media blobs for each completed import, keyed by
-// importID then by content hash. It lets media be served on demand after an import
-// without re-reading the archive. It is process-global and never evicted, which is fine
-// for this app's short-lived import flow but worth revisiting if imports become long-lived.
+// importID then by content hash. It lets media be served on demand after an import without
+// re-reading the archive. The client pulls every blob in the minutes after an import, so each
+// entry is evicted after importedMediaTTL — a large deck holds hundreds of MB of decoded
+// media here, and keeping every import for the life of the process would leak memory.
 var importMediaCache = struct {
 	sync.RWMutex
 	items map[string]map[string]cachedMedia
 }{items: map[string]map[string]cachedMedia{}}
+
+// importedMediaTTL is how long an import's decoded media stays resident for the client to
+// fetch before it is evicted to reclaim memory. Observed full caching of an 8k-file deck
+// takes a few minutes, so this leaves comfortable headroom.
+const importedMediaTTL = 30 * time.Minute
 
 // ImportedMedia returns a cached media blob for a given import and hash. The final bool
 // reports whether the blob was found (mirroring the comma-ok map idiom).
@@ -257,8 +264,18 @@ func maybeDecompressZstd(b []byte) []byte {
 
 func cacheImportedMedia(importID string, media map[string]cachedMedia) {
 	importMediaCache.Lock()
-	defer importMediaCache.Unlock()
 	importMediaCache.items[importID] = media
+	importMediaCache.Unlock()
+	// Evict this import's media once the client has had time to pull it, so large decks don't
+	// pin hundreds of MB in memory for the life of the process.
+	time.AfterFunc(importedMediaTTL, func() { evictImportedMedia(importID) })
+}
+
+// evictImportedMedia drops a single import's cached media. Safe to call for an unknown id.
+func evictImportedMedia(importID string) {
+	importMediaCache.Lock()
+	defer importMediaCache.Unlock()
+	delete(importMediaCache.items, importID)
 }
 
 // mimeTypeFor guesses a content type from a file extension, with explicit overrides for

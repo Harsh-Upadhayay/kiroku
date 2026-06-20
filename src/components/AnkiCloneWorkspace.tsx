@@ -85,6 +85,8 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const [isImporting, setIsImporting] = useState(false);
   // Upload fraction (0–1) while a chunked import is in flight; null when idle.
   const [importProgress, setImportProgress] = useState<number | null>(null);
+  // Background media-download progress after the deck is already revealed; null when idle.
+  const [mediaCaching, setMediaCaching] = useState<{ processed: number; total: number } | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [newFilteredQuery, setNewFilteredQuery] = useState("is:due");
@@ -189,7 +191,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     setIsImporting(true);
     setImportProgress(0);
     try {
-      const next = await importAnkiPackage(file, setImportProgress);
+      const next = await importAnkiPackage(file, setImportProgress, (processed, total) =>
+        setMediaCaching(total > 0 && processed < total ? { processed, total } : null)
+      );
       setCollection(next);
       setSelectedDeckId(next.decks[0]?.id || "");
       setActiveTab("decks");
@@ -375,6 +379,13 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
           </button>
         </div>
       </div>
+
+      {mediaCaching && (
+        <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-500">
+          <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+          Caching media in background… {mediaCaching.processed.toLocaleString()}/{mediaCaching.total.toLocaleString()}
+        </div>
+      )}
 
       <AnimatePresence>
         {notice && (
