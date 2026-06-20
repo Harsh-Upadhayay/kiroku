@@ -1030,7 +1030,16 @@ function renderCloze(value: string, ord: number, side: "front" | "back"): string
 function resolveMediaRefs(html: string, mediaUrls: Record<string, string>): string {
   let output = html.replace(/\[sound:([^\]]+)\]/gi, (_match, fileName) => {
     const url = mediaUrls[fileName] || "";
-    return url ? `<audio controls preload="none" src="${escapeAttr(url)}"></audio>` : `<span class="missing-media">[sound:${escapeHTML(fileName)}]</span>`;
+    // Until the blob URL resolves (media now loads lazily per card), render a compact, styled
+    // placeholder rather than the raw "[sound:<hash>.mp3]" tag — that leaked the internal
+    // filename and overflowed the card at prose font size on every audio card.
+    // The filename is retained in data-anki-audio (not shown to the user) so the lazy-media
+    // detector in renderAnkiCard — which finds a card's media by scanning the rendered HTML for
+    // each manifest filename — still recognises this clip and fetches it. Dropping the filename
+    // here would silently disable audio loading on every card.
+    return url
+      ? `<audio controls preload="none" src="${escapeAttr(url)}"></audio>`
+      : `<span class="kiroku-audio-pending" role="img" aria-label="Audio loading" data-anki-audio="${escapeAttr(fileName)}">🔈</span>`;
   });
   output = output.replace(/(<(?:img|audio|video)\b[^>]*\s(?:src|poster)=["'])([^"']+)(["'][^>]*>)/gi, (_match, prefix, fileName, suffix) => {
     return `${prefix}${escapeAttr(mediaUrls[fileName] || fileName)}${suffix}`;

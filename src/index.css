@@ -163,3 +163,20 @@ html.dark .app-shell { background-color: #000000; }
 .dark [class*="shadow-[5px_5px_0px_0px_rgba(0,0,0"]   { box-shadow: 5px 5px 0 0 rgba(255, 255, 255, 0.13); }
 .dark [class*="shadow-[6px_6px_0px_0px_rgba(0,0,0"]   { box-shadow: 6px 6px 0 0 rgba(255, 255, 255, 0.12); }
 .dark [class*="shadow-[8px_8px_0px_0px_rgba(0,0,0"]   { box-shadow: 8px 8px 0 0 rgba(255, 255, 255, 0.11); }
+
+/*
+ * Placeholder shown inside a rendered Anki card while an embedded [sound:...] clip is still
+ * loading — media now resolves lazily per card, so this is the common first-render state, not a
+ * rare error. Kept small, neutral and size-locked (independent of the deck's own .card
+ * font-size) so it never overflows the card the way the old raw "[sound:<hash>.mp3]" text fallback
+ * did, and never leaks the internal media filename to the learner.
+ */
+.kiroku-audio-pending {
+  display: inline-block;
+  font-size: 1rem !important;
+  line-height: 1;
+  opacity: 0.45;
+  vertical-align: middle;
+  margin: 0 0.15em;
+  user-select: none;
+}
