@@ -214,7 +214,10 @@ describe("collection split/assemble round-trip (Phase 3 migration core)", () => 
 describe("importAnkiPackage chunked upload", () => {
   const CHUNK = 10 * 1024 * 1024;
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
 
   // A minimal File stand-in: the function only reads name/size/lastModified and slices it.
   // This avoids allocating a real multi-megabyte File in the test.
@@ -226,16 +229,13 @@ describe("importAnkiPackage chunked upload", () => {
     return { ok: true, status: 200, json: async () => data } as unknown as Response;
   }
 
-  // A complete-endpoint payload with the empty-but-present arrays the merge step expects.
-  function completePayload() {
+  // The import result payload returned by the /status endpoint once parsing is done.
+  function importResult() {
     return {
-      success: true,
-      data: {
-        importId: "imp1",
-        collection: { decks: [], deckConfigs: [], noteTypes: [], notes: [], cards: [], reviewLogs: [] },
-        mediaManifest: [],
-        report: {},
-      },
+      importId: "imp1",
+      collection: { decks: [], deckConfigs: [], noteTypes: [], notes: [], cards: [], reviewLogs: [] },
+      mediaManifest: [],
+      report: {},
     };
   }
 
@@ -245,10 +245,19 @@ describe("importAnkiPackage chunked upload", () => {
         return jsonResponse({ success: true, data: { uploadId: "u1", receivedChunks } });
       }
       if (url.includes("/chunk/")) return jsonResponse({ success: true });
-      if (url.endsWith("/complete")) return jsonResponse(completePayload());
+      // /complete only enqueues the parse job; no result data in the response.
+      if (url.endsWith("/complete")) return jsonResponse({ success: true });
+      // /status returns the final parse result immediately (simulating a fast server).
+      if (url.endsWith("/status")) {
+        return jsonResponse({ success: true, data: { status: "done", result: importResult() } });
+      }
       throw new Error("unexpected fetch url: " + url);
     });
     vi.stubGlobal("fetch", fetchMock);
+    // Use fake timers so pollImportStatus doesn't actually wait 2 s per tick.
+    vi.useFakeTimers();
+    // Advance time past the poll interval on every setTimeout call.
+    vi.stubGlobal("setTimeout", (fn: () => void, _ms?: number) => { fn(); return 0 as unknown as ReturnType<typeof setTimeout>; });
     return fetchMock;
   }
 
