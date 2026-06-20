@@ -230,30 +230,37 @@ func (h *Handler) UploadChunk(w http.ResponseWriter, r *http.Request) {
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true})
 }
 
-// UploadComplete reassembles a finished upload and runs it through the normal import parser,
-// returning the same result as the single-shot /api/import-anki-package endpoint. The session
-// is discarded whether the parse succeeds or fails. POST
-// /api/import-anki-package/upload/{uploadID}/complete.
+// UploadComplete enqueues a background job that reassembles and parses a finished upload, then
+// returns immediately with the job id (the upload id). Parsing a large deck can exceed
+// Cloudflare's ~100s proxy timeout, so the work no longer runs inside this request; the client
+// polls UploadStatus for the result. The session is kept until the client acknowledges the
+// result so a failed parse can be retried. Calling this twice for the same upload is a no-op on
+// the second call. POST /api/import-anki-package/upload/{uploadID}/complete.
 func (h *Handler) UploadComplete(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.PathValue("uploadID")
-	root := h.uploadsRoot()
+	anki.StartImportJob(h.uploadsRoot(), uploadID)
+	h.WriteJSON(w, http.StatusAccepted, models.APIResponse{Success: true,
+		Data: uploadStatusResp{Status: anki.ImportJobPending}})
+}
 
-	path, err := anki.AssembleSession(root, uploadID)
-	if err != nil {
-		// A missing chunk is recoverable (client resends), so leave the session in place.
-		h.writeUploadError(w, "Failed to assemble upload", err)
+// UploadStatus reports the state of a background import job started by UploadComplete. While the
+// parse runs it returns "pending"; on failure it returns "error" with the message (the session
+// is left in place so the client can re-upload missing chunks and retry). On success it returns
+// the parsed result — the same payload the synchronous /complete used to return — and reclaims
+// the upload session, treating the fetch as the client's acknowledgement. GET
+// /api/import-anki-package/upload/{uploadID}/status.
+func (h *Handler) UploadStatus(w http.ResponseWriter, r *http.Request) {
+	uploadID := r.PathValue("uploadID")
+	job, ok := anki.GetImportJob(uploadID)
+	if !ok {
+		h.WriteError(w, http.StatusNotFound, "Unknown import job", nil)
 		return
 	}
-
-	result, err := anki.ImportPackageFile(path)
-	// The reassembled archive is either parsed or unusable; either way the session's job is
-	// done, so reclaim its disk now.
-	_ = anki.DiscardSession(root, uploadID)
-	if err != nil {
-		h.WriteError(w, http.StatusBadRequest, "Failed to import Anki package", err)
-		return
+	resp := uploadStatusResp{Status: job.Status, Result: job.Result, Error: job.Err}
+	if job.Status == anki.ImportJobDone {
+		anki.FinishImportJob(h.uploadsRoot(), uploadID)
 	}
-	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: result})
+	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: resp})
 }
 
 // ImportVocabImage runs local OCR over a textbook vocabulary page image and returns

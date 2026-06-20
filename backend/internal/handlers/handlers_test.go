@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"kiroku-api/internal/config"
 	_ "modernc.org/sqlite"
@@ -81,6 +82,41 @@ func completeUpload(h *Handler, uploadID string) *httptest.ResponseRecorder {
 	return w
 }
 
+func statusUpload(h *Handler, uploadID string) *httptest.ResponseRecorder {
+	url := fmt.Sprintf("/api/import-anki-package/upload/%s/status", uploadID)
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req.SetPathValue("uploadID", uploadID)
+	w := httptest.NewRecorder()
+	h.UploadStatus(w, req)
+	return w
+}
+
+// pollUploadStatus drives the status endpoint until the background job leaves "pending",
+// mirroring what the client does. It returns the final recorder and the terminal status string.
+func pollUploadStatus(t *testing.T, h *Handler, uploadID string) (*httptest.ResponseRecorder, string) {
+	t.Helper()
+	for attempt := 0; attempt < 600; attempt++ {
+		w := statusUpload(h, uploadID)
+		if w.Code != http.StatusOK {
+			t.Fatalf("status returned %d, body=%s", w.Code, w.Body.String())
+		}
+		var resp struct {
+			Data struct {
+				Status string `json:"status"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode status response: %v", err)
+		}
+		if resp.Data.Status != "pending" {
+			return w, resp.Data.Status
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("import job %s never left pending", uploadID)
+	return nil, ""
+}
+
 func TestUploadInitValidatesParams(t *testing.T) {
 	h := newUploadTestHandler(t)
 
@@ -139,9 +175,19 @@ func TestUploadCompleteRejectsIncomplete(t *testing.T) {
 	if w := putChunk(h, uploadID, 0, bytes.Repeat([]byte("a"), 10)); w.Code != http.StatusOK {
 		t.Fatalf("putChunk 0: %d", w.Code)
 	}
-	// Chunk 1 never sent: completing must report 409, not crash or import a partial file.
-	if w := completeUpload(h, uploadID); w.Code != http.StatusConflict {
-		t.Fatalf("complete with missing chunk: got %d, want 409", w.Code)
+	// Chunk 1 never sent. Completing enqueues the parse (202); the missing chunk surfaces as an
+	// "error" status from the background job rather than importing a partial file, and the
+	// session is left in place so the client can re-upload and retry.
+	if w := completeUpload(h, uploadID); w.Code != http.StatusAccepted {
+		t.Fatalf("complete with missing chunk: got %d, want 202", w.Code)
+	}
+	_, status := pollUploadStatus(t, h, uploadID)
+	if status != "error" {
+		t.Fatalf("missing-chunk job status: got %q, want error", status)
+	}
+	sessionDir := filepath.Join(h.uploadsRoot(), uploadID)
+	if _, err := os.Stat(sessionDir); err != nil {
+		t.Fatalf("session should survive a failed parse for retry, stat err: %v", err)
 	}
 }
 
@@ -178,25 +224,40 @@ func TestUploadEndToEnd(t *testing.T) {
 		}
 	}
 
-	w := completeUpload(h, uploadID)
-	if w.Code != http.StatusOK {
+	if w := completeUpload(h, uploadID); w.Code != http.StatusAccepted {
 		t.Fatalf("complete: got %d body=%s", w.Code, w.Body.String())
+	}
+
+	w, status := pollUploadStatus(t, h, uploadID)
+	if status != "done" {
+		t.Fatalf("import job status: got %q, want done", status)
 	}
 	var resp struct {
 		Success bool `json:"success"`
 		Data    struct {
-			ImportID   string `json:"importId"`
-			Collection struct {
-				Cards []json.RawMessage `json:"cards"`
-			} `json:"collection"`
+			Status string `json:"status"`
+			Result struct {
+				ImportID   string `json:"importId"`
+				Collection struct {
+					Cards []json.RawMessage `json:"cards"`
+				} `json:"collection"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode complete response: %v", err)
+		t.Fatalf("decode status response: %v", err)
 	}
-	if !resp.Success || resp.Data.ImportID == "" || len(resp.Data.Collection.Cards) == 0 {
+	if !resp.Success || resp.Data.Result.ImportID == "" || len(resp.Data.Result.Collection.Cards) == 0 {
 		t.Fatalf("unexpected import result: success=%v importId=%q cards=%d",
-			resp.Success, resp.Data.ImportID, len(resp.Data.Collection.Cards))
+			resp.Success, resp.Data.Result.ImportID, len(resp.Data.Result.Collection.Cards))
+	}
+
+	// Fetching the done result acks it: the session is reclaimed and the job forgotten.
+	if _, err := os.Stat(filepath.Join(h.uploadsRoot(), uploadID)); !os.IsNotExist(err) {
+		t.Fatalf("session should be discarded after the result is fetched, stat err: %v", err)
+	}
+	if w := statusUpload(h, uploadID); w.Code != http.StatusNotFound {
+		t.Fatalf("status after ack: got %d, want 404", w.Code)
 	}
 }
 

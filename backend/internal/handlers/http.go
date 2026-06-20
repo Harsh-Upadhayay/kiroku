@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"kiroku-api/internal/anki"
 	"kiroku-api/internal/models"
 	"log/slog"
 	"net/http"
@@ -52,6 +53,14 @@ type (
 type uploadInitResp struct {
 	UploadID       string `json:"uploadId"`
 	ReceivedChunks []int  `json:"receivedChunks"`
+}
+
+// uploadStatusResp reports the state of a background import job. Result is set only once Status
+// is "done"; Error only when Status is "error".
+type uploadStatusResp struct {
+	Status string             `json:"status"`
+	Result *anki.ImportResult `json:"result,omitempty"`
+	Error  string             `json:"error,omitempty"`
 }
 
 // decodeJSON decodes the request body into a value of type T. The generic type parameter

@@ -59,6 +59,7 @@ func main() {
 	mux.HandleFunc("POST /api/import-anki-package/upload/init", h.UploadInit)
 	mux.HandleFunc("PUT /api/import-anki-package/upload/{uploadID}/chunk/{index}", h.UploadChunk)
 	mux.HandleFunc("POST /api/import-anki-package/upload/{uploadID}/complete", h.UploadComplete)
+	mux.HandleFunc("GET /api/import-anki-package/upload/{uploadID}/status", h.UploadStatus)
 	mux.HandleFunc("POST /api/vocab/import-image", h.ImportVocabImage)
 	mux.HandleFunc("GET /api/import-anki-package/{importID}/media/{hash}", h.ImportedPackageMedia)
 	mux.HandleFunc("/api/media/{hash}", h.MediaBlob)
