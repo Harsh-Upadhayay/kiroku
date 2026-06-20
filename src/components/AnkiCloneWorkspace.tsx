@@ -38,6 +38,8 @@ import {
   orderCardsForStudy,
   previewFSRS,
   renderAnkiCard,
+  saveAnkiCard,
+  appendAnkiReviewLog,
   saveAnkiCollection,
   sanitizeTemplateHTML,
   stripHTML,
@@ -259,7 +261,11 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       cards: collection.cards.map((card) => card.id === currentReviewCard.id ? updatedCard : card),
       reviewLogs: [log, ...collection.reviewLogs],
     };
-    await persist(next);
+    setCollection(next);
+    // Hot path: persist only the one changed card and the new log, not the whole collection.
+    await saveAnkiCard(updatedCard);
+    await appendAnkiReviewLog(log);
+    onChange?.();
     setIsBackShown(false);
     setReviewStartedAt(Date.now());
     if (grade === 1) sound.playIncorrect();

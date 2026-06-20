@@ -1,7 +1,24 @@
 import { SRSCard, SpeedTestSession } from "../types";
 
 const DB_NAME = "hiragana_flow_pwa_db";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
+
+// Anki v3 normalized object stores (DB v4). The big collection arrays used to live inside one
+// settings blob; they now live here so a card review writes one record instead of rewriting
+// the whole collection. Records are user-scoped: object stores are NOT key-prefixed the way
+// settings keys are, so every record carries a `user` field (the settings prefix, possibly "")
+// and is keyed by `${user}|${id}` to keep multiple accounts on one browser isolated.
+export const ANKI_CARDS_STORE = "anki_cards";
+export const ANKI_NOTES_STORE = "anki_notes";
+export const ANKI_REVLOGS_STORE = "anki_revlogs";
+const ANKI_STORES = [ANKI_CARDS_STORE, ANKI_NOTES_STORE, ANKI_REVLOGS_STORE] as const;
+
+// One record wrapping a domain object (card/note/review log) with its scoping fields.
+export interface AnkiStoreRecord<T> {
+  key: string;
+  user: string;
+  data: T;
+}
 
 export interface DBReviewAction {
   id?: number;
@@ -20,7 +37,7 @@ export function setSyncRequestSuppressed(value: boolean): void {
   suppressSyncRequests = value;
 }
 
-function requestSyncPush() {
+export function requestSyncPush() {
   try {
     if (suppressSyncRequests) return;
 
@@ -104,6 +121,15 @@ export function initDB(): Promise<IDBDatabase> {
 
       if (!db.objectStoreNames.contains("anki_review_logs")) {
         db.createObjectStore("anki_review_logs", { keyPath: "id" });
+      }
+
+      // DB v4: normalized, user-scoped Anki stores. Each is keyed by `${user}|${id}` and has a
+      // `by_user` index so a user's full set can be loaded (and cleared) without scanning others.
+      for (const storeName of ANKI_STORES) {
+        if (!db.objectStoreNames.contains(storeName)) {
+          const store = db.createObjectStore(storeName, { keyPath: "key" });
+          store.createIndex("by_user", "user", { unique: false });
+        }
       }
     };
 
@@ -334,6 +360,88 @@ export async function getSettingFromDB<T>(key: string, defaultValue: T): Promise
  * Clear only kana study data (cards, review log, kana-related settings).
  * Leaves N5 course progress, Anki collections, media, and auth profiles intact.
  */
+// ---- Anki v3 normalized object-store helpers (DB v4) ----
+
+// The current user's settings prefix ("" when logged out). Object-store records embed this so
+// accounts on a shared browser stay isolated, mirroring how settings keys are prefixed.
+export function currentUserScope(): string {
+  return getUserPrefix();
+}
+
+// Build a record without touching the DB (used for bulk writes and the migration).
+export function makeAnkiRecord<T>(user: string, id: string, data: T): AnkiStoreRecord<T> {
+  return { key: `${user}|${id}`, user, data };
+}
+
+// Replace all of `user`'s records in `storeName` with `records`, in one transaction.
+export async function replaceAnkiStore<T>(storeName: string, user: string, records: AnkiStoreRecord<T>[]): Promise<void> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const cursorReq = store.index("by_user").openCursor(IDBKeyRange.only(user));
+    cursorReq.onsuccess = () => {
+      const cursor = cursorReq.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      } else {
+        for (const record of records) store.put(record);
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// All of `user`'s domain objects from `storeName`.
+export async function getAnkiStoreRecords<T>(storeName: string, user: string): Promise<T[]> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const req = tx.objectStore(storeName).index("by_user").getAll(IDBKeyRange.only(user));
+    req.onsuccess = () => resolve((req.result as AnkiStoreRecord<T>[]).map((r) => r.data));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Upsert a single record (one card / review log). Triggers an autosave sync push like settings.
+export async function putAnkiRecord<T>(storeName: string, user: string, id: string, data: T): Promise<void> {
+  const db = await initDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).put(makeAnkiRecord(user, id, data));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  requestSyncPush();
+}
+
+// Count `user`'s records in `storeName` (used to verify a migration before dropping the blob).
+export async function countAnkiStore(storeName: string, user: string): Promise<number> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const req = tx.objectStore(storeName).index("by_user").count(IDBKeyRange.only(user));
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Delete a settings key. The settings helpers only put/get; the migration needs to drop the
+// legacy blob once its data is safely in the new stores.
+export async function deleteSettingFromDB(key: string): Promise<void> {
+  const prefix = (key === "local_registered_users_v1") ? "" : getUserPrefix();
+  const dbKey = prefix + key;
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("settings", "readwrite");
+    tx.objectStore("settings").delete(dbKey);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function clearKanaDataFromDB(): Promise<void> {
   const KANA_SETTING_KEYS = ["srs_cards_list", "active_rows", "active_rows_info", "streak_info"];
   const db = await initDB();
@@ -370,11 +478,12 @@ export async function clearKanaDataFromDB(): Promise<void> {
 export async function clearAllIndexedDB(): Promise<void> {
   const db = await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(["cards", "review_actions", "settings"], "readwrite");
-    
+    const transaction = db.transaction(["cards", "review_actions", "settings", ...ANKI_STORES], "readwrite");
+
     transaction.objectStore("cards").clear();
     transaction.objectStore("review_actions").clear();
     transaction.objectStore("settings").clear();
+    for (const storeName of ANKI_STORES) transaction.objectStore(storeName).clear();
 
     transaction.oncomplete = () => {
       resolve();
