@@ -192,6 +192,31 @@ describe("renderAnkiCard CSS media resolution", () => {
     );
     expect(cardSearchText(collection, collection.cards[0], index)).toContain("hello");
   });
+
+  // Regression for the "[sound:<hash>.mp3] flashes as oversized text" bug: with media lazy-loaded,
+  // an unresolved [sound:] tag must never leak its raw filename into the rendered card.
+  const soundCollection: AnkiCollection = {
+    ...collection,
+    notes: [{ ...collection.notes[0], fields: { Front: "Listen.[sound:abc123.mp3]" }, rawFields: ["Listen.[sound:abc123.mp3]"] }],
+    mediaManifest: [{ fileName: "abc123.mp3", hash: "h-abc", bytes: 1, contentType: "audio/mpeg" } as any],
+  };
+
+  it("renders a neutral placeholder (not the raw tag) for an unresolved [sound:] clip", () => {
+    const rendered = renderAnkiCard(soundCollection, soundCollection.cards[0], {});
+    // No visible raw tag, but the filename survives in a data attribute so the lazy-media
+    // detector still finds and fetches the clip.
+    expect(rendered?.frontHTML).not.toContain("[sound:");
+    expect(rendered?.frontHTML).toContain("kiroku-audio-pending");
+    expect(rendered?.frontHTML).toContain('data-anki-audio="abc123.mp3"');
+    expect(rendered?.mediaFiles.some((m) => m.fileName === "abc123.mp3")).toBe(true);
+  });
+
+  it("renders an <audio> element once the [sound:] clip resolves to a blob URL", () => {
+    const rendered = renderAnkiCard(soundCollection, soundCollection.cards[0], { "abc123.mp3": "blob:clip" });
+    expect(rendered?.frontHTML).toContain("<audio");
+    expect(rendered?.frontHTML).toContain("blob:clip");
+    expect(rendered?.frontHTML).not.toContain("[sound:");
+  });
 });
 
 describe("saveAnkiCollection writes the normalized stores + meta (Phase 3)", () => {
