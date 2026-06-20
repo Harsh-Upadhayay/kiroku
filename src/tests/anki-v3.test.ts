@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { State } from "ts-fsrs";
 
 // anki-v3.ts imports the IndexedDB-backed db module at load time. The functions under test
@@ -13,6 +13,7 @@ import {
   orderCardsForStudy,
   compareAnkiStudyOrder,
   renderAnkiCard,
+  importAnkiPackage,
   type AnkiCard,
   type AnkiCollection,
 } from "../utils/anki-v3";
@@ -123,5 +124,78 @@ describe("renderAnkiCard CSS media resolution", () => {
   it("leaves CSS url() untouched when the media is not present", () => {
     const rendered = renderAnkiCard(collection, collection.cards[0], {});
     expect(rendered?.css).toContain("_Stroke.ttf");
+  });
+});
+
+describe("importAnkiPackage chunked upload", () => {
+  const CHUNK = 10 * 1024 * 1024;
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  // A minimal File stand-in: the function only reads name/size/lastModified and slices it.
+  // This avoids allocating a real multi-megabyte File in the test.
+  function fakeFile(size: number): File {
+    return { name: "deck.apkg", size, lastModified: 123, slice: () => new Blob() } as unknown as File;
+  }
+
+  function jsonResponse(data: unknown): Response {
+    return { ok: true, status: 200, json: async () => data } as unknown as Response;
+  }
+
+  // A complete-endpoint payload with the empty-but-present arrays the merge step expects.
+  function completePayload() {
+    return {
+      success: true,
+      data: {
+        importId: "imp1",
+        collection: { decks: [], deckConfigs: [], noteTypes: [], notes: [], cards: [], reviewLogs: [] },
+        mediaManifest: [],
+        report: {},
+      },
+    };
+  }
+
+  function stubUpload(receivedChunks: number[]) {
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.endsWith("/upload/init")) {
+        return jsonResponse({ success: true, data: { uploadId: "u1", receivedChunks } });
+      }
+      if (url.includes("/chunk/")) return jsonResponse({ success: true });
+      if (url.endsWith("/complete")) return jsonResponse(completePayload());
+      throw new Error("unexpected fetch url: " + url);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("splits the file into 10MB chunk PUTs, reports progress, and completes", async () => {
+    const fetchMock = stubUpload([]);
+    const file = fakeFile(CHUNK * 2 + 5); // 3 chunks
+    const progress: number[] = [];
+
+    await importAnkiPackage(file, (f) => progress.push(f));
+
+    const calls = fetchMock.mock.calls.map(([url, init]) => ({ url: String(url), method: (init as RequestInit)?.method }));
+    const chunkPuts = calls.filter((c) => c.url.includes("/chunk/"));
+    expect(chunkPuts).toHaveLength(3);
+    expect(chunkPuts.every((c) => c.method === "PUT")).toBe(true);
+    expect(calls.some((c) => c.url.endsWith("/upload/init"))).toBe(true);
+    expect(calls.some((c) => c.url.endsWith("/complete"))).toBe(true);
+    // Progress starts at 0 (nothing on the server) and climbs to a full 1.
+    expect(progress[0]).toBe(0);
+    expect(progress[progress.length - 1]).toBe(1);
+  });
+
+  it("resumes by skipping chunks the server already holds", async () => {
+    const fetchMock = stubUpload([0, 2]); // server already has chunks 0 and 2
+    const file = fakeFile(CHUNK * 2 + 5); // 3 chunks total
+
+    await importAnkiPackage(file);
+
+    const chunkPuts = fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.includes("/chunk/"));
+    expect(chunkPuts).toHaveLength(1); // only the missing chunk 1 is uploaded
+    expect(chunkPuts[0]).toContain("/chunk/1");
   });
 });

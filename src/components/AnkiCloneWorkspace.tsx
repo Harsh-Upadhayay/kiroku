@@ -83,6 +83,8 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const [reviewStartedAt, setReviewStartedAt] = useState(Date.now());
   const [isBackShown, setIsBackShown] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  // Upload fraction (0–1) while a chunked import is in flight; null when idle.
+  const [importProgress, setImportProgress] = useState<number | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [newFilteredQuery, setNewFilteredQuery] = useState("is:due");
@@ -185,8 +187,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     if (!file) return;
     sound.playTick();
     setIsImporting(true);
+    setImportProgress(0);
     try {
-      const next = await importAnkiPackage(file);
+      const next = await importAnkiPackage(file, setImportProgress);
       setCollection(next);
       setSelectedDeckId(next.decks[0]?.id || "");
       setActiveTab("decks");
@@ -196,6 +199,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       notify("error", error?.message || "Import failed.");
     } finally {
       setIsImporting(false);
+      setImportProgress(null);
       event.target.value = "";
     }
   };
@@ -360,10 +364,11 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
           </div>
         </div>
         <div className="flex flex-col min-[520px]:flex-row gap-2">
-          <label className={`px-3 py-2 rounded-xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
+          <label className={`relative overflow-hidden px-3 py-2 rounded-xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
             <Upload className="h-4 w-4" />
-            {isImporting ? "Importing..." : "Import .apkg/.colpkg"}
+            {importButtonLabel(isImporting, importProgress)}
             <input type="file" accept=".apkg,.colpkg" className="hidden" onChange={handleImport} disabled={isImporting} />
+            <ImportProgressBar progress={isImporting ? importProgress : null} />
           </label>
           <button onClick={exportCollection} className="px-3 py-2 rounded-xl border-2 border-zinc-900 bg-white text-zinc-900 text-xs font-black uppercase flex items-center justify-center gap-1.5">
             <Download className="h-4 w-4" /> Export JSON
@@ -386,7 +391,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       </AnimatePresence>
 
       {collection.cards.length === 0 ? (
-        <FirstRunImport isImporting={isImporting} onImport={handleImport} />
+        <FirstRunImport isImporting={isImporting} importProgress={importProgress} onImport={handleImport} />
       ) : (
       <>
       <div className="grid grid-cols-4 min-[560px]:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -706,9 +711,27 @@ const EmptyState: React.FC<{ text: string }> = ({ text }) => (
   </div>
 );
 
+// Subtle import-button affordance: the live upload percentage while chunks are in flight,
+// then "Importing…" during the server-side parse/merge once the upload itself completes.
+function importButtonLabel(isImporting: boolean, progress: number | null): string {
+  if (!isImporting) return "Import .apkg/.colpkg";
+  if (progress !== null && progress < 1) return `Uploading ${Math.round(progress * 100)}%`;
+  return "Importing…";
+}
+
+// A hairline fill along the bottom of the import button tracking upload progress. Rendered
+// only while importing; the parent passes null otherwise so it disappears.
+const ImportProgressBar: React.FC<{ progress: number | null }> = ({ progress }) =>
+  progress === null ? null : (
+    <span
+      className="absolute left-0 bottom-0 h-0.5 bg-white/80 transition-[width] duration-200 ease-out"
+      style={{ width: `${Math.round(progress * 100)}%` }}
+    />
+  );
+
 // Focused first-run state: with no deck imported, the eight tabs + zeroed stat cards are just
 // noise. Show one clear call to action instead.
-const FirstRunImport: React.FC<{ isImporting: boolean; onImport: (event: React.ChangeEvent<HTMLInputElement>) => void }> = ({ isImporting, onImport }) => (
+const FirstRunImport: React.FC<{ isImporting: boolean; importProgress: number | null; onImport: (event: React.ChangeEvent<HTMLInputElement>) => void }> = ({ isImporting, importProgress, onImport }) => (
   <div className="border-2 border-dashed border-zinc-300 rounded-[24px] p-8 sm:p-12 text-center space-y-4">
     <div className="mx-auto w-14 h-14 rounded-2xl border-2 border-zinc-900 bg-indigo-50 flex items-center justify-center">
       <Upload className="h-6 w-6 text-indigo-600" />
@@ -717,10 +740,11 @@ const FirstRunImport: React.FC<{ isImporting: boolean; onImport: (event: React.C
       <h4 className="text-lg font-black text-zinc-950">Import a deck to get started</h4>
       <p className="mt-1 text-xs font-bold text-zinc-500 max-w-md mx-auto">Bring in any Anki <code>.apkg</code> / <code>.colpkg</code> package. Media and scheduling are kept — your reviews, browser, and stats appear once it's loaded.</p>
     </div>
-    <label className={`inline-flex px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase items-center justify-center gap-2 cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
+    <label className={`relative overflow-hidden inline-flex px-5 py-3 rounded-2xl border-2 border-zinc-900 bg-indigo-600 text-white text-xs font-black uppercase items-center justify-center gap-2 cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${isImporting ? "opacity-60 pointer-events-none" : ""}`}>
       <Upload className="h-4 w-4" />
-      {isImporting ? "Importing..." : "Import .apkg/.colpkg"}
+      {importButtonLabel(isImporting, importProgress)}
       <input type="file" accept=".apkg,.colpkg" className="hidden" onChange={onImport} disabled={isImporting} />
+      <ImportProgressBar progress={isImporting ? importProgress : null} />
     </label>
   </div>
 );

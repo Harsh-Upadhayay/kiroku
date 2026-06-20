@@ -36,7 +36,23 @@ type (
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
+	// uploadInitReq starts (or resumes) a chunked .apkg upload. Fingerprint is a client-side
+	// identity for the file (e.g. name:size:lastModified) used to resume an interrupted upload.
+	uploadInitReq struct {
+		Fingerprint string `json:"fingerprint"`
+		FileName    string `json:"fileName"`
+		TotalSize   int64  `json:"totalSize"`
+		TotalChunks int    `json:"totalChunks"`
+		ChunkSize   int64  `json:"chunkSize"`
+	}
 )
+
+// uploadInitResp tells the client which upload session to write chunks to and which chunk
+// indices the server already holds (non-empty when resuming).
+type uploadInitResp struct {
+	UploadID       string `json:"uploadId"`
+	ReceivedChunks []int  `json:"receivedChunks"`
+}
 
 // decodeJSON decodes the request body into a value of type T. The generic type parameter
 // removes the per-handler "var req struct{...}; json.NewDecoder(...).Decode(&req)" boilerplate
