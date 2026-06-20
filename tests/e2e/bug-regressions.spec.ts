@@ -270,8 +270,11 @@ test.describe("BUG-16: Due now stat tile color", () => {
  * Returns false if the pill is not found (test should skip).
  */
 async function clickStagePill(page: import("@playwright/test").Page, label: string): Promise<boolean> {
-  // StageRail pills are buttons that contain the stage label text
-  const pill = page.locator(`button`).filter({ hasText: new RegExp(`^${label}$`, "i") }).first();
+  // StageRail renders stage names in lowercase (e.g. "vocab"), while the main nav uses
+  // capitalised labels (e.g. "Vocab"). Use a case-SENSITIVE exact match on the lowercase
+  // stage name so we never accidentally click the main navigation tab.
+  const stageName = label.toLowerCase();
+  const pill = page.locator("button").filter({ hasText: new RegExp(`^${stageName}$`) }).first();
   if (await pill.count() === 0) return false;
   await pill.click();
   await page.waitForTimeout(400);

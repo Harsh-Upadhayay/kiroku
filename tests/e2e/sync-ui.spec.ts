@@ -11,7 +11,9 @@ import { freshStart, completeAllGrammar } from "./helpers";
 // ---------------------------------------------------------------------------
 
 const APP_DB = "hiragana_flow_pwa_db";
-const DB_VERSION = 3;
+// Must match the version in src/utils/db.ts; opening at a lower version than the existing
+// DB causes a VersionError which aborts the test.
+const DB_VERSION = 4;
 const FAKE_EMAIL = "sync-regression-test@test.local";
 const USER_PREFIX =
   "user_scoped_" + FAKE_EMAIL.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_";
