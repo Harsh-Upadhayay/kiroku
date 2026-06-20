@@ -16,6 +16,9 @@ import {
   currentUserScope,
   replaceAnkiStore,
   getAnkiStoreRecords,
+  getAnkiRecordsByIds,
+  upsertAnkiRecords,
+  deleteAnkiRecordsByIds,
   putAnkiRecord,
   makeAnkiRecord,
   countAnkiStore,
@@ -333,17 +336,137 @@ async function migrateLegacyCollection(legacy: Partial<AnkiCollection>): Promise
 // hot review path.
 export async function saveAnkiCollection(collection: AnkiCollection): Promise<void> {
   await writeAnkiCollectionStores(collection);
+  // A bulk write (import, deck delete, editor add) touches many records, so force the next sync
+  // to be a full reseed rather than trying to delta-track every change.
+  await saveSettingToDB(SEEDED_KEY, false);
   // Writing the meta blob triggers the autosave sync push (see saveSettingToDB).
   await saveSettingToDB(META_KEY, metaOf(collection));
 }
 
-// Incremental writes for the hot path: persist only the one card / one review log that changed.
+// Incremental writes for the hot path: persist only the one card / one review log that changed,
+// and record it as dirty so the next sync pushes just that record (delta sync).
 export async function saveAnkiCard(card: AnkiCard): Promise<void> {
   await putAnkiRecord(ANKI_CARDS_STORE, currentUserScope(), card.id, card);
+  await addDirty(DIRTY_CARDS_KEY, [card.id]);
 }
 
 export async function appendAnkiReviewLog(log: AnkiReviewLog): Promise<void> {
   await putAnkiRecord(ANKI_REVLOGS_STORE, currentUserScope(), log.id, log);
+  await addDirty(DIRTY_LOGS_KEY, [log.id]);
+}
+
+// ---- Delta sync (Phase 4) ----
+// The sync push sends only what changed since the last successful push, tracked as id sets in
+// user-scoped settings keys (persisted so an un-pushed change survives a reload). The first
+// push after upgrade is a full seed (SEEDED_KEY unset), which also seeds the server's per-record
+// store from this device's already-migrated data.
+const DIRTY_CARDS_KEY = "anki_dirty_card_ids";
+const DIRTY_LOGS_KEY = "anki_dirty_revlog_ids";
+const DELETED_CARDS_KEY = "anki_deleted_card_ids"; // tombstones to propagate
+const SEEDED_KEY = "anki_sync_seeded_v4";
+
+async function addDirty(key: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const current = await getSettingFromDB<string[]>(key, []);
+  const next = Array.from(new Set([...current, ...ids]));
+  await saveSettingToDB(key, next);
+}
+
+// Record card ids as deleted so the deletion propagates to the server and other devices instead
+// of being resurrected by their copies. Also drops them from the dirty-cards set.
+export async function markAnkiCardsDeleted(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await addDirty(DELETED_CARDS_KEY, ids);
+  const dirty = await getSettingFromDB<string[]>(DIRTY_CARDS_KEY, []);
+  const removed = new Set(ids);
+  await saveSettingToDB(DIRTY_CARDS_KEY, dirty.filter((id) => !removed.has(id)));
+}
+
+export interface AnkiSyncDelta {
+  meta: AnkiCollection;        // collection metadata (small)
+  cards: AnkiCard[];           // changed (or all, when seeding) cards
+  notes: AnkiNote[];
+  reviewLogs: AnkiReviewLog[];
+  deletedCardIds: string[];
+  snapshot: { cardIds: string[]; logIds: string[]; deletedIds: string[]; full: boolean };
+}
+
+// Build the payload for a push. When not yet seeded, sends the full collection (and notes, so
+// the server's note store is seeded too); otherwise just the dirty cards/logs. Returns null when
+// there is no local Anki data at all, so a fresh device never clobbers the server.
+export async function getAnkiSyncDelta(): Promise<AnkiSyncDelta | null> {
+  const meta = await getSettingFromDB<Partial<AnkiCollection> | null>(META_KEY, null);
+  const legacy = meta ? null : await getSettingFromDB<Partial<AnkiCollection> | null>(COLLECTION_KEY, null);
+  if (!meta && !legacy) return null;
+
+  const collection = await getAnkiCollection(); // also performs legacy migration if needed
+  const user = currentUserScope();
+  const seeded = await getSettingFromDB<boolean>(SEEDED_KEY, false);
+  const deletedCardIds = await getSettingFromDB<string[]>(DELETED_CARDS_KEY, []);
+
+  if (!seeded) {
+    return {
+      meta: metaOf(collection),
+      cards: collection.cards,
+      notes: collection.notes,
+      reviewLogs: collection.reviewLogs,
+      deletedCardIds,
+      snapshot: { cardIds: collection.cards.map((c) => c.id), logIds: collection.reviewLogs.map((l) => l.id), deletedIds: deletedCardIds, full: true },
+    };
+  }
+
+  const dirtyCardIds = await getSettingFromDB<string[]>(DIRTY_CARDS_KEY, []);
+  const dirtyLogIds = await getSettingFromDB<string[]>(DIRTY_LOGS_KEY, []);
+  const [cards, reviewLogs] = await Promise.all([
+    getAnkiRecordsByIds<AnkiCard>(ANKI_CARDS_STORE, user, dirtyCardIds),
+    getAnkiRecordsByIds<AnkiReviewLog>(ANKI_REVLOGS_STORE, user, dirtyLogIds),
+  ]);
+  return {
+    meta: metaOf(collection),
+    cards,
+    notes: [], // notes only change on import/edit, which reseed; nothing to send incrementally
+    reviewLogs,
+    deletedCardIds,
+    snapshot: { cardIds: dirtyCardIds, logIds: dirtyLogIds, deletedIds: deletedCardIds, full: false },
+  };
+}
+
+// After a push succeeds, drop exactly the ids that were sent (not a blanket clear, so changes
+// made during the in-flight push stay dirty) and mark the collection as seeded.
+export async function commitAnkiSync(snapshot: AnkiSyncDelta["snapshot"]): Promise<void> {
+  await saveSettingToDB(SEEDED_KEY, true);
+  const subtract = async (key: string, sent: string[]) => {
+    if (sent.length === 0) return;
+    const current = await getSettingFromDB<string[]>(key, []);
+    const sentSet = new Set(sent);
+    await saveSettingToDB(key, current.filter((id) => !sentSet.has(id)));
+  };
+  await subtract(DIRTY_CARDS_KEY, snapshot.cardIds);
+  await subtract(DIRTY_LOGS_KEY, snapshot.logIds);
+  await subtract(DELETED_CARDS_KEY, snapshot.deletedIds); // server retains the tombstone durably
+}
+
+// Apply server records into the local stores incrementally (used on pull). Does not clear the
+// stores or trigger a push, so a 10k-card collection isn't rewritten wholesale on every sync.
+export async function applyAnkiRemote(state: {
+  anki_v3_collection?: Partial<AnkiCollection> | null;
+  anki_cards_list?: AnkiCard[];
+  anki_notes_list?: AnkiNote[];
+  anki_revlogs_list?: AnkiReviewLog[];
+  deleted_card_ids?: string[];
+}): Promise<void> {
+  const user = currentUserScope();
+  if (state.anki_v3_collection) {
+    await saveSettingToDB(META_KEY, metaOf(normalizeCollection(state.anki_v3_collection)));
+  }
+  await Promise.all([
+    upsertAnkiRecords(ANKI_CARDS_STORE, user, (state.anki_cards_list || []).map((c) => makeAnkiRecord(user, c.id, c))),
+    upsertAnkiRecords(ANKI_NOTES_STORE, user, (state.anki_notes_list || []).map((n) => makeAnkiRecord(user, n.id, n))),
+    upsertAnkiRecords(ANKI_REVLOGS_STORE, user, (state.anki_revlogs_list || []).map((l) => makeAnkiRecord(user, l.id, l))),
+  ]);
+  await deleteAnkiRecordsByIds(ANKI_CARDS_STORE, user, state.deleted_card_ids || []);
+  // Mark seeded: we now have server data locally, so our next push can be a delta.
+  await saveSettingToDB(SEEDED_KEY, true);
 }
 
 // Used by the sync collector. Returns null when there is no local Anki data at all, so a fresh

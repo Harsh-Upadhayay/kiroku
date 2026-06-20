@@ -8,6 +8,10 @@ import {
   getAnkiCollection,
   saveAnkiCollection,
   saveAnkiCard,
+  getAnkiSyncDelta,
+  commitAnkiSync,
+  applyAnkiRemote,
+  markAnkiCardsDeleted,
   emptyCollection,
   type AnkiCard,
   type AnkiCollection,
@@ -86,5 +90,54 @@ describe("normalized Anki storage (DB v4)", () => {
 
     setUser("a@example.com");
     expect((await getAnkiCollection()).cards.map((c) => c.id)).toEqual(["cA"]);
+  });
+});
+
+describe("delta sync (Phase 4)", () => {
+  it("first push seeds full, then sends only changed cards", async () => {
+    await saveAnkiCollection(collectionWith([card("c1"), card("c2")]));
+
+    const seed = (await getAnkiSyncDelta())!;
+    expect(seed.snapshot.full).toBe(true);
+    expect(seed.cards.map((c) => c.id).sort()).toEqual(["c1", "c2"]);
+    await commitAnkiSync(seed.snapshot);
+
+    // After seeding, only a touched card is in the delta.
+    await saveAnkiCard({ ...card("c1"), reps: 7 });
+    const delta = (await getAnkiSyncDelta())!;
+    expect(delta.snapshot.full).toBe(false);
+    expect(delta.cards.map((c) => c.id)).toEqual(["c1"]);
+    expect(delta.cards[0].reps).toBe(7);
+
+    // Once committed, the dirty set is empty again.
+    await commitAnkiSync(delta.snapshot);
+    expect((await getAnkiSyncDelta())!.cards).toEqual([]);
+  });
+
+  it("tombstones a deleted card and drops it from the dirty set", async () => {
+    await saveAnkiCollection(collectionWith([card("c1"), card("c2")]));
+    await commitAnkiSync((await getAnkiSyncDelta())!.snapshot);
+
+    await saveAnkiCard({ ...card("c1"), reps: 1 }); // c1 now dirty
+    await markAnkiCardsDeleted(["c1"]);
+
+    const delta = (await getAnkiSyncDelta())!;
+    expect(delta.deletedCardIds).toContain("c1");
+    expect(delta.snapshot.cardIds).not.toContain("c1"); // removed from dirty when tombstoned
+  });
+
+  it("applyAnkiRemote upserts pulled cards and applies tombstones incrementally", async () => {
+    // Fresh device: apply a pull with two cards.
+    await applyAnkiRemote({
+      anki_v3_collection: { decks: [{ id: "d1", name: "Deck" }] } as any,
+      anki_cards_list: [card("c1"), card("c2")],
+      anki_revlogs_list: [],
+      deleted_card_ids: [],
+    });
+    expect((await getAnkiCollection()).cards.map((c) => c.id).sort()).toEqual(["c1", "c2"]);
+
+    // A later pull adds c3 and tombstones c1.
+    await applyAnkiRemote({ anki_cards_list: [card("c3")], deleted_card_ids: ["c1"] });
+    expect((await getAnkiCollection()).cards.map((c) => c.id).sort()).toEqual(["c2", "c3"]);
   });
 });

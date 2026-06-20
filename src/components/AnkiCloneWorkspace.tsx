@@ -40,6 +40,7 @@ import {
   renderAnkiCard,
   saveAnkiCard,
   appendAnkiReviewLog,
+  markAnkiCardsDeleted,
   saveAnkiCollection,
   sanitizeTemplateHTML,
   stripHTML,
@@ -375,6 +376,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     const remainingCards = collection.cards.filter((c) => !removedDeckIds.has(c.deckId));
     const remainingCardIds = new Set(remainingCards.map((c) => c.id));
     const remainingNoteIds = new Set(remainingCards.map((c) => c.noteId));
+    const removedCardIds = collection.cards.filter((c) => removedDeckIds.has(c.deckId)).map((c) => c.id);
     const next: AnkiCollection = {
       ...collection,
       decks: collection.decks.filter((d) => !removedDeckIds.has(d.id)),
@@ -382,6 +384,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
       notes: collection.notes.filter((n) => remainingNoteIds.has(n.id)),
       reviewLogs: collection.reviewLogs.filter((log) => remainingCardIds.has(log.cardId)),
     };
+    // Tombstone the removed cards so the deletion propagates to the server/other devices
+    // instead of being resurrected from their copies on the next sync.
+    await markAnkiCardsDeleted(removedCardIds);
     await persist(next);
     setConfirmDeleteDeckId(null);
     if (removedDeckIds.has(selectedDeckId)) {

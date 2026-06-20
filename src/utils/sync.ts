@@ -5,7 +5,11 @@ import { n5Course } from "../content/n5/raw";
 import { normalizeN5Cards, normalizeN5Progress, type N5CourseProgress, type N5SRSCard } from "./n5-course";
 import { normalizeLookupCards, type LookupCard } from "./lookup-deck";
 import { normalizeVocabWords, type VocabWord } from "./vocab-words";
-import { getAnkiCollectionForSync, saveAnkiCollection, normalizeCollection } from "./anki-v3";
+import { getAnkiSyncDelta, commitAnkiSync, applyAnkiRemote, type AnkiSyncDelta } from "./anki-v3";
+
+// Snapshot of the Anki ids included in the in-flight push, so we can clear exactly those from
+// the dirty sets once the server confirms (changes made mid-push stay dirty).
+let pendingAnkiSnapshot: AnkiSyncDelta["snapshot"] | null = null;
 
 export interface SyncState {
   _meta?: {
@@ -18,7 +22,11 @@ export interface SyncState {
   active_rows: string[];
   active_rows_info?: { updatedAt?: number; clientId?: string };
   streak_info: { current: number; highest: number };
-  anki_v3_collection?: any;
+  anki_v3_collection?: any; // collection metadata only (decks/note types/media); big arrays below
+  anki_cards_list?: any[];
+  anki_notes_list?: any[];
+  anki_revlogs_list?: any[];
+  deleted_card_ids?: string[];
   deleted_deck_ids?: string[];
   n5_course_progress?: N5CourseProgress;
   n5_srs_cards?: N5SRSCard[];
@@ -111,7 +119,8 @@ async function collectSyncState(): Promise<SyncState> {
   const active_rows = normalizeActiveRows(await getSettingFromDB<string[]>("active_rows", DEFAULT_ACTIVE_GROUP_IDS));
   const active_rows_info = await getSettingFromDB<{ updatedAt?: number; clientId?: string }>("active_rows_info", {});
   const streak_info = await getSettingFromDB<{ current: number; highest: number; updatedAt?: number }>("streak_info", { current: 0, highest: 0 });
-  const anki_v3_collection = await getAnkiCollectionForSync();
+  const ankiDelta = await getAnkiSyncDelta();
+  pendingAnkiSnapshot = ankiDelta ? ankiDelta.snapshot : null;
   const deleted_deck_ids = await getSettingFromDB<string[]>("deleted_deck_ids", []);
 
   // Only include n5 progress when something is actually stored locally.
@@ -140,7 +149,11 @@ async function collectSyncState(): Promise<SyncState> {
       ...streak_info,
       updatedAt: typeof streak_info.updatedAt === "number" ? streak_info.updatedAt : now,
     } as any,
-    anki_v3_collection,
+    anki_v3_collection: ankiDelta ? ankiDelta.meta : undefined,
+    anki_cards_list: ankiDelta ? ankiDelta.cards : undefined,
+    anki_notes_list: ankiDelta && ankiDelta.notes.length ? ankiDelta.notes : undefined,
+    anki_revlogs_list: ankiDelta ? ankiDelta.reviewLogs : undefined,
+    deleted_card_ids: ankiDelta && ankiDelta.deletedCardIds.length ? ankiDelta.deletedCardIds : undefined,
     deleted_deck_ids,
     n5_course_progress,
     n5_srs_cards: stampCollection(n5_srs_cards as any[], now) as N5SRSCard[],
@@ -173,7 +186,8 @@ export const syncEvents = {
 };
 
 /** Write a remote SyncState into local IndexedDB (suppresses auto-push during writes). */
-async function applyRemoteState(state: SyncState): Promise<void> {
+async function applyRemoteState(state: SyncState, opts: { applyAnki?: boolean } = {}): Promise<void> {
+  const { applyAnki = true } = opts;
   setSyncRequestSuppressed(true);
   try {
     if (Array.isArray(state.srs_cards_list)) {
@@ -188,8 +202,12 @@ async function applyRemoteState(state: SyncState): Promise<void> {
     if (state.streak_info) {
       await saveSettingToDB("streak_info", state.streak_info);
     }
-    if (state.anki_v3_collection) {
-      await saveAnkiCollection(normalizeCollection(state.anki_v3_collection));
+    // Apply Anki only on pull (applyAnki). The server returns the full merged card set, so
+    // applying it on every debounced push would rewrite the whole local store each review;
+    // instead the local store is already authoritative for this device and picks up other
+    // devices' changes on the next pull. The apply is incremental (upsert + tombstone delete).
+    if (applyAnki) {
+      await applyAnkiRemote(state);
     }
     if (Array.isArray(state.deleted_deck_ids)) {
       await saveSettingToDB("deleted_deck_ids", state.deleted_deck_ids);
@@ -238,10 +256,17 @@ export async function triggerPushSync(email: string): Promise<boolean> {
       }
       clearSyncDirty();
       localStorage.setItem(SYNC_LAST_PUSH_KEY, String(Date.now()));
-      // Apply the server-merged state so we pick up any changes from other sessions.
+      // The push of Anki records succeeded — drop exactly the ids we sent from the dirty sets.
+      if (pendingAnkiSnapshot) {
+        await commitAnkiSync(pendingAnkiSnapshot);
+        pendingAnkiSnapshot = null;
+      }
+      // Apply the server-merged non-Anki state so we pick up other sessions' changes. Anki is
+      // intentionally not applied here (see applyRemoteState) to avoid rewriting the local store
+      // on every push; it converges on the next pull.
       const merged = data.data as SyncState | null;
       if (merged && typeof merged === "object" && !("ignored" in merged)) {
-        await applyRemoteState(merged);
+        await applyRemoteState(merged, { applyAnki: false });
         syncEvents.emit();
       }
       console.log("Backend synchronization push complete.");
