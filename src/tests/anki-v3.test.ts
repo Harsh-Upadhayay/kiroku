@@ -7,9 +7,23 @@ vi.mock("../utils/db", () => ({
   getSettingFromDB: vi.fn(async (_key: string, defaultValue: unknown) => defaultValue),
   saveSettingToDB: vi.fn(async () => {}),
   initDB: vi.fn(async () => ({})),
+  // DB v4 normalized-store boundary, stubbed so the unit suite stays in-memory.
+  deleteSettingFromDB: vi.fn(async () => {}),
+  currentUserScope: vi.fn(() => ""),
+  replaceAnkiStore: vi.fn(async () => {}),
+  getAnkiStoreRecords: vi.fn(async () => []),
+  putAnkiRecord: vi.fn(async () => {}),
+  countAnkiStore: vi.fn(async () => 0),
+  makeAnkiRecord: (user: string, id: string, data: unknown) => ({ key: `${user}|${id}`, user, data }),
+  ANKI_CARDS_STORE: "anki_cards",
+  ANKI_NOTES_STORE: "anki_notes",
+  ANKI_REVLOGS_STORE: "anki_revlogs",
 }));
 
-import { saveSettingToDB as mockedSaveSettingToDB } from "../utils/db";
+import {
+  saveSettingToDB as mockedSaveSettingToDB,
+  replaceAnkiStore as mockedReplaceAnkiStore,
+} from "../utils/db";
 
 import {
   orderCardsForStudy,
@@ -19,6 +33,9 @@ import {
   cardSearchText,
   emptyCollection,
   saveAnkiCollection,
+  metaOf,
+  assembleCollection,
+  normalizeCollection,
   importAnkiPackage,
   type AnkiCard,
   type AnkiCollection,
@@ -149,17 +166,48 @@ describe("renderAnkiCard CSS media resolution", () => {
   });
 });
 
-describe("saveAnkiCollection persists without re-normalizing (Phase 2)", () => {
-  afterEach(() => vi.mocked(mockedSaveSettingToDB).mockClear());
+describe("saveAnkiCollection writes the normalized stores + meta (Phase 3)", () => {
+  afterEach(() => {
+    vi.mocked(mockedSaveSettingToDB).mockClear();
+    vi.mocked(mockedReplaceAnkiStore).mockClear();
+  });
 
-  it("writes the exact in-memory object through, not a re-mapped copy", async () => {
-    const coll = emptyCollection();
+  it("stores the meta blob (big arrays emptied) and the cards in their own store", async () => {
+    const coll = { ...emptyCollection(), cards: [card({ id: "c1", noteId: "n1", deckId: "d1" })] };
     await saveAnkiCollection(coll);
-    // Re-normalizing would deep-map every array into fresh objects; instead the same
-    // reference must reach storage, proving the per-save normalize pass is gone.
-    const lastCall = vi.mocked(mockedSaveSettingToDB).mock.calls.at(-1)!;
-    expect(lastCall[0]).toBe("anki_v3_collection");
-    expect(lastCall[1]).toBe(coll);
+
+    // Meta blob carries everything except the big arrays.
+    const metaCall = vi.mocked(mockedSaveSettingToDB).mock.calls.at(-1)!;
+    expect(metaCall[0]).toBe("anki_v3_meta");
+    expect((metaCall[1] as any).cards).toEqual([]);
+    expect((metaCall[1] as any).reviewLogs).toEqual([]);
+
+    // Cards go to the cards store, each wrapping the original (not re-normalized) card object.
+    const cardsStoreCall = vi.mocked(mockedReplaceAnkiStore).mock.calls.find((c) => c[0] === "anki_cards")!;
+    expect(cardsStoreCall).toBeTruthy();
+    expect((cardsStoreCall[2] as any[])[0].data).toBe(coll.cards[0]);
+  });
+});
+
+describe("collection split/assemble round-trip (Phase 3 migration core)", () => {
+  const sample: AnkiCollection = {
+    ...emptyCollection(),
+    decks: [{ id: "d1", name: "Deck" }],
+    notes: [{ id: "n1", guid: "g", noteTypeId: "m1", tags: [], fields: { Front: "x" }, fieldOrder: ["Front"], rawFields: ["x"] }],
+    cards: [card({ id: "c1", noteId: "n1", deckId: "d1" }), card({ id: "c2", noteId: "n1", deckId: "d1" })],
+    reviewLogs: [{ id: "l1", cardId: "c1", rating: 3, reviewedAt: 1, intervalDays: 1, lastIntervalDays: 0, ease: 2500, type: 0, takenSeconds: 5 } as any],
+  };
+
+  it("assembleCollection(metaOf(c), …arrays) reproduces the normalized collection", () => {
+    const rebuilt = assembleCollection(metaOf(sample), sample.cards, sample.notes, sample.reviewLogs);
+    expect(rebuilt).toEqual(normalizeCollection(sample));
+  });
+
+  it("is idempotent: splitting an assembled collection yields the same parts", () => {
+    const once = assembleCollection(metaOf(sample), sample.cards, sample.notes, sample.reviewLogs);
+    const twice = assembleCollection(metaOf(once), once.cards, once.notes, once.reviewLogs);
+    expect(twice).toEqual(once);
+    expect(metaOf(once).cards).toEqual([]);
   });
 });
 

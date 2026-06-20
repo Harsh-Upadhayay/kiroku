@@ -8,7 +8,21 @@ import {
   type FSRSParameters,
   type Grade,
 } from "ts-fsrs";
-import { getSettingFromDB, initDB, saveSettingToDB } from "./db";
+import {
+  getSettingFromDB,
+  initDB,
+  saveSettingToDB,
+  deleteSettingFromDB,
+  currentUserScope,
+  replaceAnkiStore,
+  getAnkiStoreRecords,
+  putAnkiRecord,
+  makeAnkiRecord,
+  countAnkiStore,
+  ANKI_CARDS_STORE,
+  ANKI_NOTES_STORE,
+  ANKI_REVLOGS_STORE,
+} from "./db";
 
 export interface AnkiCollection {
   id: string;
@@ -241,18 +255,104 @@ export function emptyCollection(): AnkiCollection {
   };
 }
 
-export async function getAnkiCollection(): Promise<AnkiCollection> {
-  const stored = await getSettingFromDB<Partial<AnkiCollection> | null>(COLLECTION_KEY, null);
-  return normalizeCollection(stored);
+// DB v4 layout: the big arrays (cards/notes/reviewLogs) live in their own user-scoped object
+// stores; everything else (decks, note types, media manifest, presets…) stays in a small
+// settings blob under META_KEY. This lets a card review write one record instead of rewriting
+// the whole collection.
+const META_KEY = "anki_v3_meta";
+
+// metaOf strips the big arrays out for the lightweight meta blob. assembleCollection is its
+// inverse. Both are pure (no IndexedDB) so the split↔assemble round-trip is unit-testable.
+export function metaOf(collection: AnkiCollection): AnkiCollection {
+  return { ...collection, cards: [], notes: [], reviewLogs: [] };
 }
 
+export function assembleCollection(
+  meta: Partial<AnkiCollection>,
+  cards: AnkiCard[],
+  notes: AnkiNote[],
+  reviewLogs: AnkiReviewLog[]
+): AnkiCollection {
+  return normalizeCollection({ ...meta, cards, notes, reviewLogs });
+}
+
+async function writeAnkiCollectionStores(collection: AnkiCollection): Promise<void> {
+  const user = currentUserScope();
+  await Promise.all([
+    replaceAnkiStore(ANKI_CARDS_STORE, user, collection.cards.map((c) => makeAnkiRecord(user, c.id, c))),
+    replaceAnkiStore(ANKI_NOTES_STORE, user, collection.notes.map((n) => makeAnkiRecord(user, n.id, n))),
+    replaceAnkiStore(ANKI_REVLOGS_STORE, user, collection.reviewLogs.map((l) => makeAnkiRecord(user, l.id, l))),
+  ]);
+}
+
+export async function getAnkiCollection(): Promise<AnkiCollection> {
+  const meta = await getSettingFromDB<Partial<AnkiCollection> | null>(META_KEY, null);
+  if (meta) {
+    const user = currentUserScope();
+    const [cards, notes, reviewLogs] = await Promise.all([
+      getAnkiStoreRecords<AnkiCard>(ANKI_CARDS_STORE, user),
+      getAnkiStoreRecords<AnkiNote>(ANKI_NOTES_STORE, user),
+      getAnkiStoreRecords<AnkiReviewLog>(ANKI_REVLOGS_STORE, user),
+    ]);
+    return assembleCollection(meta, cards, notes, reviewLogs);
+  }
+  // No meta yet: migrate from the legacy single-blob layout (DB ≤ v3) if it's present.
+  const legacy = await getSettingFromDB<Partial<AnkiCollection> | null>(COLLECTION_KEY, null);
+  if (legacy) return migrateLegacyCollection(legacy);
+  return emptyCollection();
+}
+
+// One-time migration from the legacy `anki_v3_collection` blob to the normalized stores. The
+// blob is the only copy of the data, so it is deleted ONLY after the new stores are verified to
+// hold the same record counts; otherwise we roll back the partial meta and keep reading the
+// blob on the next load.
+async function migrateLegacyCollection(legacy: Partial<AnkiCollection>): Promise<AnkiCollection> {
+  const collection = normalizeCollection(legacy);
+  const user = currentUserScope();
+  try {
+    await writeAnkiCollectionStores(collection);
+    await saveSettingToDB(META_KEY, metaOf(collection));
+    const [cards, notes, logs] = await Promise.all([
+      countAnkiStore(ANKI_CARDS_STORE, user),
+      countAnkiStore(ANKI_NOTES_STORE, user),
+      countAnkiStore(ANKI_REVLOGS_STORE, user),
+    ]);
+    if (cards === collection.cards.length && notes === collection.notes.length && logs === collection.reviewLogs.length) {
+      await deleteSettingFromDB(COLLECTION_KEY);
+    } else {
+      console.error("Anki migration count mismatch; keeping legacy blob", { cards, notes, logs });
+      await deleteSettingFromDB(META_KEY); // next load re-attempts migration from the intact blob
+    }
+  } catch (err) {
+    console.error("Anki migration failed; keeping legacy blob", err);
+  }
+  return collection;
+}
+
+// Bulk save (import, structural edits, sync apply). Cheap per-record writes below handle the
+// hot review path.
 export async function saveAnkiCollection(collection: AnkiCollection): Promise<void> {
-  // Persist as-is. The collection is normalized once when it enters memory — on load
-  // (getAnkiCollection) and at import (mergeImportedCollection) — so re-normalizing here
-  // would re-map every card/note/media on each save (e.g. every card review), which is the
-  // dominant per-grade cost on a large deck. getAnkiCollection re-normalizes on the next load,
-  // so any drift is still corrected.
-  await saveSettingToDB(COLLECTION_KEY, collection);
+  await writeAnkiCollectionStores(collection);
+  // Writing the meta blob triggers the autosave sync push (see saveSettingToDB).
+  await saveSettingToDB(META_KEY, metaOf(collection));
+}
+
+// Incremental writes for the hot path: persist only the one card / one review log that changed.
+export async function saveAnkiCard(card: AnkiCard): Promise<void> {
+  await putAnkiRecord(ANKI_CARDS_STORE, currentUserScope(), card.id, card);
+}
+
+export async function appendAnkiReviewLog(log: AnkiReviewLog): Promise<void> {
+  await putAnkiRecord(ANKI_REVLOGS_STORE, currentUserScope(), log.id, log);
+}
+
+// Used by the sync collector. Returns null when there is no local Anki data at all, so a fresh
+// device never pushes an empty collection that would clobber the server's real data.
+export async function getAnkiCollectionForSync(): Promise<AnkiCollection | null> {
+  const meta = await getSettingFromDB<Partial<AnkiCollection> | null>(META_KEY, null);
+  const legacy = meta ? null : await getSettingFromDB<Partial<AnkiCollection> | null>(COLLECTION_KEY, null);
+  if (!meta && !legacy) return null;
+  return getAnkiCollection();
 }
 
 export function normalizeCollection(input?: Partial<AnkiCollection> | null): AnkiCollection {

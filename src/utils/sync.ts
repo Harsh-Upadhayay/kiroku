@@ -5,6 +5,7 @@ import { n5Course } from "../content/n5/raw";
 import { normalizeN5Cards, normalizeN5Progress, type N5CourseProgress, type N5SRSCard } from "./n5-course";
 import { normalizeLookupCards, type LookupCard } from "./lookup-deck";
 import { normalizeVocabWords, type VocabWord } from "./vocab-words";
+import { getAnkiCollectionForSync, saveAnkiCollection, normalizeCollection } from "./anki-v3";
 
 export interface SyncState {
   _meta?: {
@@ -110,7 +111,7 @@ async function collectSyncState(): Promise<SyncState> {
   const active_rows = normalizeActiveRows(await getSettingFromDB<string[]>("active_rows", DEFAULT_ACTIVE_GROUP_IDS));
   const active_rows_info = await getSettingFromDB<{ updatedAt?: number; clientId?: string }>("active_rows_info", {});
   const streak_info = await getSettingFromDB<{ current: number; highest: number; updatedAt?: number }>("streak_info", { current: 0, highest: 0 });
-  const anki_v3_collection = await getSettingFromDB<any>("anki_v3_collection", null);
+  const anki_v3_collection = await getAnkiCollectionForSync();
   const deleted_deck_ids = await getSettingFromDB<string[]>("deleted_deck_ids", []);
 
   // Only include n5 progress when something is actually stored locally.
@@ -188,7 +189,7 @@ async function applyRemoteState(state: SyncState): Promise<void> {
       await saveSettingToDB("streak_info", state.streak_info);
     }
     if (state.anki_v3_collection) {
-      await saveSettingToDB("anki_v3_collection", state.anki_v3_collection);
+      await saveAnkiCollection(normalizeCollection(state.anki_v3_collection));
     }
     if (Array.isArray(state.deleted_deck_ids)) {
       await saveSettingToDB("deleted_deck_ids", state.deleted_deck_ids);
