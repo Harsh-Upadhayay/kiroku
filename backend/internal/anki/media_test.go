@@ -26,7 +26,7 @@ func protoVarint(v uint64) []byte {
 func mediaEntriesProto(names ...string) []byte {
 	var out []byte
 	for _, name := range names {
-		entry := protoString(1, name)            // MediaEntry.name = 1
+		entry := protoString(1, name)             // MediaEntry.name = 1
 		out = append(out, protoVarint(1<<3|2)...) // MediaEntries.entries = 1
 		out = append(out, protoVarint(uint64(len(entry)))...)
 		out = append(out, entry...)
@@ -156,4 +156,29 @@ func TestReadMediaNewFormat(t *testing.T) {
 	if got := cache[manifest[1].Hash].bytes; !bytes.Equal(got, image) {
 		t.Fatalf("pic.png cached bytes = %q, want %q", got, image)
 	}
+}
+
+// TestEvictImportedMedia covers the memory-reclaiming eviction that backs importedMediaTTL:
+// a cached import is served until evicted, after which lookups miss. (The TTL itself is wired
+// via time.AfterFunc in cacheImportedMedia; here we exercise the eviction directly.)
+func TestEvictImportedMedia(t *testing.T) {
+	const importID = "import-evict-test"
+	const hash = "abc123"
+	importMediaCache.Lock()
+	importMediaCache.items[importID] = map[string]cachedMedia{
+		hash: {fileName: "a.png", contentType: "image/png", bytes: []byte("x")},
+	}
+	importMediaCache.Unlock()
+
+	if _, _, _, ok := ImportedMedia(importID, hash); !ok {
+		t.Fatal("expected cached media to be served before eviction")
+	}
+
+	evictImportedMedia(importID)
+
+	if _, _, _, ok := ImportedMedia(importID, hash); ok {
+		t.Fatal("expected media lookup to miss after eviction")
+	}
+	// Evicting an unknown id must be a no-op, not a panic.
+	evictImportedMedia("never-existed")
 }

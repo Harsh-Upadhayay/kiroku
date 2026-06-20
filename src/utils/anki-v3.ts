@@ -445,18 +445,24 @@ async function uploadAnkiPackageChunked(
 
 export async function importAnkiPackage(
   file: File,
-  onProgress?: (fraction: number) => void
+  onProgress?: (fraction: number) => void,
+  onMediaProgress?: (processed: number, total: number) => void
 ): Promise<AnkiCollection> {
   const imported = await uploadAnkiPackageChunked(file, onProgress);
   const current = await getAnkiCollection();
   const merged = mergeImportedCollection(current, imported);
-  // Persist the parsed collection BEFORE caching media. Media is best-effort: a single
-  // failed media fetch must never roll back an otherwise-successful deck import.
+  // Persist and reveal the deck NOW, then download media in the background. Large decks carry
+  // thousands of media files; fetching them all before resolving used to block the deck from
+  // appearing for minutes (it looked like the import was stuck at 100%). Cards render fine
+  // without media — blobs fill into IndexedDB as they arrive and show on the next render.
   await saveAnkiCollection(merged);
-  const mediaResult = await cacheImportedMedia(imported.importId, imported.mediaManifest);
-  if (mediaResult.failed > 0) {
-    console.warn(`Anki import: ${mediaResult.failed}/${imported.mediaManifest.length} media files could not be cached.`);
-  }
+  void cacheImportedMedia(imported.importId, imported.mediaManifest, onMediaProgress)
+    .then((result) => {
+      if (result.failed > 0) {
+        console.warn(`Anki import: ${result.failed}/${imported.mediaManifest.length} media files could not be cached.`);
+      }
+    })
+    .catch((err) => console.warn("Anki import: background media caching failed", err));
   return merged;
 }
 
@@ -487,7 +493,8 @@ function mergeById<T extends Record<string, any>>(a: T[], b: T[], key = "id"): T
 
 async function cacheImportedMedia(
   importId: string,
-  manifest: AnkiMediaRef[]
+  manifest: AnkiMediaRef[],
+  onProgress?: (processed: number, total: number) => void
 ): Promise<{ cached: number; failed: number }> {
   let cached = 0;
   let failed = 0;
@@ -496,6 +503,7 @@ async function cacheImportedMedia(
   // (net::ERR_FAILED) used to abort the whole import. Each item now fails independently.
   const CONCURRENCY = 6;
   let cursor = 0;
+  const total = manifest.length;
   const worker = async () => {
     while (cursor < manifest.length) {
       const media = manifest[cursor++];
@@ -509,6 +517,8 @@ async function cacheImportedMedia(
         cached++;
       } catch {
         failed++;
+      } finally {
+        onProgress?.(cached + failed, total);
       }
     }
   };
