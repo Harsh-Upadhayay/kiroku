@@ -1198,6 +1198,16 @@ export function orderCardsForStudy(cards: AnkiCard[], now = Date.now()): AnkiCar
   return [...cards].sort((a, b) => compareAnkiStudyOrder(a, b, now));
 }
 
+// firstDeckWithCards returns the id of the first deck that actually contains cards, so callers
+// can default-select a meaningful deck instead of Anki's built-in (and usually empty) "Default"
+// deck — which would otherwise make the review view and the "due now" count read as empty right
+// after importing a populated package. Falls back to the first deck, then to "".
+export function firstDeckWithCards(collection: AnkiCollection): string {
+  const deckIdsWithCards = new Set(collection.cards.map((card) => card.deckId));
+  const deck = collection.decks.find((d) => deckIdsWithCards.has(d.id));
+  return deck?.id || collection.decks[0]?.id || "";
+}
+
 export function isV3CardDue(card: AnkiCard, now = Date.now()): boolean {
   if (card.suspended) return false;
   if (card.buriedUntil && card.buriedUntil > now) return false;

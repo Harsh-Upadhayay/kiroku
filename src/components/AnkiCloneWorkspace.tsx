@@ -36,6 +36,7 @@ import {
   gradeAnkiCard,
   importAnkiPackage,
   isV3CardDue,
+  firstDeckWithCards,
   orderCardsForStudy,
   previewFSRS,
   renderAnkiCard,
@@ -141,7 +142,7 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const reload = async () => {
     const loaded = await getAnkiCollection();
     setCollection(loaded);
-    setSelectedDeckId((current) => current || loaded.decks[0]?.id || "");
+    setSelectedDeckId((current) => current || firstDeckWithCards(loaded));
   };
 
   const persist = async (next: AnkiCollection) => {
@@ -254,7 +255,7 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
     try {
       const next = await importAnkiPackage(file, setImportProgress);
       setCollection(next);
-      setSelectedDeckId(next.decks[0]?.id || "");
+      setSelectedDeckId(firstDeckWithCards(next));
       setActiveTab("decks");
       notify("success", `Imported ${file.name}: ${next.cards.length.toLocaleString()} total cards now in collection.`);
     } catch (error: any) {
@@ -518,7 +519,7 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
       {activeTab === "decks" && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Metric label="Due now" value={dueCards.length} accent />
+            <Metric label="Due now" value={stats.due} accent />
             <Metric label="Cards" value={stats.cards} />
             <Metric label="Studied" value={stats.studied} />
             <Metric label="Mature" value={stats.mature} />
