@@ -28,6 +28,7 @@ import {
   type CollectionIndex,
   buildCollectionIndex,
   buildMediaURLMap,
+  resolveCardMedia,
   cardSearchText,
   defaultSchedulerPreset,
   emptyCollection,
@@ -99,9 +100,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const [isImporting, setIsImporting] = useState(false);
   // Upload fraction (0–1) while a chunked import is in flight; null when idle.
   const [importProgress, setImportProgress] = useState<number | null>(null);
-  // Background media-download progress after the deck is already revealed; null when idle.
-  const [mediaCaching, setMediaCaching] = useState<{ processed: number; total: number } | null>(null);
-  const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [newFilteredQuery, setNewFilteredQuery] = useState("is:due");
   const [editorFront, setEditorFront] = useState("");
@@ -189,6 +188,23 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
 
   const dueCards = useMemo(() => deckCards.filter((card) => isV3CardDue(card)), [deckCards]);
   const currentReviewCard = dueCards[0] || deckCards[0];
+
+  // Lazy-load media for the card about to be reviewed. Only fires when the card changes
+  // and only fetches files not already in the URL map (cache hit → instant; miss → API fetch).
+  useEffect(() => {
+    if (!currentReviewCard) return;
+    const rendered = renderAnkiCard(collection, currentReviewCard, {}, collectionIndex);
+    if (!rendered?.mediaFiles.length) return;
+    const missing = rendered.mediaFiles.filter((m) => !mediaUrls[m.fileName]);
+    if (!missing.length) return;
+    let cancelled = false;
+    resolveCardMedia(missing).then((newUrls) => {
+      if (!cancelled && Object.keys(newUrls).length > 0)
+        setMediaUrls((prev) => ({ ...prev, ...newUrls }));
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentReviewCard?.id]);
   // No cards are due but the deck still has cards: we fall back to studying ahead of schedule.
   // Surface that explicitly rather than silently handing out not-yet-due cards.
   const studyingAhead = dueCards.length === 0 && !!currentReviewCard;
@@ -236,9 +252,7 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
     setIsImporting(true);
     setImportProgress(0);
     try {
-      const next = await importAnkiPackage(file, setImportProgress, (processed, total) =>
-        setMediaCaching(total > 0 && processed < total ? { processed, total } : null)
-      );
+      const next = await importAnkiPackage(file, setImportProgress);
       setCollection(next);
       setSelectedDeckId(next.decks[0]?.id || "");
       setActiveTab("decks");
@@ -454,12 +468,6 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
         </div>
       </div>
 
-      {mediaCaching && (
-        <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-500">
-          <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-          Caching media in background… {mediaCaching.processed.toLocaleString()}/{mediaCaching.total.toLocaleString()}
-        </div>
-      )}
 
       <AnimatePresence>
         {notice && (
