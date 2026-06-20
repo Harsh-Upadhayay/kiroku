@@ -13,6 +13,8 @@ import {
   orderCardsForStudy,
   compareAnkiStudyOrder,
   renderAnkiCard,
+  buildCollectionIndex,
+  cardSearchText,
   importAnkiPackage,
   type AnkiCard,
   type AnkiCollection,
@@ -124,6 +126,22 @@ describe("renderAnkiCard CSS media resolution", () => {
   it("leaves CSS url() untouched when the media is not present", () => {
     const rendered = renderAnkiCard(collection, collection.cards[0], {});
     expect(rendered?.css).toContain("_Stroke.ttf");
+  });
+
+  it("renders identically with a CollectionIndex (O(1) lookups) as without", () => {
+    const index = buildCollectionIndex(collection);
+    const withIndex = renderAnkiCard(collection, collection.cards[0], {}, index);
+    const without = renderAnkiCard(collection, collection.cards[0], {});
+    expect(withIndex).toEqual(without);
+    expect(withIndex?.frontHTML).toContain("hello");
+  });
+
+  it("cardSearchText matches the linear-scan result when given an index", () => {
+    const index = buildCollectionIndex(collection);
+    expect(cardSearchText(collection, collection.cards[0], index)).toBe(
+      cardSearchText(collection, collection.cards[0])
+    );
+    expect(cardSearchText(collection, collection.cards[0], index)).toContain("hello");
   });
 });
 
