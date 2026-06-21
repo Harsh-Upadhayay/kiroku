@@ -1,6 +1,7 @@
 package anki
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -40,7 +41,7 @@ const importJobTTL = 30 * time.Minute
 // retried /complete after a timeout) the existing job is left untouched, making /complete
 // idempotent. The on-disk session is intentionally left in place: FinishImportJob discards it
 // once the client has acknowledged the result, so a failed parse can be retried.
-func StartImportJob(root, uploadID string) {
+func StartImportJob(root, mediaDir, uploadID string) {
 	importJobs.Lock()
 	if _, exists := importJobs.items[uploadID]; exists {
 		importJobs.Unlock()
@@ -51,6 +52,14 @@ func StartImportJob(root, uploadID string) {
 
 	go func() {
 		result, err := runImport(root, uploadID)
+		// Persist media to the durable disk store before reporting the job done, so the parsed
+		// deck's audio/images outlive the in-memory cache TTL and are reachable from other devices.
+		// Best-effort: a persistence failure must not fail an otherwise-successful import.
+		if err == nil {
+			if n, perr := PersistImportedMedia(mediaDir, result.ImportID); perr != nil {
+				slog.Warn("Persisting imported media partially failed", "uploadID", uploadID, "persisted", n, "error", perr)
+			}
+		}
 		importJobs.Lock()
 		job := importJobs.items[uploadID]
 		if job != nil {

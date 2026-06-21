@@ -147,6 +147,12 @@ func (h *Handler) uploadsRoot() string {
 	return filepath.Join(h.Config.DataDir, "uploads")
 }
 
+// mediaRoot is the on-disk, content-addressed media store (served by GetMediaBlob). Imported
+// media is persisted here so it survives the in-memory cache TTL and reaches other devices.
+func (h *Handler) mediaRoot() string {
+	return filepath.Join(h.Config.DataDir, "media")
+}
+
 // writeUploadError maps an upload-session error to the appropriate status code. It exists so
 // every chunked-upload handler reports invalid ids, unknown sessions, and incomplete uploads
 // consistently instead of collapsing them all to 500.
@@ -238,7 +244,7 @@ func (h *Handler) UploadChunk(w http.ResponseWriter, r *http.Request) {
 // the second call. POST /api/import-anki-package/upload/{uploadID}/complete.
 func (h *Handler) UploadComplete(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.PathValue("uploadID")
-	anki.StartImportJob(h.uploadsRoot(), uploadID)
+	anki.StartImportJob(h.uploadsRoot(), h.mediaRoot(), uploadID)
 	h.WriteJSON(w, http.StatusAccepted, models.APIResponse{Success: true,
 		Data: uploadStatusResp{Status: anki.ImportJobPending}})
 }
