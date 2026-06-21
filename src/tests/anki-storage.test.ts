@@ -140,4 +140,32 @@ describe("delta sync (Phase 4)", () => {
     await applyAnkiRemote({ anki_cards_list: [card("c3")], deleted_card_ids: ["c1"] });
     expect((await getAnkiCollection()).cards.map((c) => c.id).sort()).toEqual(["c2", "c3"]);
   });
+
+  // Regression for #40: a long import lets reconcile pulls fire while the server is still empty.
+  // An empty pull must NOT mark the client "seeded", or the next push takes the delta path and the
+  // freshly-imported (but not individually-dirty) collection is never uploaded — the deck reaches
+  // other devices with 0 cards.
+  it("an empty pull after an import does not clobber the pending full seed", async () => {
+    // The user imports a deck (resets seeded=false so the next push is a full seed)...
+    await saveAnkiCollection(collectionWith([card("c1"), card("c2"), card("c3")]));
+
+    // ...then a reconcile pull lands while the server is still empty. The OLD code marked the
+    // client seeded here, so the next push became an empty delta and the deck never uploaded.
+    await applyAnkiRemote({ anki_revlogs_list: [], deleted_card_ids: [] });
+
+    const delta = (await getAnkiSyncDelta())!;
+    expect(delta.snapshot.full).toBe(true); // still a full seed, not an empty delta
+    expect(delta.cards.map((c) => c.id).sort()).toEqual(["c1", "c2", "c3"]);
+  });
+
+  it("a non-empty pull marks the client seeded so the next push is a delta", async () => {
+    await applyAnkiRemote({
+      anki_v3_collection: { decks: [{ id: "d1", name: "Deck" }] } as any,
+      anki_cards_list: [card("c1")],
+      anki_revlogs_list: [],
+      deleted_card_ids: [],
+    });
+    const delta = (await getAnkiSyncDelta())!;
+    expect(delta.snapshot.full).toBe(false);
+  });
 });
