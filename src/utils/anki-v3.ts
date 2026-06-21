@@ -466,8 +466,14 @@ export async function applyAnkiRemote(state: {
     upsertAnkiRecords(ANKI_REVLOGS_STORE, user, (state.anki_revlogs_list || []).map((l) => makeAnkiRecord(user, l.id, l))),
   ]);
   await deleteAnkiRecordsByIds(ANKI_CARDS_STORE, user, state.deleted_card_ids || []);
-  // Mark seeded: we now have server data locally, so our next push can be a delta.
-  await saveSettingToDB(SEEDED_KEY, true);
+  // Only mark seeded when the server actually had an Anki collection to give us. An empty pull
+  // (fresh account, server has nothing yet) must NOT flip seeded — otherwise the next push takes
+  // the delta path and a locally-imported collection the server has never seen is never uploaded
+  // (its cards aren't individually dirty). This previously broke sync for large decks, whose slow
+  // import let a reconcile pull mark seeded before the full-seed push could run.
+  if (state.anki_v3_collection) {
+    await saveSettingToDB(SEEDED_KEY, true);
+  }
 }
 
 // Used by the sync collector. Returns null when there is no local Anki data at all, so a fresh
