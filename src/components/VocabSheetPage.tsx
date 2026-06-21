@@ -47,6 +47,9 @@ export const VocabSheetPage: React.FC<{
 }> = ({ deckVersion, onDeckChange, onOpenSearch }) => {
   const [words, setWords] = useState<VocabWord[]>([]);
   const [deckCards, setDeckCards] = useState<LookupCard[]>([]);
+  // True until the first data load settles, so we show a skeleton instead of mistaking the
+  // pre-load empty state for "no vocabulary yet".
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<SegmentFilter>("all");
   const [importing, setImporting] = useState(false);
@@ -62,8 +65,10 @@ export const VocabSheetPage: React.FC<{
 
   useEffect(() => {
     loadExtendedKanjiInsights().catch(() => {});
-    getVocabWords().then(setWords);
-    refreshDeck();
+    Promise.all([
+      getVocabWords().then(setWords),
+      refreshDeck(),
+    ]).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -287,7 +292,13 @@ export const VocabSheetPage: React.FC<{
         ) : null}
       </AnimatePresence>
 
-      {allRows.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3" aria-busy="true" aria-label="Loading vocabulary">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 rounded-2xl border-2 border-zinc-200 bg-zinc-100 animate-pulse" />
+          ))}
+        </div>
+      ) : allRows.length === 0 ? (
         <div className="border-2 border-dashed border-zinc-300 rounded-[24px] p-10 text-center space-y-4">
           <div className="mx-auto w-14 h-14 rounded-2xl border-2 border-zinc-900 bg-indigo-50 flex items-center justify-center">
             <FileImage className="h-6 w-6 text-indigo-600" />

@@ -48,6 +48,7 @@ import {
   stripHTML,
 } from "../utils/anki-v3";
 import { sound } from "../utils/audio";
+import { TabPanel } from "./TabPanel";
 
 type WorkspaceTab = "decks" | "review" | "browser" | "editor" | "media" | "options" | "custom" | "stats";
 type BrowserFilter = "all" | "due" | "new" | "learning" | "review" | "suspended" | "buried" | "flagged";
@@ -99,6 +100,9 @@ export const AnkiCloneWorkspace: React.FC<AnkiCloneWorkspaceProps> = ({ onChange
   const [reviewStartedAt, setReviewStartedAt] = useState(Date.now());
   const [isBackShown, setIsBackShown] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  // True until the first collection load settles, so the first visit shows a skeleton
+  // instead of the "import a deck" empty state while IndexedDB is still being read.
+  const [loading, setLoading] = useState(true);
   // Upload fraction (0–1) while a chunked import is in flight; null when idle.
   const [importProgress, setImportProgress] = useState<number | null>(null);
 const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
@@ -140,9 +144,13 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   }, [collection.mediaManifest]);
 
   const reload = async () => {
-    const loaded = await getAnkiCollection();
-    setCollection(loaded);
-    setSelectedDeckId((current) => current || firstDeckWithCards(loaded));
+    try {
+      const loaded = await getAnkiCollection();
+      setCollection(loaded);
+      setSelectedDeckId((current) => current || firstDeckWithCards(loaded));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const persist = async (next: AnkiCollection) => {
@@ -484,7 +492,18 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
         )}
       </AnimatePresence>
 
-      {collection.cards.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3" aria-busy="true" aria-label="Loading decks">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-2xl border-2 border-zinc-200 bg-zinc-100 animate-pulse" />
+            ))}
+          </div>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-20 rounded-2xl border-2 border-zinc-200 bg-zinc-100 animate-pulse" />
+          ))}
+        </div>
+      ) : collection.cards.length === 0 ? (
         <FirstRunImport isImporting={isImporting} importProgress={importProgress} onImport={handleImport} />
       ) : (
       <>
@@ -514,9 +533,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
         ))}
       </div>
 
-      <AnimatePresence mode="popLayout" initial={false}>
-      <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15, ease: "easeOut" }}>
-      {activeTab === "decks" && (
+      {/* Inner panels stay mounted (hidden when inactive) so switching tabs is instant and
+          keeps local view state — they read already-loaded collection data, so no flash. */}
+      <TabPanel active={activeTab === "decks"}>{(
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Metric label="Due now" value={stats.due} accent />
@@ -585,9 +604,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
             })}
           </div>
         </div>
-      )}
+      )}</TabPanel>
 
-      {activeTab === "review" && (
+      <TabPanel active={activeTab === "review"}>{(
         <div className={`mx-auto w-full space-y-4 transition-[max-width] duration-200 ${isBackShown && reviewBack?.hasAnswer ? "max-w-5xl" : "max-w-2xl"}`}>
           <DeckSelect collection={collection} selectedDeckId={selectedDeckId} setSelectedDeckId={setSelectedDeckId} />
           {!currentReviewCard || !renderedReview ? (
@@ -658,9 +677,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
             </div>
           )}
         </div>
-      )}
+      )}</TabPanel>
 
-      {activeTab === "browser" && (
+      <TabPanel active={activeTab === "browser"}>{(
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-5 space-y-3">
             <DeckSelect collection={collection} selectedDeckId={selectedDeckId} setSelectedDeckId={setSelectedDeckId} />
@@ -726,9 +745,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
             )}
           </div>
         </div>
-      )}
+      )}</TabPanel>
 
-      {activeTab === "editor" && (
+      <TabPanel active={activeTab === "editor"}>{(
         <form onSubmit={createBasicNote} className="space-y-4">
           <DeckSelect collection={collection} selectedDeckId={selectedDeckId} setSelectedDeckId={setSelectedDeckId} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -740,9 +759,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
           </button>
           <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Imported note types and templates are preserved in Browser; this editor adds Kiroku Basic notes.</p>
         </form>
-      )}
+      )}</TabPanel>
 
-      {activeTab === "media" && (
+      <TabPanel active={activeTab === "media"}>{(
         collection.mediaManifest.length === 0 ? <EmptyState text="No imported media yet." /> : (
           <div
             className="max-h-[640px] overflow-y-auto pr-1"
@@ -768,9 +787,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
             )}
           </div>
         )
-      )}
+      )}</TabPanel>
 
-      {activeTab === "options" && (
+      <TabPanel active={activeTab === "options"}>{(
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Metric label="Scheduler" value="FSRS" />
           <Metric label="Desired Retention" value={`${Math.round(preset.desiredRetention * 100)}%`} />
@@ -780,9 +799,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
             FSRS is active for all Anki review buttons. Parameter optimization UI is staged behind review-log accumulation.
           </div>
         </div>
-      )}
+      )}</TabPanel>
 
-      {activeTab === "custom" && (
+      <TabPanel active={activeTab === "custom"}>{(
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row gap-2">
             <input value={newFilteredQuery} onChange={(e) => setNewFilteredQuery(e.target.value)} className="flex-1 rounded-xl border-2 border-zinc-900 px-3 py-2 text-xs font-bold" placeholder='e.g. is:due tag:JLPT or deck:"Core Japanese"' />
@@ -797,9 +816,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
             ))}
           </div>
         </div>
-      )}
+      )}</TabPanel>
 
-      {activeTab === "stats" && (
+      <TabPanel active={activeTab === "stats"}>{(
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Metric label="Cards" value={stats.cards} />
           <Metric label="Due" value={stats.due} />
@@ -810,9 +829,7 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
           <Metric label="Media MB" value={stats.mediaMB} />
           <Metric label="Imports" value={stats.imports} />
         </div>
-      )}
-      </motion.div>
-      </AnimatePresence>
+      )}</TabPanel>
       </>
       )}
     </div>

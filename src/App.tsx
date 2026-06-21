@@ -21,6 +21,7 @@ import { N5CoursePage } from "./components/N5CoursePage";
 import { DictionaryLookup } from "./components/DictionaryLookup";
 import { VocabSheetPage } from "./components/VocabSheetPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { TabPanel } from "./components/TabPanel";
 import { sound } from "./utils/audio";
 import {
   Zap, BookOpen, Settings, Layers, GraduationCap,
@@ -88,6 +89,14 @@ function KanaHub({
   onResetDatabase: () => void;
 }) {
   const [sub, setSub] = useState<KanaSubTab>("speed");
+  // Keep visited sub-tabs mounted so an in-progress speed run or SRS quiz isn't destroyed
+  // when switching away and back.
+  const [visitedSub, setVisitedSub] = useState<Set<KanaSubTab>>(() => new Set([sub]));
+  const selectSub = (id: KanaSubTab) => {
+    sound.playTick();
+    setSub(id);
+    setVisitedSub((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  };
 
   const subTabs: { id: KanaSubTab; label: string; icon: React.ReactNode }[] = [
     { id: "speed", label: "Speed Sheets", icon: <Zap className="h-3.5 w-3.5" /> },
@@ -101,7 +110,7 @@ function KanaHub({
         {subTabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => { sound.playTick(); setSub(t.id); }}
+            onClick={() => selectSub(t.id)}
             className={`flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer border-2 ${
               sub === t.id
                 ? "bg-indigo-600 text-white border-zinc-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
@@ -114,29 +123,33 @@ function KanaHub({
         ))}
       </div>
 
-      <motion.div key={sub} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.12 }}>
-        {sub === "speed" && (
+      {visitedSub.has("speed") && (
+        <TabPanel active={sub === "speed"}>
           <SpeedSheet
             activeRows={activeRows}
             onSessionComplete={() => onCardsUpdate(getStoredSRSCards())}
-            onGoToGlossary={() => setSub("characters")}
+            onGoToGlossary={() => selectSub("characters")}
           />
-        )}
-        {sub === "srs" && (
+        </TabPanel>
+      )}
+      {visitedSub.has("srs") && (
+        <TabPanel active={sub === "srs"}>
           <SrsQuiz
             cards={cards}
             activeRows={activeRows}
             onCardsUpdate={onCardsUpdate}
           />
-        )}
-        {sub === "characters" && (
+        </TabPanel>
+      )}
+      {visitedSub.has("characters") && (
+        <TabPanel active={sub === "characters"}>
           <CharDictionary
             cards={cards}
             activeRows={activeRows}
             onActiveRowsUpdate={onActiveRowsUpdate}
           />
-        )}
-      </motion.div>
+        </TabPanel>
+      )}
     </div>
   );
 }
@@ -631,6 +644,15 @@ export default function App() {
   const [cards, setCards] = useState<SRSCard[]>([]);
   const [activeRows, setActiveRows] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTab>("n5");
+  // Tabs that have been opened at least once. Visited tabs stay mounted (hidden when
+  // inactive) so switching back is instant and preserves their state — no remount, no
+  // refetch, no blank flash. New tabs mount lazily on first visit.
+  const [visited, setVisited] = useState<Set<MainTab>>(() => new Set([activeTab]));
+  const selectTab = (id: MainTab) => {
+    sound.playTick();
+    setActiveTab(id);
+    setVisited((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  };
   const [currentUser, setAppStateCurrentUser] = useState<AppUser | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
   // Bumped when a card is added from the search overlay, so the deck page reloads.
@@ -836,7 +858,7 @@ export default function App() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => { sound.playTick(); setActiveTab(tab.id); }}
+                  onClick={() => selectTab(tab.id)}
                   className={`relative isolate flex-1 py-2 sm:py-2.5 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-2xl transition-colors cursor-pointer flex flex-col items-center justify-center gap-0.5 border-2 ${
                     active
                       ? "text-white border-zinc-900"
@@ -861,39 +883,48 @@ export default function App() {
 
         <ErrorBoundary>
           <div className="w-full">
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-              >
-                {activeTab === "n5" && <N5CoursePage />}
+            {/* Each visited tab stays mounted and is hidden when inactive, so switching back
+                is instant and keeps its state. Only this wrapper animates — the content
+                inside never unmounts. */}
+            {visited.has("n5") && (
+              <TabPanel active={activeTab === "n5"}>
+                <N5CoursePage />
+              </TabPanel>
+            )}
 
-                {activeTab === "kana" && (
-                  <KanaHub
-                    cards={cards}
-                    activeRows={activeRows}
-                    onActiveRowsUpdate={setActiveRows}
-                    onCardsUpdate={setCards}
-                    onResetDatabase={handleForceRefreshDB}
-                  />
-                )}
+            {visited.has("kana") && (
+              <TabPanel active={activeTab === "kana"}>
+                <KanaHub
+                  cards={cards}
+                  activeRows={activeRows}
+                  onActiveRowsUpdate={setActiveRows}
+                  onCardsUpdate={setCards}
+                  onResetDatabase={handleForceRefreshDB}
+                />
+              </TabPanel>
+            )}
 
-                {activeTab === "vocab" && (
-                  <VocabSheetPage
-                    deckVersion={lookupDeckVersion}
-                    onDeckChange={() => setLookupDeckVersion((v) => v + 1)}
-                    onOpenSearch={() => setLookupOpen(true)}
-                  />
-                )}
+            {visited.has("vocab") && (
+              <TabPanel active={activeTab === "vocab"}>
+                <VocabSheetPage
+                  deckVersion={lookupDeckVersion}
+                  onDeckChange={() => setLookupDeckVersion((v) => v + 1)}
+                  onOpenSearch={() => setLookupOpen(true)}
+                />
+              </TabPanel>
+            )}
 
-                {activeTab === "anki" && <AnkiPage />}
+            {visited.has("anki") && (
+              <TabPanel active={activeTab === "anki"}>
+                <AnkiPage />
+              </TabPanel>
+            )}
 
-                {activeTab === "settings" && <SettingsTab onResetDatabase={handleForceRefreshDB} />}
-              </motion.div>
-            </AnimatePresence>
+            {visited.has("settings") && (
+              <TabPanel active={activeTab === "settings"}>
+                <SettingsTab onResetDatabase={handleForceRefreshDB} />
+              </TabPanel>
+            )}
           </div>
         </ErrorBoundary>
       </main>
@@ -901,7 +932,7 @@ export default function App() {
       <footer className="mt-12 max-w-7xl w-full mx-auto flex flex-col sm:flex-row justify-between items-center text-xs font-black text-zinc-400 uppercase tracking-widest pt-6 border-t-2 border-zinc-200">
         <div className="flex gap-4 flex-wrap justify-center">
           {mainTabs.map((t) => (
-            <button key={t.id} onClick={() => { sound.playTick(); setActiveTab(t.id); }} className={`transition-colors ${activeTab === t.id ? "text-zinc-950" : "hover:text-zinc-900"}`}>{t.label}</button>
+            <button key={t.id} onClick={() => selectTab(t.id)} className={`transition-colors ${activeTab === t.id ? "text-zinc-950" : "hover:text-zinc-900"}`}>{t.label}</button>
           ))}
         </div>
         <div className="mt-2 sm:mt-0">
