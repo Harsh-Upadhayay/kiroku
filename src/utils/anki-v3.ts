@@ -781,9 +781,8 @@ async function cacheImportedMedia(
       try {
         const existing = await getMediaBlob(media.hash);
         if (existing) { cached++; continue; }
-        const response = await fetch(`/api/import-anki-package/media/${encodeURIComponent(importId)}/${media.hash}`);
-        if (!response.ok) { failed++; continue; }
-        const blob = await response.blob();
+        const blob = await fetchImportedMediaBlob({ ...media, importId });
+        if (!blob) { failed++; continue; }
         await saveMediaBlob(media, blob);
         cached++;
       } catch {
@@ -881,20 +880,37 @@ export async function getMediaBlob(hash: string): Promise<Blob | null> {
   return null;
 }
 
+// Fetch a media blob from the server. Tries the import-scoped endpoint first (warm in-memory
+// cache, right after an import), then falls back to the durable, content-addressed store at
+// /api/media/{hash}. The fallback is what makes media work on a *second* device — and on the
+// importing device after the import's in-memory cache TTL expires — once the importing device's
+// server persisted the blob to disk. Returns null only if neither source has it.
+async function fetchImportedMediaBlob(media: AnkiMediaRef): Promise<Blob | null> {
+  if (media.importId) {
+    try {
+      const res = await fetch(`/api/import-anki-package/media/${encodeURIComponent(media.importId)}/${media.hash}`);
+      if (res.ok) return await res.blob();
+    } catch {
+      // fall through to the durable store
+    }
+  }
+  try {
+    const res = await fetch(`/api/media/${media.hash}`);
+    if (res.ok) return await res.blob();
+  } catch {
+    // give up below
+  }
+  return null;
+}
+
 // Cache + API fallback — used for per-card lazy loading.
 async function resolveMediaBlob(media: AnkiMediaRef): Promise<Blob | null> {
   const cached = await getMediaBlob(media.hash);
   if (cached) return cached;
-  if (!media.importId) return null;
-  try {
-    const res = await fetch(`/api/import-anki-package/media/${encodeURIComponent(media.importId)}/${media.hash}`);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    await saveMediaBlob(media, blob);
-    return blob;
-  } catch {
-    return null;
-  }
+  const blob = await fetchImportedMediaBlob(media);
+  if (!blob) return null;
+  await saveMediaBlob(media, blob);
+  return blob;
 }
 
 // Build URL map from locally cached blobs only (fast, no network).

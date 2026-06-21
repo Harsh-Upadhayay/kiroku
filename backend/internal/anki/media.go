@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -269,6 +270,45 @@ func cacheImportedMedia(importID string, media map[string]cachedMedia) {
 	// Evict this import's media once the client has had time to pull it, so large decks don't
 	// pin hundreds of MB in memory for the life of the process.
 	time.AfterFunc(importedMediaTTL, func() { evictImportedMedia(importID) })
+}
+
+// PersistImportedMedia writes an import's decoded media blobs to the durable, content-addressed
+// disk store at mediaDir/<hash>, so they survive the in-memory cache's TTL eviction and a server
+// restart and can be served (by content hash) to any device — not just the one that imported.
+// Blobs are written once (skipped if the hash already exists, since the store is content-addressed)
+// and a single blob's failure does not abort the rest. Returns the number written.
+func PersistImportedMedia(mediaDir, importID string) (int, error) {
+	importMediaCache.RLock()
+	byHash := importMediaCache.items[importID]
+	// Copy out under the read lock so the slow disk writes happen without holding it.
+	blobs := make(map[string][]byte, len(byHash))
+	for hash, item := range byHash {
+		blobs[hash] = item.bytes
+	}
+	importMediaCache.RUnlock()
+
+	if len(blobs) == 0 {
+		return 0, nil
+	}
+	if err := os.MkdirAll(mediaDir, 0o755); err != nil {
+		return 0, fmt.Errorf("create media dir: %w", err)
+	}
+	written := 0
+	var firstErr error
+	for hash, blob := range blobs {
+		path := filepath.Join(mediaDir, hash)
+		if _, err := os.Stat(path); err == nil {
+			continue // already persisted by an earlier import of the same blob
+		}
+		if err := os.WriteFile(path, blob, 0o644); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		written++
+	}
+	return written, firstErr
 }
 
 // evictImportedMedia drops a single import's cached media. Safe to call for an unknown id.

@@ -4,6 +4,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/binary"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
@@ -181,4 +183,42 @@ func TestEvictImportedMedia(t *testing.T) {
 	}
 	// Evicting an unknown id must be a no-op, not a panic.
 	evictImportedMedia("never-existed")
+}
+
+// TestPersistImportedMedia covers writing an import's decoded blobs to the durable disk store so
+// they survive TTL eviction / a restart and can be served to other devices by content hash.
+func TestPersistImportedMedia(t *testing.T) {
+	const importID = "import-persist-test"
+	dir := t.TempDir()
+	importMediaCache.Lock()
+	importMediaCache.items[importID] = map[string]cachedMedia{
+		"hashA": {fileName: "a.mp3", contentType: "audio/mpeg", bytes: []byte("aaa")},
+		"hashB": {fileName: "b.png", contentType: "image/png", bytes: []byte("bbbb")},
+	}
+	importMediaCache.Unlock()
+	defer evictImportedMedia(importID)
+
+	n, err := PersistImportedMedia(dir, importID)
+	if err != nil {
+		t.Fatalf("PersistImportedMedia: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("expected 2 blobs written, got %d", n)
+	}
+	if got, err := os.ReadFile(filepath.Join(dir, "hashA")); err != nil || !bytes.Equal(got, []byte("aaa")) {
+		t.Fatalf("hashA not persisted correctly: got=%q err=%v", got, err)
+	}
+	if got, err := os.ReadFile(filepath.Join(dir, "hashB")); err != nil || !bytes.Equal(got, []byte("bbbb")) {
+		t.Fatalf("hashB not persisted correctly: got=%q err=%v", got, err)
+	}
+
+	// Idempotent: a second call writes nothing new (content-addressed, blobs already present).
+	if n, err := PersistImportedMedia(dir, importID); err != nil || n != 0 {
+		t.Fatalf("expected second persist to write 0, got n=%d err=%v", n, err)
+	}
+
+	// Unknown import id is a harmless no-op.
+	if n, err := PersistImportedMedia(dir, "never-existed"); err != nil || n != 0 {
+		t.Fatalf("expected no-op for unknown id, got n=%d err=%v", n, err)
+	}
 }
