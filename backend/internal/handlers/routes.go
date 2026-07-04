@@ -33,4 +33,13 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("POST /api/media/check", h.MediaCheck)
 	mux.HandleFunc("POST /api/auth/change-password", h.ChangePassword)
 	mux.HandleFunc("POST /api/auth/delete-account", h.DeleteAccount)
+
+	// P2P signaling: a mailbox for WebRTC handshake messages (see internal/signal). The
+	// server never joins the resulting connection — it just relays enough for two devices to
+	// find each other and negotiate one directly.
+	mux.HandleFunc("POST /api/p2p/rooms", h.P2PCreateRoom)
+	mux.HandleFunc("GET /api/p2p/rooms", h.P2PListRooms)
+	mux.HandleFunc("DELETE /api/p2p/rooms/{roomID}", h.P2PCloseRoom)
+	mux.HandleFunc("POST /api/p2p/rooms/{roomID}/messages", h.P2PPostMessage)
+	mux.HandleFunc("GET /api/p2p/rooms/{roomID}/messages", h.P2PGetMessages)
 }
