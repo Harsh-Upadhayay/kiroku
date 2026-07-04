@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Archive,
@@ -25,6 +25,7 @@ import {
   type AnkiCard,
   type AnkiCollection,
   type AnkiGrade,
+  type AnkiMediaRef,
   type CollectionIndex,
   buildCollectionIndex,
   buildMediaURLMap,
@@ -33,6 +34,7 @@ import {
   defaultSchedulerPreset,
   emptyCollection,
   getAnkiCollection,
+  getMediaBlob,
   gradeAnkiCard,
   importAnkiPackage,
   isV3CardDue,
@@ -51,6 +53,7 @@ import {
 import { getCurrentUser } from "../utils/auth";
 import { sound } from "../utils/audio";
 import { MediaTransferPanel } from "./MediaTransferPanel";
+import { SeedMediaPanel } from "./SeedMediaPanel";
 import { TabPanel } from "./TabPanel";
 
 type WorkspaceTab = "decks" | "review" | "browser" | "editor" | "media" | "options" | "custom" | "stats";
@@ -120,6 +123,11 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   // Media from the most recent client-side import still needs to reach the user's other
   // devices (P2P primary, cloud fallback) — see MediaTransferPanel.
   const [pendingTransfer, setPendingTransfer] = useState<PendingMediaTransfer | null>(null);
+  // Media this device's synced collection references but doesn't have cached locally
+  // (typically a fresh login) — see SeedMediaPanel. Checked once per collection load, not on
+  // every render, since walking the whole manifest against IndexedDB isn't free on a big deck.
+  const [seedMissing, setSeedMissing] = useState<AnkiMediaRef[] | null>(null);
+  const seedCheckedRef = useRef(false);
 
   useEffect(() => {
     reload();
@@ -148,6 +156,27 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
       cancelled = true;
     };
   }, [collection.mediaManifest]);
+
+  // One-time check (per mount) for media this device's synced collection references but
+  // never actually cached — the common case being a fresh login pulling another device's
+  // import. Runs once loading settles rather than on every collection change, since walking
+  // the whole manifest against IndexedDB isn't free on a large deck.
+  useEffect(() => {
+    if (loading || seedCheckedRef.current || collection.mediaManifest.length === 0) return;
+    seedCheckedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      const missing: AnkiMediaRef[] = [];
+      for (const media of collection.mediaManifest) {
+        if (cancelled) return;
+        if (!(await getMediaBlob(media.hash))) missing.push(media);
+      }
+      if (!cancelled && missing.length > 0) setSeedMissing(missing);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, collection.mediaManifest]);
 
   const reload = async () => {
     try {
@@ -847,6 +876,13 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
         manifest={pendingTransfer.manifest}
         email={getCurrentUser()!.email}
         onDone={() => setPendingTransfer(null)}
+      />
+    )}
+    {!pendingTransfer && seedMissing && getCurrentUser() && (
+      <SeedMediaPanel
+        email={getCurrentUser()!.email}
+        manifest={seedMissing}
+        onDone={() => setSeedMissing(null)}
       />
     )}
     </>

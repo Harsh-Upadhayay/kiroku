@@ -18,6 +18,7 @@ import { SrsQuiz } from "./components/SrsQuiz";
 import { CharDictionary } from "./components/CharDictionary";
 import { AnkiPage } from "./components/AnkiPage";
 import { ReceiveTransferBanner } from "./components/ReceiveTransferBanner";
+import { SeedResponder } from "./components/SeedResponder";
 import { N5CoursePage } from "./components/N5CoursePage";
 import { DictionaryLookup } from "./components/DictionaryLookup";
 import { VocabSheetPage } from "./components/VocabSheetPage";
@@ -964,6 +965,7 @@ export default function App() {
       />
     </div>
     {currentUser && <ReceiveTransferBanner email={currentUser.email} />}
+    {currentUser && <SeedResponder email={currentUser.email} />}
     </>
   );
 }
