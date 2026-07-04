@@ -58,6 +58,10 @@ type Meta struct {
 	SchemaVersion float64 `json:"schemaVersion"`
 	GeneratedAt   float64 `json:"generatedAt"`
 	MergedAt      int64   `json:"mergedAt,omitempty"`
+	// ClientID identifies the device that produced this state. It is read from incoming
+	// pushes to tag the change-notification event with its origin (see handlers.SyncPush);
+	// the merge deliberately does not carry it into the stored state.
+	ClientID string `json:"clientId,omitempty"`
 }
 
 type StreakInfo struct {

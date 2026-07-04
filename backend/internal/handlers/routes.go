@@ -13,6 +13,7 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("POST /api/auth/login", h.Login)
 	mux.HandleFunc("POST /api/sync/push", h.SyncPush)
 	mux.HandleFunc("POST /api/sync/pull", h.SyncPull)
+	mux.HandleFunc("GET /api/sync/events", h.SyncEvents)
 	mux.HandleFunc("POST /api/import-anki-package/upload/init", h.UploadInit)
 	mux.HandleFunc("PUT /api/import-anki-package/upload/{uploadID}/chunk/{index}", h.UploadChunk)
 	mux.HandleFunc("POST /api/import-anki-package/upload/{uploadID}/complete", h.UploadComplete)
