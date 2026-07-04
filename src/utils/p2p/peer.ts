@@ -18,8 +18,11 @@ const ICE_SERVERS: RTCIceServer[] = [
  * during the handshake — once the data channel opens, polling stops. */
 const SIGNAL_POLL_MS = 500;
 
-/** How long to wait for the data channel to open before giving up and falling back. */
-const CONNECT_TIMEOUT_MS = 20_000;
+/** Default time to wait for the data channel to open once a handshake is underway. Callers
+ * that need to wait indefinitely for a human to bring a second device online (see
+ * MediaTransferPanel.tsx) pass a much larger timeoutMs — this default is sized for "both
+ * sides are already trying," not "waiting for someone to show up." */
+const DEFAULT_CONNECT_TIMEOUT_MS = 20_000;
 
 export type PeerRole = "offerer" | "answerer";
 
@@ -32,15 +35,25 @@ export interface ConnectOptions {
   roomId: string;
   deviceId: string;
   role: PeerRole;
+  /** Overrides DEFAULT_CONNECT_TIMEOUT_MS — e.g. a long value while announcing an import so
+   * the attempt doesn't die just because nobody's opened their other device yet. */
+  timeoutMs?: number;
+}
+
+export interface ConnectHandle {
+  /** Resolves once the data channel is open, or rejects on timeout/failure/cancel. */
+  promise: Promise<P2PSession>;
+  /** Aborts an in-progress handshake (e.g. the user chose to fall back to the cloud instead
+   * of continuing to wait). Safe to call after the promise has already settled. */
+  cancel(): void;
 }
 
 /**
- * connect performs the WebRTC handshake over the signaling mailbox and resolves once a data
- * channel is open between this device and the other side of roomId. The offerer creates the
+ * connect performs the WebRTC handshake over the signaling mailbox. The offerer creates the
  * data channel up front (required by the API — only the offering side can); the answerer
  * receives it via the "datachannel" event once the offer arrives.
  */
-export function connect(opts: ConnectOptions): Promise<P2PSession> {
+export function connect(opts: ConnectOptions): ConnectHandle {
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   const channelReady =
     opts.role === "offerer"
@@ -56,7 +69,25 @@ export function connect(opts: ConnectOptions): Promise<P2PSession> {
   let stopped = false;
   const pollLoop = pollSignalingMailbox(pc, opts, () => stopped);
 
-  return (async () => {
+  // Canceling before a peer ever answers closes a connection that's still in "new" or
+  // "checking" — Chrome doesn't reliably fire connectionstatechange for that case, so
+  // rejecting a dedicated promise (raced below) is what actually makes cancel() observable,
+  // not the pc.close() call by itself. The .catch(() => {}) keeps a cancel() called after
+  // the handshake already settled from surfacing as an unhandled rejection.
+  let rejectCanceled!: (err: Error) => void;
+  const canceled = new Promise<never>((_, reject) => {
+    rejectCanceled = reject;
+  });
+  canceled.catch(() => {});
+
+  const cancel = () => {
+    if (stopped) return;
+    stopped = true;
+    pc.close();
+    rejectCanceled(new Error("P2P connection canceled"));
+  };
+
+  const promise = (async () => {
     try {
       if (opts.role === "offerer") {
         const offer = await pc.createOffer();
@@ -64,8 +95,8 @@ export function connect(opts: ConnectOptions): Promise<P2PSession> {
         await postMessage(opts.roomId, opts.deviceId, "offer", offer);
       }
 
-      const channel = await channelReady;
-      await waitForOpen(channel, pc);
+      const channel = await Promise.race([channelReady, canceled]);
+      await Promise.race([waitForOpen(channel, pc, opts.timeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS), canceled]);
       stopped = true;
       await pollLoop;
 
@@ -83,6 +114,8 @@ export function connect(opts: ConnectOptions): Promise<P2PSession> {
       throw err;
     }
   })();
+
+  return { promise, cancel };
 }
 
 /** pollSignalingMailbox repeatedly fetches new messages and applies offers/answers/ICE
@@ -119,13 +152,13 @@ async function pollSignalingMailbox(pc: RTCPeerConnection, opts: ConnectOptions,
   }
 }
 
-function waitForOpen(channel: RTCDataChannel, pc: RTCPeerConnection): Promise<void> {
+function waitForOpen(channel: RTCDataChannel, pc: RTCPeerConnection, timeoutMs: number): Promise<void> {
   if (channel.readyState === "open") return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
       reject(new Error("P2P connection timed out"));
-    }, CONNECT_TIMEOUT_MS);
+    }, timeoutMs);
     const onOpen = () => {
       cleanup();
       resolve();

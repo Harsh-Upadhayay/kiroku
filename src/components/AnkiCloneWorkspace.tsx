@@ -46,8 +46,11 @@ import {
   saveAnkiCollection,
   sanitizeTemplateHTML,
   stripHTML,
+  type PendingMediaTransfer,
 } from "../utils/anki-v3";
+import { getCurrentUser } from "../utils/auth";
 import { sound } from "../utils/audio";
+import { MediaTransferPanel } from "./MediaTransferPanel";
 import { TabPanel } from "./TabPanel";
 
 type WorkspaceTab = "decks" | "review" | "browser" | "editor" | "media" | "options" | "custom" | "stats";
@@ -114,6 +117,9 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   // How many browser/media rows are currently mounted (grows on scroll).
   const [browserVisibleCount, setBrowserVisibleCount] = useState(BROWSER_PAGE);
   const [mediaVisibleCount, setMediaVisibleCount] = useState(MEDIA_PAGE);
+  // Media from the most recent client-side import still needs to reach the user's other
+  // devices (P2P primary, cloud fallback) — see MediaTransferPanel.
+  const [pendingTransfer, setPendingTransfer] = useState<PendingMediaTransfer | null>(null);
 
   useEffect(() => {
     reload();
@@ -261,11 +267,12 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
     setIsImporting(true);
     setImportProgress(0);
     try {
-      const next = await importAnkiPackage(file, setImportProgress);
+      const { collection: next, pendingMediaTransfer } = await importAnkiPackage(file, setImportProgress);
       setCollection(next);
       setSelectedDeckId(firstDeckWithCards(next));
       setActiveTab("decks");
       notify("success", `Imported ${file.name}: ${next.cards.length.toLocaleString()} total cards now in collection.`);
+      if (pendingMediaTransfer) setPendingTransfer(pendingMediaTransfer);
     } catch (error: any) {
       sound.playIncorrect();
       notify("error", error?.message || "Import failed.");
@@ -451,6 +458,7 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   }, [collection]);
 
   return (
+    <>
     <div className="bg-white border-2 border-zinc-900 rounded-[28px] p-4 sm:p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b-2 border-zinc-100 pb-4">
         <div className="flex items-center gap-2.5">
@@ -833,6 +841,15 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
       </>
       )}
     </div>
+    {pendingTransfer && getCurrentUser() && (
+      <MediaTransferPanel
+        file={pendingTransfer.file}
+        manifest={pendingTransfer.manifest}
+        email={getCurrentUser()!.email}
+        onDone={() => setPendingTransfer(null)}
+      />
+    )}
+    </>
   );
 };
 

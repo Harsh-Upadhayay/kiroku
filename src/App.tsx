@@ -17,6 +17,7 @@ import { SpeedSheet } from "./components/SpeedSheet";
 import { SrsQuiz } from "./components/SrsQuiz";
 import { CharDictionary } from "./components/CharDictionary";
 import { AnkiPage } from "./components/AnkiPage";
+import { ReceiveTransferBanner } from "./components/ReceiveTransferBanner";
 import { N5CoursePage } from "./components/N5CoursePage";
 import { DictionaryLookup } from "./components/DictionaryLookup";
 import { VocabSheetPage } from "./components/VocabSheetPage";
@@ -804,6 +805,7 @@ export default function App() {
   ];
 
   return (
+    <>
     <div className="app-shell min-h-screen bg-zinc-100 text-zinc-900 flex flex-col antialiased p-3 sm:p-6 pb-12 font-sans">
       <header className="max-w-7xl w-full mx-auto flex items-center justify-between mb-6 sm:mb-8 gap-4">
         {/* Logo */}
@@ -961,5 +963,7 @@ export default function App() {
         onDeckChange={() => setLookupDeckVersion((v) => v + 1)}
       />
     </div>
+    {currentUser && <ReceiveTransferBanner email={currentUser.email} />}
+    </>
   );
 }
