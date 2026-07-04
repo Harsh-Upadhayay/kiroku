@@ -916,6 +916,20 @@ export async function saveMediaBlob(media: AnkiMediaRef, blob: Blob): Promise<vo
   await enforceMediaCacheLimit();
 }
 
+// Every media record actually cached on this device (a subset of the full collection's
+// mediaManifest, since the LRU cap evicts entries). Used to answer "what can I serve a peer
+// that's requesting media?" — see SeedResponder.tsx.
+export async function getAllStoredMediaRefs(): Promise<AnkiMediaRef[]> {
+  const db = await initDB();
+  const records: AnkiMediaRef[] = await new Promise((resolve, reject) => {
+    const tx = db.transaction("anki_media", "readonly");
+    const req = tx.objectStore("anki_media").getAll();
+    req.onsuccess = () => resolve(req.result.map(({ hash, fileName, contentType, bytes }) => ({ hash, fileName, contentType, bytes })));
+    req.onerror = () => reject(req.error);
+  });
+  return records;
+}
+
 // Cache-only lookup — updates LRU timestamp on hit, never fetches from API.
 export async function getMediaBlob(hash: string): Promise<Blob | null> {
   const db = await initDB();
