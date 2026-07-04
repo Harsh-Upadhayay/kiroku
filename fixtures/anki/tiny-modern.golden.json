@@ -1,0 +1,467 @@
+{
+  "importId": "IMPORT_ID",
+  "collection": {
+    "id": "collection-IMPORT_ID",
+    "name": "Default",
+    "createdAt": 0,
+    "decks": [
+      {
+        "id": "1",
+        "name": "Default",
+        "configId": "1",
+        "dynamic": false,
+        "raw": {
+          "conf": 1,
+          "desc": "",
+          "dyn": 0,
+          "mod": 0,
+          "name": "Default",
+          "usn": 0
+        }
+      },
+      {
+        "id": "1700000000101",
+        "name": "Kiroku Test Deck",
+        "configId": "1",
+        "description": "Fixture deck for parser parity tests",
+        "dynamic": false,
+        "mod": 1700000100,
+        "usn": -1,
+        "raw": {
+          "conf": 1,
+          "desc": "Fixture deck for parser parity tests",
+          "dyn": 0,
+          "mod": 1700000100,
+          "name": "Kiroku Test Deck",
+          "usn": -1
+        }
+      },
+      {
+        "id": "1700000000102",
+        "name": "Kiroku Test Deck::Child",
+        "parentId": "1700000000101",
+        "configId": "1",
+        "dynamic": false,
+        "mod": 1700000200,
+        "usn": -1,
+        "raw": {
+          "conf": 1,
+          "desc": "",
+          "dyn": 0,
+          "mod": 1700000200,
+          "name": "Kiroku Test Deck::Child",
+          "usn": -1
+        }
+      }
+    ],
+    "deckConfigs": [
+      {
+        "id": "1",
+        "name": "Default",
+        "raw": {
+          "id": 1,
+          "name": "Default",
+          "new": {
+            "perDay": 20
+          },
+          "rev": {
+            "perDay": 200
+          }
+        }
+      }
+    ],
+    "noteTypes": [
+      {
+        "id": "1700000000002",
+        "name": "Empty Model",
+        "type": 1,
+        "css": "",
+        "fields": [],
+        "templates": [],
+        "raw": {
+          "id": 1700000000002,
+          "name": "Empty Model",
+          "type": 1
+        }
+      },
+      {
+        "id": "1700000000001",
+        "name": "Kiroku Basic",
+        "type": 0,
+        "css": ".card { font-family: sans-serif; }",
+        "latexPre": "\\documentclass{article}",
+        "latexPost": "\\end{document}",
+        "fields": [
+          {
+            "name": "Expression",
+            "ord": 0,
+            "font": "Arial",
+            "size": 20,
+            "description": "the word"
+          },
+          {
+            "name": "Meaning",
+            "ord": 1,
+            "font": "Arial",
+            "size": 20
+          },
+          {
+            "name": "Reading",
+            "ord": 2,
+            "sticky": true,
+            "font": "Arial",
+            "size": 16
+          }
+        ],
+        "templates": [
+          {
+            "name": "Card 1",
+            "ord": 0,
+            "qfmt": "{{Expression}}\u003cbr\u003e{{#Reading}}({{Reading}}){{/Reading}}",
+            "afmt": "{{FrontSide}}\u003chr id=answer\u003e{{Meaning}} [sound:clip.mp3]"
+          },
+          {
+            "name": "Card 2",
+            "ord": 1,
+            "qfmt": "{{^Meaning}}no meaning{{/Meaning}}{{Meaning}}",
+            "afmt": "{{Expression}}"
+          }
+        ],
+        "raw": {
+          "css": ".card { font-family: sans-serif; }",
+          "flds": [
+            {
+              "description": "the word",
+              "font": "Arial",
+              "name": "Expression",
+              "ord": 0,
+              "rtl": false,
+              "size": 20,
+              "sticky": false
+            },
+            {
+              "font": "Arial",
+              "name": "Meaning",
+              "ord": 1,
+              "rtl": false,
+              "size": 20,
+              "sticky": false
+            },
+            {
+              "font": "Arial",
+              "name": "Reading",
+              "ord": 2,
+              "rtl": false,
+              "size": 16,
+              "sticky": true
+            }
+          ],
+          "id": 1700000000001,
+          "latexPost": "\\end{document}",
+          "latexPre": "\\documentclass{article}",
+          "name": "Kiroku Basic",
+          "tmpls": [
+            {
+              "afmt": "{{FrontSide}}\u003chr id=answer\u003e{{Meaning}} [sound:clip.mp3]",
+              "did": null,
+              "name": "Card 1",
+              "ord": 0,
+              "qfmt": "{{Expression}}\u003cbr\u003e{{#Reading}}({{Reading}}){{/Reading}}"
+            },
+            {
+              "afmt": "{{Expression}}",
+              "name": "Card 2",
+              "ord": 1,
+              "qfmt": "{{^Meaning}}no meaning{{/Meaning}}{{Meaning}}"
+            }
+          ],
+          "type": 0
+        }
+      }
+    ],
+    "notes": [
+      {
+        "id": "1700000000201",
+        "guid": "abc001",
+        "noteTypeId": "1700000000001",
+        "sortField": "食べる",
+        "tags": [
+          "japanese",
+          "verb"
+        ],
+        "fields": {
+          "Expression": "食べる",
+          "Meaning": "to eat",
+          "Reading": "たべる"
+        },
+        "fieldOrder": [
+          "Expression",
+          "Meaning",
+          "Reading"
+        ],
+        "rawFields": [
+          "食べる",
+          "to eat",
+          "たべる"
+        ],
+        "mod": 1700000300,
+        "usn": -1
+      },
+      {
+        "id": "1700000000202",
+        "guid": "abc002",
+        "noteTypeId": "1700000000001",
+        "sortField": "水\u0026氷",
+        "tags": [],
+        "fields": {
+          "Expression": "水\u0026amp;\u003cb\u003e氷\u003c/b\u003e",
+          "Meaning": "water \u0026amp; ice",
+          "Reading": ""
+        },
+        "fieldOrder": [
+          "Expression",
+          "Meaning",
+          "Reading"
+        ],
+        "rawFields": [
+          "水\u0026amp;\u003cb\u003e氷\u003c/b\u003e",
+          "water \u0026amp; ice",
+          ""
+        ],
+        "mod": 1700000301,
+        "usn": -1
+      },
+      {
+        "id": "1700000000203",
+        "guid": "abc003",
+        "noteTypeId": "9999",
+        "sortField": "solo field only",
+        "tags": [
+          "misc"
+        ],
+        "fields": {
+          "Field 1": "solo field only"
+        },
+        "fieldOrder": [
+          "Field 1"
+        ],
+        "rawFields": [
+          "solo field only"
+        ],
+        "mod": 1700000302,
+        "usn": -1
+      },
+      {
+        "id": "1700000000204",
+        "guid": "abc004",
+        "noteTypeId": "1700000000001",
+        "sortField": "12345",
+        "tags": [],
+        "fields": {
+          "Expression": "12345",
+          "Meaning": "67890",
+          "Reading": ""
+        },
+        "fieldOrder": [
+          "Expression",
+          "Meaning",
+          "Reading"
+        ],
+        "rawFields": [
+          "12345",
+          "67890",
+          ""
+        ],
+        "mod": 1700000303,
+        "usn": -1
+      }
+    ],
+    "cards": [
+      {
+        "id": "1700000000301",
+        "noteId": "1700000000201",
+        "deckId": "1700000000101",
+        "ord": 0,
+        "type": 2,
+        "queue": 2,
+        "due": 100,
+        "interval": 15,
+        "factor": 2500,
+        "reps": 4,
+        "lapses": 1,
+        "data": "{}",
+        "templateName": "Card 1",
+        "front": "食べる\n(たべる)",
+        "back": "to eat",
+        "raw": {
+          "mod": 1700000400,
+          "usn": -1
+        }
+      },
+      {
+        "id": "1700000000302",
+        "noteId": "1700000000201",
+        "deckId": "1700000000101",
+        "ord": 1,
+        "type": 0,
+        "queue": 0,
+        "due": 201,
+        "interval": 0,
+        "factor": 0,
+        "reps": 0,
+        "lapses": 0,
+        "templateName": "Card 2",
+        "front": "to eat",
+        "back": "食べる",
+        "raw": {
+          "mod": 1700000401,
+          "usn": -1
+        }
+      },
+      {
+        "id": "1700000000303",
+        "noteId": "1700000000202",
+        "deckId": "1700000000102",
+        "ord": 0,
+        "type": 1,
+        "queue": 1,
+        "due": 0,
+        "interval": 0,
+        "factor": 0,
+        "reps": 1,
+        "lapses": 0,
+        "left": 1001,
+        "templateName": "Card 1",
+        "front": "水\u0026氷",
+        "back": "water \u0026 ice",
+        "raw": {
+          "mod": 1700000402,
+          "usn": -1
+        }
+      },
+      {
+        "id": "1700000000304",
+        "noteId": "1700000000203",
+        "deckId": "1",
+        "ord": 0,
+        "type": 0,
+        "queue": 0,
+        "due": 203,
+        "interval": 0,
+        "factor": 0,
+        "reps": 0,
+        "lapses": 0,
+        "front": "solo field only",
+        "back": "solo field only",
+        "raw": {
+          "mod": 1700000403,
+          "usn": -1
+        }
+      },
+      {
+        "id": "1700000000305",
+        "noteId": "1700000000204",
+        "deckId": "1700000000101",
+        "ord": 5,
+        "type": 0,
+        "queue": 0,
+        "due": 204,
+        "interval": 0,
+        "factor": 0,
+        "reps": 0,
+        "lapses": 0,
+        "front": "",
+        "back": "",
+        "raw": {
+          "mod": 1700000404,
+          "usn": -1
+        }
+      },
+      {
+        "id": "1700000000306",
+        "noteId": "1700000000202",
+        "deckId": "1700000000101",
+        "ord": 1,
+        "type": 2,
+        "queue": 2,
+        "due": 150,
+        "interval": 30,
+        "factor": 2100,
+        "reps": 10,
+        "lapses": 2,
+        "originalDeckId": "1700000000102",
+        "flags": 2,
+        "data": "{\"pos\":1}",
+        "templateName": "Card 2",
+        "front": "water \u0026 ice",
+        "back": "水\u0026氷",
+        "raw": {
+          "mod": 1700000405,
+          "usn": -1
+        }
+      }
+    ],
+    "reviewLogs": [
+      {
+        "id": "1700000000401",
+        "cardId": "1700000000301",
+        "usn": -1,
+        "ease": 3,
+        "interval": 15,
+        "lastInterval": 7,
+        "factor": 2500,
+        "time": 5400,
+        "type": 1
+      },
+      {
+        "id": "1700000000402",
+        "cardId": "1700000000301",
+        "usn": -1,
+        "ease": 4,
+        "interval": 30,
+        "lastInterval": 15,
+        "factor": 2500,
+        "time": 3200,
+        "type": 1
+      },
+      {
+        "id": "1700000000403",
+        "cardId": "1700000000306",
+        "usn": -1,
+        "ease": 1,
+        "interval": -60,
+        "lastInterval": 30,
+        "factor": 2100,
+        "time": 8000,
+        "type": 0
+      }
+    ]
+  },
+  "mediaManifest": [
+    {
+      "hash": "ddf9b44ad4b91812e222583f958467f203a90f87f4174b7190150188ca6366f8",
+      "fileName": "clip.mp3",
+      "entryName": "0",
+      "contentType": "audio/mpeg",
+      "bytes": 37
+    },
+    {
+      "hash": "3bdba8cdd985df984cdb8dae9a5da9cb90dd1ada772c92cf813b88c8a6062b86",
+      "fileName": "pic.png",
+      "entryName": "1",
+      "contentType": "image/png",
+      "bytes": 67
+    }
+  ],
+  "report": {
+    "packageKind": "apkg/collection.anki21b",
+    "warnings": [],
+    "decks": 3,
+    "deckConfigs": 1,
+    "noteTypes": 2,
+    "notes": 4,
+    "cards": 6,
+    "reviewLogs": 3,
+    "mediaFiles": 2
+  }
+}

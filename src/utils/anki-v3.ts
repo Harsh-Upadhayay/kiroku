@@ -26,6 +26,7 @@ import {
   ANKI_NOTES_STORE,
   ANKI_REVLOGS_STORE,
 } from "./db";
+import { clientParseSupported, importApkgLocally } from "./apkg/client";
 
 export interface AnkiCollection {
   id: string;
@@ -722,11 +723,39 @@ async function pollImportStatus(uploadId: string): Promise<ImportResponse> {
   throw new Error("Anki package import timed out while the server was parsing the deck.");
 }
 
+// Client-side parsing is the default import path: the .apkg is parsed in a Web Worker and
+// only the media blobs the server lacks are uploaded — no more shipping the whole archive up
+// just to download the parsed result back. The chunked-upload/server-parse path below remains
+// as the automatic fallback for any client-parse failure (old browser, WASM out-of-memory on
+// a giant deck, malformed archive) and can be forced off via the localStorage flag.
+const CLIENT_PARSE_FLAG = "myanki:clientParse";
+
+function clientParseEnabled(): boolean {
+  if (!clientParseSupported()) return false;
+  try {
+    const value = localStorage.getItem(CLIENT_PARSE_FLAG);
+    if (value !== null) return value !== "0" && value !== "false";
+  } catch {
+    // Storage can be unavailable (private mode); treat as unset.
+  }
+  return true;
+}
+
 export async function importAnkiPackage(
   file: File,
   onProgress?: (fraction: number) => void
 ): Promise<AnkiCollection> {
-  const imported = await uploadAnkiPackageChunked(file, onProgress);
+  let imported: ImportResponse;
+  if (clientParseEnabled()) {
+    try {
+      imported = (await importApkgLocally(file, onProgress)) as unknown as ImportResponse;
+    } catch (err) {
+      console.warn("[anki] client-side parse failed, falling back to server import:", err);
+      imported = await uploadAnkiPackageChunked(file, onProgress);
+    }
+  } else {
+    imported = await uploadAnkiPackageChunked(file, onProgress);
+  }
   const current = await getAnkiCollection();
   const merged = mergeImportedCollection(current, imported);
   await saveAnkiCollection(merged);
