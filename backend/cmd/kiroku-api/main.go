@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"kiroku-api/internal/anki"
 	"kiroku-api/internal/config"
 	"kiroku-api/internal/db"
 	"kiroku-api/internal/events"
 	"kiroku-api/internal/handlers"
 	"kiroku-api/internal/middleware"
+	"kiroku-api/internal/signal"
 	"log"
 	"log/slog"
 	"net/http"
@@ -18,6 +20,11 @@ import (
 // staleUploadAge is how long an interrupted chunked upload session is kept on disk before the
 // background sweeper reclaims it.
 const staleUploadAge = 24 * time.Hour
+
+// signalRoomTTL is how long a P2P signaling room survives without activity before it's
+// reclaimed. Generous enough to cover a slow handshake (a device on a bad connection retrying
+// ICE candidates), short enough that an abandoned room doesn't linger.
+const signalRoomTTL = 10 * time.Minute
 
 func main() {
 	// Configure structured logging first so config errors are logged in JSON too.
@@ -45,14 +52,21 @@ func main() {
 		return
 	}
 
+	signalRegistry := signal.NewRegistry(signalRoomTTL)
 	h := &handlers.Handler{
 		DB:     database,
 		Config: cfg,
 		Events: events.NewHub(),
+		Signal: signalRegistry,
 	}
 
 	mux := http.NewServeMux()
 	handlers.RegisterRoutes(mux, h)
+
+	// Reclaim abandoned P2P signaling rooms. The registry has no shutdown to wait for (it's
+	// pure in-memory bookkeeping), so a background context — rather than one tied to a real
+	// shutdown signal, which this server doesn't otherwise have — is enough here.
+	go signalRegistry.Run(context.Background())
 
 	// Reclaim disk from chunked uploads that were started but never completed: sweep once at
 	// startup, then hourly in the background.

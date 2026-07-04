@@ -13,6 +13,7 @@ import (
 	"kiroku-api/internal/config"
 	"kiroku-api/internal/events"
 	"kiroku-api/internal/models"
+	"kiroku-api/internal/signal"
 	"kiroku-api/internal/store"
 	"kiroku-api/internal/sync"
 	"kiroku-api/internal/vocab"
@@ -33,6 +34,9 @@ type Handler struct {
 	// Events fans out sync-change pokes to connected devices (see SyncEvents). Optional: a
 	// nil hub simply disables live notifications, and clients fall back to polling.
 	Events *events.Hub
+	// Signal is the WebRTC signaling mailbox for P2P media transfer (see p2p.go). Optional:
+	// a nil registry disables P2P, and clients fall back to the cloud media store.
+	Signal *signal.Registry
 }
 
 // authService builds an auth.Service backed by the database. It is cheap to construct, so
