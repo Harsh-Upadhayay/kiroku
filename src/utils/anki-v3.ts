@@ -741,14 +741,33 @@ function clientParseEnabled(): boolean {
   return true;
 }
 
+export interface PendingMediaTransfer {
+  file: File;
+  manifest: AnkiMediaRef[];
+}
+
+export interface ImportOutcome {
+  collection: AnkiCollection;
+  /**
+   * Set only after a client-side parse that found media to move. The legacy server-parse
+   * path already persisted media to the cloud store as a side effect of the server doing the
+   * parsing, so there's nothing left for the caller to transfer. When present, the caller
+   * (see MediaTransferPanel.tsx) drives getting this media to the user's other devices —
+   * P2P first, cloud upload only if no peer answers.
+   */
+  pendingMediaTransfer?: PendingMediaTransfer;
+}
+
 export async function importAnkiPackage(
   file: File,
   onProgress?: (fraction: number) => void
-): Promise<AnkiCollection> {
+): Promise<ImportOutcome> {
   let imported: ImportResponse;
+  let clientParsed = false;
   if (clientParseEnabled()) {
     try {
       imported = (await importApkgLocally(file, onProgress)) as unknown as ImportResponse;
+      clientParsed = true;
     } catch (err) {
       console.warn("[anki] client-side parse failed, falling back to server import:", err);
       imported = await uploadAnkiPackageChunked(file, onProgress);
@@ -759,7 +778,11 @@ export async function importAnkiPackage(
   const current = await getAnkiCollection();
   const merged = mergeImportedCollection(current, imported);
   await saveAnkiCollection(merged);
-  return merged;
+  return {
+    collection: merged,
+    pendingMediaTransfer:
+      clientParsed && imported.mediaManifest.length > 0 ? { file, manifest: imported.mediaManifest } : undefined,
+  };
 }
 
 export function mergeImportedCollection(current: AnkiCollection, imported: ImportResponse): AnkiCollection {

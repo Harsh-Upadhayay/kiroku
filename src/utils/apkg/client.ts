@@ -23,12 +23,16 @@ export function clientParseSupported(): boolean {
 }
 
 /**
- * importApkgLocally parses file in a Web Worker and uploads missing media to the server's
- * content-addressed store. Throws on any failure; the caller falls back to server parsing.
+ * importApkgLocally parses file in a Web Worker. Media is *not* uploaded to the cloud store by
+ * default (uploadMedia: false) — P2P (see MediaTransferPanel.tsx) is the primary way media
+ * reaches another device now, and the cloud store is only a fallback for when no peer answers.
+ * Pass uploadMedia: true to skip straight to the old always-upload behavior. Throws on any
+ * failure; the caller falls back to server parsing.
  */
 export function importApkgLocally(
   file: File,
-  onProgress?: (fraction: number) => void
+  onProgress?: (fraction: number) => void,
+  opts: { uploadMedia?: boolean } = {}
 ): Promise<ApkgImportResult> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -58,7 +62,7 @@ export function importApkgLocally(
       finish(() => reject(new Error(event.message || "apkg worker failed to start")));
     };
 
-    const request: ApkgWorkerRequest = { file, uploadMedia: true };
+    const request: ApkgWorkerRequest = { file, uploadMedia: opts.uploadMedia ?? false };
     worker.postMessage(request);
   });
 }
