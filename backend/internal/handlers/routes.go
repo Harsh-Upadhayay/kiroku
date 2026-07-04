@@ -22,7 +22,14 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 	// structurally overlap the "upload/{uploadID}/status" route above — Go 1.22 would otherwise
 	// reject the pair as ambiguous and panic at startup.
 	mux.HandleFunc("GET /api/import-anki-package/media/{importID}/{hash}", h.ImportedPackageMedia)
-	mux.HandleFunc("/api/media/{hash}", h.MediaBlob)
+	// Media blob routes are method-specific so the mux does the dispatch a hand-rolled switch
+	// used to do (see media.go). The "GET" pattern also matches HEAD, giving cheap existence
+	// probes for free. "check" is a literal segment on a different method, so it can never
+	// collide with the {hash} wildcard — and a stray GET /api/media/check just fails hash
+	// validation.
+	mux.HandleFunc("GET /api/media/{hash}", h.GetMediaBlob)
+	mux.HandleFunc("PUT /api/media/{hash}", h.PutMediaBlob)
+	mux.HandleFunc("POST /api/media/check", h.MediaCheck)
 	mux.HandleFunc("POST /api/auth/change-password", h.ChangePassword)
 	mux.HandleFunc("POST /api/auth/delete-account", h.DeleteAccount)
 }

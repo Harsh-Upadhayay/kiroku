@@ -336,61 +336,6 @@ func (h *Handler) ImportedPackageMedia(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(bytes)
 }
 
-// MediaBlob dispatches GET/PUT for a media blob identified by its content hash.
-func (h *Handler) MediaBlob(w http.ResponseWriter, r *http.Request) {
-	hash := r.PathValue("hash")
-	if !validMediaHash(hash) {
-		h.WriteError(w, http.StatusBadRequest, "Invalid media hash", nil)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		h.GetMediaBlob(w, r, hash)
-	case http.MethodPut:
-		h.PutMediaBlob(w, r, hash)
-	default:
-		w.Header().Set("Allow", "GET, PUT")
-		h.WriteError(w, http.StatusMethodNotAllowed, "Unsupported media method", nil)
-	}
-}
-
-// GetMediaBlob serves a stored media file from disk by its content hash.
-func (h *Handler) GetMediaBlob(w http.ResponseWriter, r *http.Request, hash string) {
-	path := filepath.Join(h.Config.DataDir, "media", hash)
-	bytes, err := os.ReadFile(path)
-	if err != nil {
-		h.WriteError(w, http.StatusNotFound, "Media not found", err)
-		return
-	}
-	contentType := http.DetectContentType(bytes)
-	w.Header().Set("Content-Type", contentType)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(bytes)
-}
-
-// PutMediaBlob stores an uploaded media file on disk under its content hash.
-func (h *Handler) PutMediaBlob(w http.ResponseWriter, r *http.Request, hash string) {
-	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxBodyBytes)
-	defer r.Body.Close()
-
-	bytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		h.WriteError(w, http.StatusBadRequest, "Failed to read media", err)
-		return
-	}
-	dir := filepath.Join(h.Config.DataDir, "media")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		h.WriteError(w, http.StatusInternalServerError, "Failed to create media directory", err)
-		return
-	}
-	if err := os.WriteFile(filepath.Join(dir, hash), bytes, 0o644); err != nil {
-		h.WriteError(w, http.StatusInternalServerError, "Failed to store media", err)
-		return
-	}
-	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true})
-}
-
 // ChangePassword updates a user's password after verifying the old one. POST /api/auth/change-password.
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	req, err := decodeJSON[changePasswordReq](r)
