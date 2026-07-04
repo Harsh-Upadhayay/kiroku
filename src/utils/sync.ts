@@ -324,6 +324,43 @@ export async function triggerPullSync(email: string): Promise<boolean> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Live sync: the 15s reconcile loop stays as the safety net. The immediate-push half of
+// "device → Go merge → device, streaming" already existed — db.ts's requestSyncPush debounces
+// a push shortly after every local mutation. The missing half was the *receiving* device
+// finding out sooner than its next 15s tick; connectSyncEvents below is that piece: an
+// EventSource on /api/sync/events pokes this device the moment another one pushes. Pokes
+// carry no state — the pull fetches the canonical merged result — so a dropped event costs
+// nothing, and EventSource reconnects on its own.
+// ---------------------------------------------------------------------------
+
+let livePullInFlight = false;
+
+/**
+ * connectSyncEvents opens the live-notification stream for this user. Returns a cleanup
+ * function; safe to call in environments without EventSource (it becomes a no-op and the
+ * polling loop carries on alone, exactly like before live sync existed).
+ */
+export function connectSyncEvents(email: string): () => void {
+  if (typeof EventSource === "undefined") return () => {};
+  const source = new EventSource(`/api/sync/events?email=${encodeURIComponent(email)}`);
+  source.addEventListener("sync", (event) => {
+    try {
+      const poke = JSON.parse((event as MessageEvent).data);
+      // Our own push echoes back too; the origin check avoids re-pulling what we just wrote.
+      if (poke?.origin && poke.origin === getClientId()) return;
+    } catch {
+      // Malformed poke — pulling anyway is always safe.
+    }
+    if (reconcileInFlight || livePullInFlight) return;
+    livePullInFlight = true;
+    void triggerPullSync(email).finally(() => {
+      livePullInFlight = false;
+    });
+  });
+  return () => source.close();
+}
+
 /**
  * Push dirty local state then pull the latest server state.
  * A module-level guard prevents concurrent interleaved calls (e.g. from

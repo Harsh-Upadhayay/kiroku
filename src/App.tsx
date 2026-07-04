@@ -33,7 +33,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { getAllCardsFromDB, saveAllCardsToDB, getSettingFromDB, saveSettingToDB, setSyncRequestSuppressed } from "./utils/db";
 import { getCurrentUser, setCurrentUser, getRegisteredProfiles, saveRegisteredProfiles, User as AppUser } from "./utils/auth";
-import { reconcileOnStartup, triggerPushSync, syncEvents } from "./utils/sync";
+import { reconcileOnStartup, triggerPushSync, syncEvents, connectSyncEvents } from "./utils/sync";
 import { getN5CourseProgress, resetN5CourseData } from "./utils/n5-course";
 import { n5Course } from "./content/n5/raw";
 import {
@@ -751,6 +751,15 @@ export default function App() {
     const t = setTimeout(() => reconcileOnStartup(currentUser.email).catch(console.warn), 3000);
     const iv = setInterval(() => reconcileOnStartup(currentUser.email).catch(console.warn), 15000);
     return () => { clearTimeout(t); clearInterval(iv); };
+  }, [currentUser]);
+
+  // Live sync: another device's push pokes this stream, triggering an immediate pull instead
+  // of waiting for the 15s interval above (which stays as the fallback if SSE is unavailable
+  // or the connection drops).
+  useEffect(() => {
+    if (!currentUser) return;
+    const disconnect = connectSyncEvents(currentUser.email);
+    return disconnect;
   }, [currentUser]);
 
   useEffect(() => {

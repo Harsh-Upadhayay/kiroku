@@ -4,6 +4,7 @@ import (
 	"kiroku-api/internal/anki"
 	"kiroku-api/internal/config"
 	"kiroku-api/internal/db"
+	"kiroku-api/internal/events"
 	"kiroku-api/internal/handlers"
 	"kiroku-api/internal/middleware"
 	"log"
@@ -47,6 +48,7 @@ func main() {
 	h := &handlers.Handler{
 		DB:     database,
 		Config: cfg,
+		Events: events.NewHub(),
 	}
 
 	mux := http.NewServeMux()

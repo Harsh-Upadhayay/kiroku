@@ -11,6 +11,7 @@ import (
 	"kiroku-api/internal/anki"
 	"kiroku-api/internal/auth"
 	"kiroku-api/internal/config"
+	"kiroku-api/internal/events"
 	"kiroku-api/internal/models"
 	"kiroku-api/internal/store"
 	"kiroku-api/internal/sync"
@@ -24,11 +25,14 @@ import (
 )
 
 // Handler carries the dependencies every HTTP handler needs. It is intentionally minimal —
-// the store and service layers are built on demand from these two fields (see authService),
+// the store and service layers are built on demand from these fields (see authService),
 // which keeps construction in main.go and the tests a simple struct literal.
 type Handler struct {
 	DB     *sql.DB
 	Config *config.Config
+	// Events fans out sync-change pokes to connected devices (see SyncEvents). Optional: a
+	// nil hub simply disables live notifications, and clients fall back to polling.
+	Events *events.Hub
 }
 
 // authService builds an auth.Service backed by the database. It is cheap to construct, so
@@ -115,6 +119,13 @@ func (h *Handler) SyncPush(w http.ResponseWriter, r *http.Request) {
 	if ignored {
 		h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: map[string]bool{"ignored": true}})
 		return
+	}
+
+	// State changed — poke the user's other connected devices so they pull within seconds
+	// instead of at their next poll. The origin is the pushing client's id (from the state's
+	// _meta), letting that device ignore its own echo.
+	if h.Events != nil {
+		h.Events.Publish(email, events.Event{Origin: req.State.Meta.ClientID, At: auth.NowMillis()})
 	}
 
 	h.WriteJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: final})
