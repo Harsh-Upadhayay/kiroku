@@ -40,6 +40,14 @@ func (h *Handler) SyncEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Subscribe BEFORE announcing readiness. If the greeting went out first, a client that
+	// pushed the instant it saw ": connected" could have its poke published into the hub
+	// before this handler was actually listening — and a non-blocking Publish drops it. By
+	// subscribing first, "greeting received" reliably means "this stream will catch events
+	// from here on."
+	ch, cancel := h.Events.Subscribe(email)
+	defer cancel()
+
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	// Tells buffering reverse proxies (nginx and friends) to pass bytes through as written.
@@ -50,8 +58,6 @@ func (h *Handler) SyncEvents(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, ": connected\n\n")
 	flusher.Flush()
 
-	ch, cancel := h.Events.Subscribe(email)
-	defer cancel()
 	heartbeat := time.NewTicker(sseHeartbeatInterval)
 	defer heartbeat.Stop()
 

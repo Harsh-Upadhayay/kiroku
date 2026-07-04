@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Wifi, X } from "lucide-react";
-import { getMediaBlob, saveMediaBlob } from "../utils/anki-v3";
+import { getMediaBlob, saveMediaBlobPinned } from "../utils/anki-v3";
 import { listRooms, newDeviceId, type RoomMeta } from "../utils/p2p/signaling";
 import { connect } from "../utils/p2p/peer";
 import { runReceiver } from "../utils/p2p/transfer";
@@ -76,7 +76,7 @@ export const ReceiveTransferBanner: React.FC<ReceiveTransferBannerProps> = ({ em
         await runReceiver(session.channel, {
           hasBlob: async (hash) => (await getMediaBlob(hash)) !== null,
           onFile: async (entry, bytes) => {
-            await saveMediaBlob(
+            await saveMediaBlobPinned(
               { hash: entry.hash, fileName: entry.fileName, contentType: entry.contentType, bytes: entry.bytes },
               new Blob([bytes as BlobPart], { type: entry.contentType })
             );

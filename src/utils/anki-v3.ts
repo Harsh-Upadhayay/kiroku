@@ -901,19 +901,37 @@ async function enforceMediaCacheLimit(): Promise<void> {
   await writeMediaMeta(meta);
 }
 
-export async function saveMediaBlob(media: AnkiMediaRef, blob: Blob): Promise<void> {
-  const now = Date.now();
+// Writes the raw record every media save shares. The LRU meta (which drives eviction) is
+// managed by the callers below, not here.
+async function putMediaRecord(media: AnkiMediaRef, blob: Blob, storedAt: number): Promise<void> {
   const db = await initDB();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction("anki_media", "readwrite");
-    tx.objectStore("anki_media").put({ ...media, blob, storedAt: now });
+    tx.objectStore("anki_media").put({ ...media, blob, storedAt });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+// saveMediaBlob stores media that is ALSO durably available on the server — a lazy per-card
+// fetch from /api/media/{hash}. It records an LRU-meta entry, so it counts toward the 50 MB
+// cap and can be evicted; losing it is harmless since the server can re-serve it.
+export async function saveMediaBlob(media: AnkiMediaRef, blob: Blob): Promise<void> {
+  const now = Date.now();
+  await putMediaRecord(media, blob, now);
   const meta = await readMediaMeta();
   meta[media.hash] = { bytes: media.bytes, lastAccessedAt: now };
   await writeMediaMeta(meta);
   await enforceMediaCacheLimit();
+}
+
+// saveMediaBlobPinned stores media this device OWNS — imported here, or received P2P for one
+// of its own synced decks — which may exist nowhere else (a pure-P2P transfer never touches
+// the server). It writes NO LRU-meta entry, so enforceMediaCacheLimit (which only iterates
+// meta) never evicts it: the media of a deck you actually have stays put, rather than
+// vanishing once your cache of server-backed media crosses 50 MB.
+export async function saveMediaBlobPinned(media: AnkiMediaRef, blob: Blob): Promise<void> {
+  await putMediaRecord(media, blob, Date.now());
 }
 
 // Every media record actually cached on this device (a subset of the full collection's

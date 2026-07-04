@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { getMediaBlob, saveMediaBlob, type AnkiMediaRef } from "../utils/anki-v3";
+import { getMediaBlob, saveMediaBlobPinned, type AnkiMediaRef } from "../utils/anki-v3";
 import { createRoom, closeRoom, newDeviceId } from "../utils/p2p/signaling";
 import { connect } from "../utils/p2p/peer";
 import { runReceiver } from "../utils/p2p/transfer";
@@ -70,7 +70,7 @@ export const SeedMediaPanel: React.FC<SeedMediaPanelProps> = ({ email, manifest,
         await runReceiver(session.channel, {
           hasBlob: async (hash) => (await getMediaBlob(hash)) !== null,
           onFile: async (entry, bytes) => {
-            await saveMediaBlob(
+            await saveMediaBlobPinned(
               { hash: entry.hash, fileName: entry.fileName, contentType: entry.contentType, bytes: entry.bytes },
               new Blob([bytes as BlobPart], { type: entry.contentType })
             );

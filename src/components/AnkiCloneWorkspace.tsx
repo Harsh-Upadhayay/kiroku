@@ -50,6 +50,7 @@ import {
   stripHTML,
   type PendingMediaTransfer,
 } from "../utils/anki-v3";
+import { missingHashes } from "../utils/apkg/cloudMediaUpload";
 import { getCurrentUser } from "../utils/auth";
 import { sound } from "../utils/audio";
 import { MediaTransferPanel } from "./MediaTransferPanel";
@@ -166,12 +167,24 @@ const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
     seedCheckedRef.current = true;
     let cancelled = false;
     (async () => {
-      const missing: AnkiMediaRef[] = [];
+      // First pass: what's not in the local cache. Being missing locally is NORMAL, not a
+      // seed signal on its own — media is lazily fetched per card and the cache is a 50 MB
+      // LRU, so any real deck has most of its media un-cached at rest.
+      const locallyMissing: AnkiMediaRef[] = [];
       for (const media of collection.mediaManifest) {
         if (cancelled) return;
-        if (!(await getMediaBlob(media.hash))) missing.push(media);
+        if (!(await getMediaBlob(media.hash))) locallyMissing.push(media);
       }
-      if (!cancelled && missing.length > 0) setSeedMissing(missing);
+      if (cancelled || locallyMissing.length === 0) return;
+
+      // Second pass: of those, which are ALSO absent from the server's content-addressed
+      // store. Only media that is neither local nor on the server genuinely needs a peer to
+      // seed it (the pure-P2P-transfer case) — anything the server has just lazy-fetches per
+      // card, so it must not trigger the seed prompt. This is what stops the panel from
+      // firing for every normal deck.
+      const serverMissing = await missingHashes(locallyMissing.map((m) => m.hash));
+      const needsSeeding = locallyMissing.filter((m) => serverMissing.has(m.hash));
+      if (!cancelled && needsSeeding.length > 0) setSeedMissing(needsSeeding);
     })();
     return () => {
       cancelled = true;

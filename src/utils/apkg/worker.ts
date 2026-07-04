@@ -1,14 +1,17 @@
-// Web Worker entry for client-side .apkg import: parse the package off the main thread,
-// then push the media blobs the server is missing into its content-addressed store
-// (PUT /api/media/{hash}). The heavy pieces — unzip, SQLite-in-WASM, zstd, hashing — all
-// happen here so a hundreds-of-MB deck never janks the UI.
+// Web Worker entry for client-side .apkg import: parse the package off the main thread and
+// persist its media locally so the importing device can study the deck immediately. The heavy
+// pieces — unzip, SQLite-in-WASM, zstd, hashing — all happen here so a hundreds-of-MB deck
+// never janks the UI.
 //
-// Media flows in two passes over the archive. Pass 1 (inside parseApkg) streams every blob
-// through the hasher to build the manifest — one blob in memory at a time. Pass 2 asks the
-// server which hashes it lacks (one POST /api/media/check) and re-reads just those entries
-// for upload. Re-reading beats the alternatives: holding every decoded blob for the upload
-// would pin hundreds of MB, and uploading blindly during pass 1 would re-send a whole deck
-// the server already has.
+// Media handling, in one streaming pass over the archive (inside parseApkg): each blob is
+// decoded one at a time, hashed to build the manifest, and saved straight into the local
+// anki_media store (pinned — see workerMediaStore.ts). That local save is what makes the
+// source device's own cards work offline with no cloud upload and no dependency on a P2P peer.
+//
+// A second, optional pass uploads media to the server's content-addressed store (only when
+// uploadMedia is set — the cloud-fallback path in MediaTransferPanel). It asks the server
+// which hashes it lacks (one POST /api/media/check) and re-reads just those entries from the
+// archive, rather than holding every decoded blob in memory for a possible upload.
 
 import initSqlJs from "sql.js";
 import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
@@ -17,6 +20,7 @@ import { uploadMissingMedia } from "./cloudMediaUpload";
 import { maybeDecompressZstd } from "./media";
 import { parseApkg } from "./parse";
 import type { ApkgImportResult } from "./types";
+import { saveImportedMediaLocally } from "./workerMediaStore";
 
 export interface ApkgWorkerRequest {
   file: Blob;
@@ -46,6 +50,9 @@ self.onmessage = async (event: MessageEvent<ApkgWorkerRequest>) => {
         if (p.stage === "media") post({ type: "progress", phase: "media", current: p.current, total: p.total });
         else post({ type: "progress", phase: "parse", current: p.current, total: p.total });
       },
+      // Persist each blob locally as it's decoded, so this device's cards render offline
+      // without ever fetching from the server or waiting on a peer.
+      onMediaBlob: (ref, bytes) => saveImportedMediaLocally(ref, bytes),
     });
 
     if (uploadMedia && result.mediaManifest && result.mediaManifest.length > 0) {
