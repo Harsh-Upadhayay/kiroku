@@ -1,0 +1,79 @@
+# kiroku — the Next.js frontend. Migrated from ../homelab/kiroku/compose.yml
+# (the `kiroku` service). Stateless: no volume. In Compose it depended on the
+# api being healthy; in k8s that ordering is soft — the frontend just retries,
+# and its readiness probe keeps it out of the Service until it serves.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiroku
+  labels:
+    app: kiroku
+    app.kubernetes.io/part-of: kiroku
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kiroku
+  template:
+    metadata:
+      labels:
+        app: kiroku
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000 # image's `node` user
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kiroku
+          image: ghcr.io/harsh-upadhayay/kiroku:sha-6c43b70 # TODO: confirm CI published this tag
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: APP_URL
+              value: https://kiroku.neovara.uk
+          # Compose healthcheck was GET / (statusCode < 500). httpGet treats
+          # 2xx/3xx as pass, 4xx/5xx as fail — same intent.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          # Flat, idle SSR workload (observed: CPU avg 2.8m/max 3.5m,
+          # mem avg 40Mi/max 49Mi). Generous headroom on both.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 100m # ~28x the 3.5m max
+              memory: 128Mi # ~2.6x the 49Mi max
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiroku
+  labels:
+    app: kiroku
+spec:
+  type: ClusterIP
+  selector:
+    app: kiroku
+  ports:
+    - port: 3000
+      targetPort: 3000

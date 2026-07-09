@@ -1,0 +1,121 @@
+# kiroku-api — the Go backend (OCR + vocab data). Migrated from
+# ../homelab/kiroku/compose.yml (the `kiroku-api` service).
+#
+# No metadata.namespace: the pointer Application's destination.namespace
+# (kiroku) is injected by ArgoCD at apply time, keeping this repo portable.
+#
+# Image is pinned to an immutable sha- tag (CI publishes type=sha,prefix=sha-);
+# GitOps only redeploys when this string changes in git. Bump it per release.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiroku-api
+  labels:
+    app: kiroku-api
+    app.kubernetes.io/part-of: kiroku
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kiroku-api
+  template:
+    metadata:
+      labels:
+        app: kiroku-api
+    spec:
+      # fsGroup 1000: the kubelet chowns the mounted PVC to GID 1000 so the
+      # image's `appuser` (uid/gid 1000, owns /app) can write to /app/data.
+      # Without it the Longhorn volume mounts root-owned and the app can't write.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kiroku-api
+          image: ghcr.io/harsh-upadhayay/kiroku-api:sha-6c43b70 # TODO: confirm CI published this tag
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DATA_DIR
+              value: /app/data
+            - name: VOCAB_OCR_BINARY
+              value: tesseract
+            - name: VOCAB_OCR_LANGUAGES
+              value: jpn+eng
+            - name: VOCAB_OCR_PSM
+              value: "6"
+            - name: VOCAB_OCR_TIMEOUT_SECONDS
+              value: "90"
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          # Same check the Compose healthcheck used: the binary's own -healthcheck.
+          readinessProbe:
+            exec:
+              command: ["/app/kiroku-api", "-healthcheck"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/app/kiroku-api", "-healthcheck"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          # Sized from 3 days of cadvisor/Prometheus data. Baseline is near-idle
+          # (personal app); the sizing target is the rare vocab-from-photo OCR
+          # burst (2026-07-05 06:23: CPU→41m, mem→285Mi held ~4min loading the
+          # jpn+eng tesseract data). CPU limit is intentional here (unlike the
+          # trusted platform apps) — personal namespaces bound dev-code blast
+          # radius, matching the kiroku ResourceQuota (limits.cpu) + LimitRange.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 500m # ~12x the observed 41m OCR burst — headroom for a larger/multi-page image
+              memory: 512Mi # ~1.8x the observed 285Mi OCR peak
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kiroku-api-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiroku-api
+  labels:
+    app: kiroku-api
+spec:
+  type: ClusterIP
+  selector:
+    app: kiroku-api # matches the Deployment's pod label — this is the endpoint wiring
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# First PVC. RWO (single writer — the one api pod). longhorn = single-replica
+# dynamic block storage. NOTE: this StorageClass reclaims Delete, so deleting
+# the kiroku namespace would delete this volume's data — fine during migration
+# (source stays on the old host); revisit Retain/longhorn-static before the old
+# lab is decommissioned if this becomes the sole copy.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kiroku-api-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi

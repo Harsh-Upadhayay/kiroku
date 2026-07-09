@@ -1,0 +1,54 @@
+# K2 — routing. Reunites the two tiers under ONE hostname via path-prefix
+# splitting, translated from the Compose Traefik labels (kiroku/kiroku-api).
+#
+# INTERNAL-FIRST: only the websecure entrypoint + kiroku.in.neovara.uk (Tailscale-
+# only). The public IngressRoute (web entrypoint, kiroku.neovara.uk) is added at
+# cutover (K4) once smoke-tested, so no public DNS moves until we're confident.
+#
+# No metadata.namespace: the pointer Application injects kiroku at apply time.
+---
+# secure-headers — the k8s equivalent of the Compose `secure-headers@docker`
+# middleware. A Traefik Middleware is a reusable request/response transform;
+# routes opt in by referencing it. (errpages is deferred — needs an error-page
+# backend service; add later.)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: secure-headers
+spec:
+  headers:
+    browserXssFilter: true
+    contentTypeNosniff: true # don't let browsers MIME-sniff
+    frameDeny: true # no embedding in iframes (clickjacking)
+    stsSeconds: 31536000 # HSTS: force HTTPS for a year
+    stsIncludeSubdomains: true
+    stsPreload: true
+    referrerPolicy: strict-origin-when-cross-origin
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kiroku-internal
+spec:
+  entryPoints:
+    - websecure # TLS terminated by Traefik with the *.in.neovara.uk wildcard (default TLSStore)
+  routes:
+    # /api/* → the Go backend. priority 100 so it out-ranks the catch-all below
+    # for any request under /api (both rules match the host; highest priority wins).
+    - match: Host(`kiroku.in.neovara.uk`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 100
+      services:
+        - name: kiroku-api # the Service from api.yaml → resolves to its pods' :8080
+          port: 8080
+      middlewares:
+        - name: secure-headers
+    # everything else → the Next.js frontend.
+    - match: Host(`kiroku.in.neovara.uk`)
+      kind: Rule
+      services:
+        - name: kiroku
+          port: 3000
+      middlewares:
+        - name: secure-headers
+  tls: {} # empty = enable TLS, serve the default TLSStore cert (*.in.neovara.uk)
