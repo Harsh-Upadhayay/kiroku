@@ -1,9 +1,11 @@
-# K2 — routing. Reunites the two tiers under ONE hostname via path-prefix
-# splitting, translated from the Compose Traefik labels (kiroku/kiroku-api).
+# Routing. Reunites the two tiers under ONE hostname via path-prefix splitting,
+# translated from the Compose Traefik labels (kiroku/kiroku-api).
 #
-# INTERNAL-FIRST: only the websecure entrypoint + kiroku.in.neovara.uk (Tailscale-
-# only). The public IngressRoute (web entrypoint, kiroku.neovara.uk) is added at
-# cutover (K4) once smoke-tested, so no public DNS moves until we're confident.
+# PUBLIC (K4 cutover complete, 2026-07-09): kiroku.neovara.uk only, via cloudflared
+# -> Traefik's `web` entrypoint (TLS terminated at Cloudflare's edge, same as
+# whoami/homepage). The internal-only kiroku.in.neovara.uk route and the legacy
+# myanki.neovara.uk alias are retired — old-lab DNS is decommissioned, so nothing
+# else depends on either name. See docs/migrations/kiroku.md.
 #
 # No metadata.namespace: the pointer Application injects kiroku at apply time.
 ---
@@ -28,14 +30,14 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: kiroku-internal
+  name: kiroku
 spec:
   entryPoints:
-    - websecure # TLS terminated by Traefik with the *.in.neovara.uk wildcard (default TLSStore)
+    - web # plain HTTP inside the cluster — cloudflared holds the TLS-terminated edge
   routes:
     # /api/* → the Go backend. priority 100 so it out-ranks the catch-all below
     # for any request under /api (both rules match the host; highest priority wins).
-    - match: Host(`kiroku.in.neovara.uk`) && PathPrefix(`/api`)
+    - match: Host(`kiroku.neovara.uk`) && PathPrefix(`/api`)
       kind: Rule
       priority: 100
       services:
@@ -44,11 +46,10 @@ spec:
       middlewares:
         - name: secure-headers
     # everything else → the Next.js frontend.
-    - match: Host(`kiroku.in.neovara.uk`)
+    - match: Host(`kiroku.neovara.uk`)
       kind: Rule
       services:
         - name: kiroku
           port: 3000
       middlewares:
         - name: secure-headers
-  tls: {} # empty = enable TLS, serve the default TLSStore cert (*.in.neovara.uk)
