@@ -71,19 +71,23 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
-          # Sized from 3 days of cadvisor/Prometheus data. Baseline is near-idle
-          # (personal app); the sizing target is the rare vocab-from-photo OCR
-          # burst (2026-07-05 06:23: CPU→41m, mem→285Mi held ~4min loading the
-          # jpn+eng tesseract data). CPU limit is intentional here (unlike the
-          # trusted platform apps) — personal namespaces bound dev-code blast
-          # radius, matching the kiroku ResourceQuota (limits.cpu) + LimitRange.
+          # Sized from 3 days of cadvisor/Prometheus data, THEN corrected after a
+          # real production incident: the original 512Mi limit OOMKilled the pod
+          # (exit 137) during the very first real sync/pull against the migrated
+          # account (2026-07-09 06:05 UTC) — the Prometheus sample was collected
+          # against a near-empty test DB and only captured an OCR burst, not a
+          # full cold sync-pull serializing a real ~14k-media-file library, which
+          # is a much larger working set. Bumped limit with real headroom; ample
+          # room in the kiroku ResourceQuota (2Gi hard) and cluster (nodes <40%
+          # memory). CPU limit is intentional here (unlike the trusted platform
+          # apps) — personal namespaces bound dev-code blast radius.
           resources:
             requests:
               cpu: 10m
-              memory: 32Mi
+              memory: 64Mi
             limits:
-              cpu: 500m # ~12x the observed 41m OCR burst — headroom for a larger/multi-page image
-              memory: 512Mi # ~1.8x the observed 285Mi OCR peak
+              cpu: 500m
+              memory: 1536Mi # bumped 512Mi -> 1.5Gi after the 2026-07-09 OOMKill on first real sync-pull
       volumes:
         - name: data
           persistentVolumeClaim:
