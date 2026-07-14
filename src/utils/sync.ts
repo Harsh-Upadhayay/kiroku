@@ -279,6 +279,14 @@ export async function triggerPushSync(email: string): Promise<boolean> {
   }
 }
 
+// Serialized form of the last pull we applied. The 15s reconcile loop pulls unconditionally,
+// but most ticks return exactly what we already applied — re-applying would rewrite every
+// Anki record in IndexedDB and wake syncEvents listeners for nothing. Comparing the raw JSON
+// makes syncEvents mean "remote state actually changed". Deliberately NOT updated on the push
+// path: push applies the merged response with applyAnki:false, so an identical follow-up pull
+// must still run to converge the Anki stores.
+let lastAppliedPullRaw: string | null = null;
+
 /**
  * Pull state from the backend and overwrite local IndexedDB/local storage cache
  */
@@ -310,7 +318,14 @@ export async function triggerPullSync(email: string): Promise<boolean> {
       return false;
     }
 
+    const raw = JSON.stringify(state);
+    if (raw === lastAppliedPullRaw) {
+      localStorage.setItem(SYNC_LAST_PULL_KEY, String(Date.now()));
+      return false;
+    }
+
     await applyRemoteState(state);
+    lastAppliedPullRaw = raw;
 
     console.log("Sync pull complete, database cached with remote state.");
     localStorage.setItem(SYNC_LAST_PULL_KEY, String(Date.now()));
