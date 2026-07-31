@@ -1,0 +1,101 @@
+# kiroku — the Next.js frontend. Migrated from ../homelab/kiroku/compose.yml
+# (the `kiroku` service). Stateless: no volume. In Compose it depended on the
+# api being healthy; in k8s that ordering is soft — the frontend just retries,
+# and its readiness probe keeps it out of the Service until it serves.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiroku
+  labels:
+    app: kiroku
+    app.kubernetes.io/part-of: kiroku
+    workbench.neovara/project: kiroku 
+    workbench.neovara/lifecycle: on-demand
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kiroku
+  template:
+    metadata:
+      labels:
+        app: kiroku
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000 # image's `node` user
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kiroku
+          image: registry.workbench.svc.cluster.local/kiroku:dev 
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: development
+            - name: PORT
+              value: "3000"
+            - name: APP_URL
+              value: https://kiroku-dev.in.neovara.uk
+            # server.ts proxies /api to this, defaulting to http://localhost:8080
+            # if unset -- which is nothing inside this pod, so the proxy 504s.
+            # Prod omits it because its IngressRoute peels /api off to the
+            # backend first, making the built-in proxy dead code there. In dev
+            # you also reach the frontend DIRECTLY (port-forward, no ingress),
+            # so the proxy has to work. Same value docker-compose.local.yml used
+            # -- a Service name, resolved by CoreDNS exactly like Compose's
+            # network DNS resolved the container name.
+            - name: KIROKU_API_URL
+              value: http://kiroku-api:8080
+            # Vite's allowedHosts (see vite.config.ts). Without this the page
+            # 403s with "Blocked request" while /api still works, because only
+            # the frontend is served by Vite -- a confusing half-broken state.
+            - name: VITE_ALLOWED_HOSTS
+              value: kiroku-dev.in.neovara.uk
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          volumeMounts:
+            - name: workspace
+              mountPath: /app
+              subPath: kiroku
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: workspace
+
+           
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiroku
+  labels:
+    app: kiroku
+spec:
+  type: ClusterIP
+  selector:
+    app: kiroku
+  ports:
+    - port: 3000
+      targetPort: 3000

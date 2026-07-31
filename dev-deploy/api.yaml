@@ -1,0 +1,105 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiroku-api
+  labels:
+    app: kiroku-api
+    app.kubernetes.io/part-of: kiroku
+    workbench.neovara/project: kiroku 
+    workbench.neovara/lifecycle: on-demand
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kiroku-api
+  template:
+    metadata:
+      labels:
+        app: kiroku-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kiroku-api
+          image: registry.workbench.svc.cluster.local/kiroku-api:dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DATA_DIR
+              value: /app/data
+            - name: VOCAB_OCR_BINARY
+              value: tesseract
+            - name: VOCAB_OCR_LANGUAGES
+              value: jpn+eng
+            - name: VOCAB_OCR_PSM
+              value: "6"
+            - name: VOCAB_OCR_TIMEOUT_SECONDS
+              value: "90"
+          # httpGet /healthz, NOT prod's `exec ["/app/kiroku-api", "-healthcheck"]`:
+          # that path only exists in the runtime stage, which COPYs the compiled
+          # binary to /app. The dev stage has no binary at all -- it `go run`s
+          # from the mounted /src. The exec probe therefore fails with
+          # `stat /app/kiroku-api: no such file or directory` even while the API
+          # is up and serving. Same health handler either way (routes.go
+          # registers GET /healthz), just reached over HTTP.
+          #
+          # Delays are wider than prod's because `go run` COMPILES on every
+          # start (~18s observed), and GOCACHE lives in /tmp, so a restart never
+          # reuses the previous build.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          volumeMounts:
+          - name: workspace
+            mountPath: /app/data
+            subPath: kiroku/data
+          - name: workspace
+            mountPath: /src
+            subPath: kiroku/backend
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiroku-api
+  labels:
+    app: kiroku-api
+spec:
+  type: ClusterIP
+  selector:
+    app: kiroku-api # matches the Deployment's pod label — this is the endpoint wiring
+  ports:
+    - port: 8080
+      targetPort: 8080

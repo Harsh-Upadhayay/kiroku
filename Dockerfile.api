@@ -50,3 +50,23 @@ USER appuser
 EXPOSE 8080
 
 CMD ["/app/kiroku-api"]
+
+# -- Dev stage: compiles from mounted source on every start -----------------
+# Used only by dev-deploy/ in-cluster; CI never builds this target.
+#
+# go mod download IS kept (unlike the frontend's npm ci): it populates
+# /go/pkg/mod, which sits outside /src and so survives the workspace mount.
+#
+# GOCACHE: the Deployment runs as uid 1000, but this base image never creates
+# that user or a home for it, so Go's default $HOME/.cache/go-build is
+# unwritable -- `mkdir /.cache: permission denied` on start. /tmp is writable
+# by anyone. alpine is fine here: Go builds static, no libc coupling.
+#
+# No watcher (air etc.) by choice -- pick up backend edits with
+# `kubectl rollout restart deploy/kiroku-api`.
+FROM golang:1.22-alpine AS dev
+WORKDIR /src
+ENV GOCACHE=/tmp/go-cache
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+CMD ["go", "run", "./cmd/kiroku-api"]
